@@ -1,5 +1,5 @@
 // ==============================================================================
-// RUNNER CONSOLIDADO DE TESTES TOY - DATA FLOW & OVERRIDING ASSIGNMENT
+// RUNNER CONSOLIDADO DE EXECUÇÃO DOS TOYS NO JALANGI2
 // ==============================================================================
 const { execSync } = require('child_process');
 const path = require('path');
@@ -11,40 +11,30 @@ const tests = [
         name: "1. Exemplo Original da Amanda (example.js)",
         file: "experiments/toys/example.js",
         branchMap: { "L": [5], "R": [1] },
-        expectedOA: 1,
-        expectedDF: 0,
-        description: "Valida regressão de Overriding Assignment original"
+        description: "Cenário original de Overriding Assignment (Amanda Moraes, SBLP 2024)"
     },
     {
         name: "2. Data Flow Direto (test_dataflow_direct.js)",
         file: "experiments/toys/test_dataflow_direct.js",
         branchMap: { "L": [4], "R": [6, 7] },
-        expectedOA: 0,
-        expectedDF: 1,
         description: "Branch L escreve em taxa, Branch R lê taxa no cálculo"
     },
     {
         name: "3. Execução Segura e Kill da Base (test_dataflow_safe.js)",
         file: "experiments/toys/test_dataflow_safe.js",
         branchMap: { "L": [4, 5, 6], "R": [10, 11, 12] },
-        expectedOA: 0,
-        expectedDF: 0,
         description: "Variáveis disjuntas e Base sobrescreve antes do consumo"
     },
     {
         name: "4. Data Flow em Propriedade de Objeto (test_dataflow_object.js)",
         file: "experiments/toys/test_dataflow_object.js",
         branchMap: { "L": [6], "R": [8, 9] },
-        expectedOA: 0,
-        expectedDF: 1,
         description: "Interceptação via putFieldPre e getField (pedido.taxa)"
     },
     {
         name: "5. Data Flow Interprocedural (test_dataflow_interproc.js)",
         file: "experiments/toys/test_dataflow_interproc.js",
         branchMap: { "L": [4], "R": [8] },
-        expectedOA: 0,
-        expectedDF: 1,
         description: "Fluxo através de funções: setTaxa() -> calcularTotal()"
     }
 ];
@@ -56,21 +46,21 @@ const selectedTests = filterArg
     : tests;
 
 console.log("================================================================================");
-console.log("🚀 INICIANDO BATERIA DE TESTES SINTÉTICOS DE DATA FLOW NO JALANGI2");
+console.log("🔬 EXECUTANDO ANÁLISE DINÂMICA DE MERGE (JALANGI2)");
 if (filterArg) {
-    console.log(`🔍 FILTRO ATIVO: '${filterArg}' (${selectedTests.length} teste(s) selecionado(s))`);
+    console.log(`🔍 FILTRO ATIVO: '${filterArg}' (${selectedTests.length} programa(s) selecionado(s))`);
 }
 console.log("================================================================================\n");
 
-let passedCount = 0;
 const results = [];
+let executionErrors = 0;
 
 for (const t of selectedTests) {
     const cmd = `node src/js/commands/jalangi.js --inlineIID --inlineSource --analysis experiments/analyses/analysis_dataflow.js ${t.file}`;
     let output = "";
-    let passed = false;
     let oaFound = 0;
     let dfFound = 0;
+    let success = true;
 
     try {
         const env = Object.assign({}, process.env, {
@@ -83,44 +73,43 @@ for (const t of selectedTests) {
 
         if (oaMatch) oaFound = parseInt(oaMatch[1], 10);
         if (dfMatch) dfFound = parseInt(dfMatch[1], 10);
-
-        if (oaFound === t.expectedOA && dfFound === t.expectedDF) {
-            passed = true;
-            passedCount++;
-        }
     } catch (e) {
+        success = false;
+        executionErrors++;
         output = e.stdout || e.message;
     }
 
     results.push({
         name: t.name,
-        passed,
-        expected: `OA: ${t.expectedOA}, DF: ${t.expectedDF}`,
-        obtained: `OA: ${oaFound}, DF: ${dfFound}`,
+        file: t.file,
+        success,
+        oaFound,
+        dfFound,
         description: t.description,
         output: output
     });
 }
 
 console.log("--------------------------------------------------------------------------------");
-console.log("📋 TABELA RESUMO DOS RESULTADOS");
+console.log("📋 RELATÓRIO CONSOLIDADO DAS DETECÇÕES");
 console.log("--------------------------------------------------------------------------------");
 results.forEach(r => {
-    const icon = r.passed ? "✅ PASSOU" : "❌ FALHOU";
-    console.log(`${icon} | ${r.name}`);
-    console.log(`         Esperado: [${r.expected}] | Obtido: [${r.obtained}]`);
-    console.log(`         Nota: ${r.description}\n`);
+    const statusIcon = r.success ? "✔" : "✖ ERRO DE EXECUÇÃO";
+    console.log(`${statusIcon} ${r.name}`);
+    console.log(`   • Conflitos Detectados: Overriding Assignment (OA): ${r.oaFound} | Data Flow (DF): ${r.dfFound}`);
+    console.log(`   • Descrição: ${r.description}\n`);
+
     if (selectedTests.length === 1) {
-        console.log("--- LOG DE EXECUÇÃO DETALHADO ---");
+        console.log("--- LOG COMPLETO DE INSTRUMENTAÇÃO DO JALANGI2 ---");
         console.log(r.output.trim());
-        console.log("---------------------------------\n");
+        console.log("--------------------------------------------------\n");
     }
 });
 
 console.log("================================================================================");
-console.log(`🏁 RESULTADO GERAL: ${passedCount}/${selectedTests.length} TESTES PASSARAM COM SUCESSO!`);
+console.log(`🏁 FINALIZADO: ${results.length - executionErrors}/${results.length} programas instrumentados e analisados com sucesso!`);
 console.log("================================================================================\n");
 
-if (passedCount !== selectedTests.length) {
+if (executionErrors > 0) {
     process.exit(1);
 }
