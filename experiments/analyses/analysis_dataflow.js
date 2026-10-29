@@ -129,14 +129,9 @@
         }
     }
 
-    // --- LÓGICA CENTRAL DE LEITURA (CONSUMIDOR) ---
+    // --- LÓGICA CENTRAL DE LEITURA (CONSUMIDOR - DATA FLOW) ---
     function handleRead(target, line, readingBranch) {
         if (!target || target === 'undefined' || target === 'null') return;
-
-        // [REGRA OA: Intervening Read]
-        // Se houve leitura entre escritas, anula a suspeita de OA para este alvo
-        assignments["L"] = assignments["L"].filter(function (n) { return n !== target; });
-        assignments["R"] = assignments["R"].filter(function (n) { return n !== target; });
 
         // [REGRA DATA FLOW: Consumo Inter-Branch]
         if (readingBranch !== "Base" && lastWrite[target]) {
