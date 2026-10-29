@@ -9,35 +9,35 @@ const rootDir = path.resolve(__dirname, '..');
 const tests = [
     {
         name: "1. Exemplo Original da Amanda (example.js)",
-        file: "experiments/example.js",
+        file: "experiments/toys/example.js",
         expectedOA: 1,
         expectedDF: 0,
         description: "Valida regressão de Overriding Assignment original"
     },
     {
         name: "2. Data Flow Direto (test_dataflow_direct.js)",
-        file: "experiments/test_dataflow_direct.js",
+        file: "experiments/toys/test_dataflow_direct.js",
         expectedOA: 0,
         expectedDF: 1,
         description: "Branch L escreve em taxa, Branch R lê taxa no cálculo"
     },
     {
         name: "3. Execução Segura e Kill da Base (test_dataflow_safe.js)",
-        file: "experiments/test_dataflow_safe.js",
+        file: "experiments/toys/test_dataflow_safe.js",
         expectedOA: 0,
         expectedDF: 0,
         description: "Variáveis disjuntas e Base sobrescreve antes do consumo"
     },
     {
         name: "4. Data Flow em Propriedade de Objeto (test_dataflow_object.js)",
-        file: "experiments/test_dataflow_object.js",
+        file: "experiments/toys/test_dataflow_object.js",
         expectedOA: 0,
         expectedDF: 1,
         description: "Interceptação via putFieldPre e getField (pedido.taxa)"
     },
     {
         name: "5. Data Flow Interprocedural (test_dataflow_interproc.js)",
-        file: "experiments/test_dataflow_interproc.js",
+        file: "experiments/toys/test_dataflow_interproc.js",
         expectedOA: 0,
         expectedDF: 1,
         description: "Fluxo através de funções: setTaxa() -> calcularTotal()"
@@ -52,7 +52,7 @@ let passedCount = 0;
 const results = [];
 
 for (const t of tests) {
-    const cmd = `node src/js/commands/jalangi.js --inlineIID --inlineSource --analysis experiments/analysis_dataflow.js ${t.file}`;
+    const cmd = `node src/js/commands/jalangi.js --inlineIID --inlineSource --analysis experiments/analyses/analysis_dataflow.js ${t.file}`;
     let output = "";
     let passed = false;
     let oaFound = 0;
