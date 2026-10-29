@@ -10,6 +10,7 @@ const tests = [
     {
         name: "1. Exemplo Original da Amanda (example.js)",
         file: "experiments/toys/example.js",
+        branchMap: { "L": [5], "R": [1] },
         expectedOA: 1,
         expectedDF: 0,
         description: "Valida regressão de Overriding Assignment original"
@@ -17,6 +18,7 @@ const tests = [
     {
         name: "2. Data Flow Direto (test_dataflow_direct.js)",
         file: "experiments/toys/test_dataflow_direct.js",
+        branchMap: { "L": [23], "R": [29, 30] },
         expectedOA: 0,
         expectedDF: 1,
         description: "Branch L escreve em taxa, Branch R lê taxa no cálculo"
@@ -24,6 +26,7 @@ const tests = [
     {
         name: "3. Execução Segura e Kill da Base (test_dataflow_safe.js)",
         file: "experiments/toys/test_dataflow_safe.js",
+        branchMap: { "L": [22, 23, 24], "R": [31, 32, 33] },
         expectedOA: 0,
         expectedDF: 0,
         description: "Variáveis disjuntas e Base sobrescreve antes do consumo"
@@ -31,6 +34,7 @@ const tests = [
     {
         name: "4. Data Flow em Propriedade de Objeto (test_dataflow_object.js)",
         file: "experiments/toys/test_dataflow_object.js",
+        branchMap: { "L": [22], "R": [26, 27] },
         expectedOA: 0,
         expectedDF: 1,
         description: "Interceptação via putFieldPre e getField (pedido.taxa)"
@@ -38,6 +42,7 @@ const tests = [
     {
         name: "5. Data Flow Interprocedural (test_dataflow_interproc.js)",
         file: "experiments/toys/test_dataflow_interproc.js",
+        branchMap: { "L": [23], "R": [28, 29] },
         expectedOA: 0,
         expectedDF: 1,
         description: "Fluxo através de funções: setTaxa() -> calcularTotal()"
@@ -59,7 +64,10 @@ for (const t of tests) {
     let dfFound = 0;
 
     try {
-        output = execSync(cmd, { cwd: rootDir, encoding: 'utf-8' });
+        const env = Object.assign({}, process.env, {
+            BRANCH_MAP: JSON.stringify(t.branchMap)
+        });
+        output = execSync(cmd, { cwd: rootDir, encoding: 'utf-8', env: env });
         
         const oaMatch = output.match(/Conflitos de Overriding Assignment \(OA\):\s*(\d+)/);
         const dfMatch = output.match(/Conflitos de Data Flow Inter-Branch:\s*(\d+)/);

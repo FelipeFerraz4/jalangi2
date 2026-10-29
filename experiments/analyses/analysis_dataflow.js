@@ -13,11 +13,20 @@
         "R": []
     };
 
-    // Suporte a injeção via variável de ambiente BRANCH_MAP='{"L":[...],"R":[...]}'
-    if (typeof process !== 'undefined' && process.env && process.env.BRANCH_MAP) {
-        try {
-            modifiedLinesPerBranch = JSON.parse(process.env.BRANCH_MAP);
-        } catch (e) { }
+    // Suporte a carregamento dinâmico via variável de ambiente ou arquivo JSON
+    if (typeof process !== 'undefined' && process.env) {
+        if (process.env.BRANCH_MAP) {
+            try {
+                modifiedLinesPerBranch = JSON.parse(process.env.BRANCH_MAP);
+            } catch (e) { }
+        } else if (process.env.BRANCH_MAP_FILE) {
+            try {
+                var fs = require('fs');
+                if (fs.existsSync(process.env.BRANCH_MAP_FILE)) {
+                    modifiedLinesPerBranch = JSON.parse(fs.readFileSync(process.env.BRANCH_MAP_FILE, 'utf-8'));
+                }
+            } catch (e) { }
+        }
     }
 
     // --- ESTADO DO OVERRIDING ASSIGNMENT (OA) ---
@@ -60,25 +69,6 @@
         if (typeof J$ !== 'undefined' && base === J$) return true;
         if (typeof global !== 'undefined' && base === global && (offset === 'console' || offset === 'process')) return true;
         return false;
-    }
-
-    function initFallbackMapIfEmpty(iid) {
-        if (modifiedLinesPerBranch["L"].length > 0 || modifiedLinesPerBranch["R"].length > 0) return;
-        if (!J$.sid) return;
-        var loc = J$.iidToLocation(J$.sid, iid);
-        if (!loc) return;
-
-        if (loc.indexOf("example.js") !== -1) {
-            modifiedLinesPerBranch = { "L": [5], "R": [1] };
-        } else if (loc.indexOf("test_dataflow_direct.js") !== -1) {
-            modifiedLinesPerBranch = { "L": [23], "R": [29, 30] };
-        } else if (loc.indexOf("test_dataflow_safe.js") !== -1) {
-            modifiedLinesPerBranch = { "L": [22, 23, 24], "R": [31, 32, 33] };
-        } else if (loc.indexOf("test_dataflow_object.js") !== -1) {
-            modifiedLinesPerBranch = { "L": [22], "R": [26, 27] };
-        } else if (loc.indexOf("test_dataflow_interproc.js") !== -1) {
-            modifiedLinesPerBranch = { "L": [23], "R": [28, 29] };
-        }
     }
 
     function getLine(iid) {
@@ -163,7 +153,6 @@
         // 1. VARIÁVEIS LOCAIS / GLOBAIS: WRITE
         // ==============================================================
         write: function (iid, name, val, lhs, isGlobal, isScriptLocal) {
-            initFallbackMapIfEmpty(iid);
             var line = getLine(iid);
             var branch = getBranch(line);
             handleWrite(name, line, branch);
@@ -174,7 +163,6 @@
         // 2. VARIÁVEIS LOCAIS / GLOBAIS: READ
         // ==============================================================
         read: function (iid, name, val, isGlobal, isScriptLocal) {
-            initFallbackMapIfEmpty(iid);
             var line = getLine(iid);
             var readingBranch = getBranch(line);
             handleRead(name, line, readingBranch);
@@ -185,7 +173,6 @@
         // 3. PROPRIEDADES DE OBJETOS E ARRAYS: PUT FIELD (WRITE)
         // ==============================================================
         putFieldPre: function (iid, base, offset, val, isComputed, isOpAssign) {
-            initFallbackMapIfEmpty(iid);
             if (!isInternal(base, offset)) {
                 var line = getLine(iid);
                 var branch = getBranch(line);
@@ -199,7 +186,6 @@
         // 4. PROPRIEDADES DE OBJETOS E ARRAYS: GET FIELD (READ)
         // ==============================================================
         getField: function (iid, base, offset, val, isComputed, isOpAssign, isMethodCall) {
-            initFallbackMapIfEmpty(iid);
             if (!isInternal(base, offset)) {
                 var line = getLine(iid);
                 var readingBranch = getBranch(line);
