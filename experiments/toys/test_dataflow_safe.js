@@ -10,7 +10,3 @@ configStatus = "padrao_BASE"; // [Base - Kill]
 var taxaR = 5;              // [Branch R]
 var precoComTaxa = preco + taxaR; // [Branch R]
 var logStatus = configStatus; // [Branch R]
-
-console.log("[test_dataflow_safe] Preco L:", precoComDesconto);
-console.log("[test_dataflow_safe] Preco R:", precoComTaxa);
-console.log("[test_dataflow_safe] Status Base apos Kill:", logStatus);

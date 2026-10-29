@@ -8,4 +8,4 @@ function apply(price) {
     return final;
 }
 
-console.log("[example.js] Preco final:", apply(80));
+apply(80);

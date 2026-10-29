@@ -10,5 +10,3 @@ function calcularTotal(precoBase) {
 
 setTaxa(20);
 var totalFinal = calcularTotal(100);
-
-console.log("[test_dataflow_interproc] Total retornado pela funcao:", totalFinal);

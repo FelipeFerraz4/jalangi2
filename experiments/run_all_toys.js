@@ -18,7 +18,7 @@ const tests = [
     {
         name: "2. Data Flow Direto (test_dataflow_direct.js)",
         file: "experiments/toys/test_dataflow_direct.js",
-        branchMap: { "L": [4], "R": [8, 9] },
+        branchMap: { "L": [4], "R": [6, 7] },
         expectedOA: 0,
         expectedDF: 1,
         description: "Branch L escreve em taxa, Branch R lê taxa no cálculo"
@@ -34,7 +34,7 @@ const tests = [
     {
         name: "4. Data Flow em Propriedade de Objeto (test_dataflow_object.js)",
         file: "experiments/toys/test_dataflow_object.js",
-        branchMap: { "L": [6], "R": [10, 11] },
+        branchMap: { "L": [6], "R": [8, 9] },
         expectedOA: 0,
         expectedDF: 1,
         description: "Interceptação via putFieldPre e getField (pedido.taxa)"

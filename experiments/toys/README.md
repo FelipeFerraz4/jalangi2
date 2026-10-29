@@ -24,7 +24,7 @@ Cada arquivo `.js` contém **apenas código puro JavaScript** e anotações suci
 * **Cenário de Concorrência:**
   * `Base`: define `taxa = 0` e `preco = 100`.
   * Linha 4 (`Branch L`): modifica o valor da taxa de serviço (`taxa = 15`).
-  * Linha 9 (`Branch R`): introduz novo cálculo lendo a taxa alterada (`totalFinal = (preco + taxa) + frete`).
+  * Linha 7 (`Branch R`): introduz novo cálculo lendo a taxa alterada (`totalFinal = (preco + taxa) + frete`).
 * **Conflito Semântico:** Branch R calcula o valor final utilizando um estado produzido por Branch L sem que os desenvolvedores estivessem cientes.
 * **Resultado Esperado:**
   * Overriding Assignment (OA): **0**
@@ -48,7 +48,7 @@ Cada arquivo `.js` contém **apenas código puro JavaScript** e anotações suci
 * **Cenário de Concorrência:**
   * `Base`: define `pedido = { subtotal: 100, taxa: 5 }`.
   * Linha 6 (`Branch L`): altera especificamente `pedido.taxa = 25`.
-  * Linha 11 (`Branch R`): consome `pedido.taxa` ao totalizar a conta.
+  * Linha 9 (`Branch R`): consome `pedido.taxa` ao totalizar a conta.
 * **Resultado Esperado:**
   * Overriding Assignment (OA): **0**
   * Data Flow (DF): **1**
