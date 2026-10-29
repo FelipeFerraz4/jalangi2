@@ -1,4 +1,4 @@
-var taxaServico = 0;        // [Base]
+var taxaServico = 0;
 
 function setTaxa(novaTaxa) {
     taxaServico = novaTaxa; // [Branch L]

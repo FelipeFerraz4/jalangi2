@@ -1,6 +1,6 @@
-var pedido = {              // [Base]
-    subtotal: 100,          // [Base]
-    taxa: 5                 // [Base]
+var pedido = {
+    subtotal: 100,
+    taxa: 5
 };
 
 pedido.taxa = 25;           // [Branch L]

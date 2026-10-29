@@ -1,5 +1,5 @@
-var taxa = 0;       // [Base]
-var preco = 100;    // [Base]
+var taxa = 0;
+var preco = 100;
 
 taxa = 15;          // [Branch L]
 
