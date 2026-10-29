@@ -1,0 +1,10 @@
+services:
+  dataflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jalangi2-dataflow:latest
+    container_name: jalangi2_dataflow_runner
+    volumes:
+      - ./experiments:/app/experiments
+    command: node experiments/run_all_toys.js
