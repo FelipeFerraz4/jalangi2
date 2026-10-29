@@ -1,11 +1,11 @@
-var discount = -5;
+var discount = -5; // [Branch R]
 
 function apply(price) {
     if (price > 50) {
-        discount = -10;
+        discount = -10; // [Branch L]
     }
     var final = price + discount;
     return final;
 }
 
-console.log(apply(80));
+console.log("[example.js] Preco final:", apply(80));

@@ -18,7 +18,7 @@ const tests = [
     {
         name: "2. Data Flow Direto (test_dataflow_direct.js)",
         file: "experiments/toys/test_dataflow_direct.js",
-        branchMap: { "L": [23], "R": [29, 30] },
+        branchMap: { "L": [4], "R": [8, 9] },
         expectedOA: 0,
         expectedDF: 1,
         description: "Branch L escreve em taxa, Branch R lê taxa no cálculo"
@@ -26,7 +26,7 @@ const tests = [
     {
         name: "3. Execução Segura e Kill da Base (test_dataflow_safe.js)",
         file: "experiments/toys/test_dataflow_safe.js",
-        branchMap: { "L": [22, 23, 24], "R": [31, 32, 33] },
+        branchMap: { "L": [4, 5, 6], "R": [10, 11, 12] },
         expectedOA: 0,
         expectedDF: 0,
         description: "Variáveis disjuntas e Base sobrescreve antes do consumo"
@@ -34,7 +34,7 @@ const tests = [
     {
         name: "4. Data Flow em Propriedade de Objeto (test_dataflow_object.js)",
         file: "experiments/toys/test_dataflow_object.js",
-        branchMap: { "L": [22], "R": [26, 27] },
+        branchMap: { "L": [6], "R": [10, 11] },
         expectedOA: 0,
         expectedDF: 1,
         description: "Interceptação via putFieldPre e getField (pedido.taxa)"
@@ -42,21 +42,30 @@ const tests = [
     {
         name: "5. Data Flow Interprocedural (test_dataflow_interproc.js)",
         file: "experiments/toys/test_dataflow_interproc.js",
-        branchMap: { "L": [23], "R": [28, 29] },
+        branchMap: { "L": [4], "R": [8] },
         expectedOA: 0,
         expectedDF: 1,
         description: "Fluxo através de funções: setTaxa() -> calcularTotal()"
     }
 ];
 
+// Suporte a filtro opcional: node run_all_toys.js [numero ou termo]
+const filterArg = process.argv[2];
+const selectedTests = filterArg
+    ? tests.filter((t, idx) => (idx + 1).toString() === filterArg || t.file.toLowerCase().includes(filterArg.toLowerCase()) || t.name.toLowerCase().includes(filterArg.toLowerCase()))
+    : tests;
+
 console.log("================================================================================");
 console.log("🚀 INICIANDO BATERIA DE TESTES SINTÉTICOS DE DATA FLOW NO JALANGI2");
+if (filterArg) {
+    console.log(`🔍 FILTRO ATIVO: '${filterArg}' (${selectedTests.length} teste(s) selecionado(s))`);
+}
 console.log("================================================================================\n");
 
 let passedCount = 0;
 const results = [];
 
-for (const t of tests) {
+for (const t of selectedTests) {
     const cmd = `node src/js/commands/jalangi.js --inlineIID --inlineSource --analysis experiments/analyses/analysis_dataflow.js ${t.file}`;
     let output = "";
     let passed = false;
@@ -88,7 +97,8 @@ for (const t of tests) {
         passed,
         expected: `OA: ${t.expectedOA}, DF: ${t.expectedDF}`,
         obtained: `OA: ${oaFound}, DF: ${dfFound}`,
-        description: t.description
+        description: t.description,
+        output: output
     });
 }
 
@@ -100,12 +110,17 @@ results.forEach(r => {
     console.log(`${icon} | ${r.name}`);
     console.log(`         Esperado: [${r.expected}] | Obtido: [${r.obtained}]`);
     console.log(`         Nota: ${r.description}\n`);
+    if (selectedTests.length === 1) {
+        console.log("--- LOG DE EXECUÇÃO DETALHADO ---");
+        console.log(r.output.trim());
+        console.log("---------------------------------\n");
+    }
 });
 
 console.log("================================================================================");
-console.log(`🏁 RESULTADO GERAL: ${passedCount}/${tests.length} TESTES PASSARAM COM SUCESSO!`);
+console.log(`🏁 RESULTADO GERAL: ${passedCount}/${selectedTests.length} TESTES PASSARAM COM SUCESSO!`);
 console.log("================================================================================\n");
 
-if (passedCount !== tests.length) {
+if (passedCount !== selectedTests.length) {
     process.exit(1);
 }
