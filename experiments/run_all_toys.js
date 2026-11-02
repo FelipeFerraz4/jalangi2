@@ -36,6 +36,66 @@ const tests = [
         file: "experiments/toys/test_dataflow_interproc.js",
         branchMap: { "L": [4], "R": [8] },
         description: "Fluxo através de funções: setTaxa() -> calcularTotal()"
+    },
+    {
+        name: "6. OA com Leitura Entre as Escritas (test_oa_read_between.js)",
+        file: "experiments/toys/test_oa_read_between.js",
+        branchMap: { "L": [3], "R": [6] },
+        description: "Leitura pela Base entre as escritas de L e R não elimina o OA"
+    },
+    {
+        name: "7. Data Flow dentro de if (test_if_dataflow.js)",
+        file: "experiments/toys/test_if_dataflow.js",
+        branchMap: { "L": [6], "R": [11] },
+        description: "Branch L escreve taxa num if, Branch R lê taxa em outro if"
+    },
+    {
+        name: "8. OA com if (test_if_oa.js)",
+        file: "experiments/toys/test_if_oa.js",
+        branchMap: { "L": [5], "R": [8] },
+        description: "Branch L atribui dentro do if e Branch R sobrescreve depois dele"
+    },
+    {
+        name: "9. if não executado (test_if_not_taken.js)",
+        file: "experiments/toys/test_if_not_taken.js",
+        branchMap: { "L": [6], "R": [9] },
+        description: "Escrita de L está num caminho não percorrido: limitação da análise dinâmica"
+    },
+    {
+        name: "10. Data Flow em laço (test_loop_dataflow.js)",
+        file: "experiments/toys/test_loop_dataflow.js",
+        branchMap: { "L": [7], "R": [10] },
+        description: "Branch L escreve desconto a cada iteração, Branch R lê depois do laço"
+    },
+    {
+        name: "11. OA em laço (test_loop_oa.js)",
+        file: "experiments/toys/test_loop_oa.js",
+        branchMap: { "L": [6], "R": [9, 10] },
+        description: "Branch L atribui no laço; Branch R sobrescreve duas vezes depois"
+    },
+    {
+        name: "12. Data Flow de propriedade em laço (test_loop_object.js)",
+        file: "experiments/toys/test_loop_object.js",
+        branchMap: { "L": [4], "R": [5] },
+        description: "L escreve conta.juros e R o lê a cada iteração"
+    },
+    {
+        name: "13. Pilha de chamadas com exceção (test_exception_stack.js)",
+        file: "experiments/toys/test_exception_stack.js",
+        branchMap: { "L": [8], "R": [14] },
+        description: "Chamada de L termina por exceção; o código seguinte da Base não pode ser atribuído a L"
+    },
+    {
+        name: "14. OA com métodos de array in-place (test_array_inplace_oa.js)",
+        file: "experiments/toys/test_array_inplace_oa.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "fill de L e splice de R alteram a mesma posição do array"
+    },
+    {
+        name: "15. Métodos de array in-place em posições distintas (test_array_inplace_safe.js)",
+        file: "experiments/toys/test_array_inplace_safe.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "push de L (posição 3) e fill de R (posições 0 e 1) não se sobrepõem"
     }
 ];
 
@@ -56,7 +116,7 @@ const results = [];
 let executionErrors = 0;
 
 for (const t of selectedTests) {
-    const cmd = `node src/js/commands/jalangi.js --inlineIID --inlineSource --analysis experiments/analyses/analysis_dataflow.js ${t.file}`;
+    const cmd = `node src/js/commands/jalangi.js --inlineIID --inlineSource --analysis src/js/sample_analyses/ChainedAnalyses.js --analysis src/js/runtime/SMemory.js --analysis experiments/analyses/analysis_dataflow.js ${t.file}`;
     let output = "";
     let oaFound = 0;
     let dfFound = 0;
