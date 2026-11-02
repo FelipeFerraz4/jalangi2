@@ -96,6 +96,24 @@ const tests = [
         file: "experiments/toys/test_array_inplace_safe.js",
         branchMap: { "L": [3], "R": [4] },
         description: "push de L (posição 3) e fill de R (posições 0 e 1) não se sobrepõem"
+    },
+    {
+        name: "16. Data Flow por parâmetro (test_dataflow_param.js)",
+        file: "experiments/toys/test_dataflow_param.js",
+        branchMap: { "L": [6], "R": [2] },
+        description: "L passa o argumento na chamada e R lê o parâmetro dentro da função"
+    },
+    {
+        name: "17. Parâmetro passado pela Base (test_dataflow_param_safe.js)",
+        file: "experiments/toys/test_dataflow_param_safe.js",
+        branchMap: { "L": [], "R": [2] },
+        description: "A chamada é da Base: R lê o parâmetro sem consumir valor de L"
+    },
+    {
+        name: "18. Parâmetro reatribuído (test_dataflow_param_reassign.js)",
+        file: "experiments/toys/test_dataflow_param_reassign.js",
+        branchMap: { "L": [6], "R": [2] },
+        description: "R lê e reatribui o parâmetro de L (DF), e o return, executado a mando de L, lê o valor de R (DF); sem OA"
     }
 ];
 

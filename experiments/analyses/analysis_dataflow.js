@@ -272,6 +272,18 @@
         }
     }
 
+    // --- PASSAGEM DE PARÂMETROS (PRODUTOR - DATA FLOW) ---
+    // Ligar um argumento ao parâmetro produz um valor na branch do ponto de chamada. Conta apenas
+    // para o Data Flow: o OA considera atribuições explícitas no código (Moraes et al., 2024).
+    function handleParameterBinding(target, line, branch) {
+        if (branch !== "Base") {
+            lastWrite[target] = { branch: branch, line: line };
+            console.log(`[PARÂMETRO] '${label(target)}' recebe valor da branch '${branch}' (chamada na linha ${line})`);
+        } else {
+            lastWrite[target] = { branch: "Base", line: line };
+        }
+    }
+
     // --- LÓGICA CENTRAL DE LEITURA (CONSUMIDOR - DATA FLOW) ---
     function handleRead(target, line, readingBranch) {
         if (!target || target === 'undefined' || target === 'null') return;
@@ -318,7 +330,7 @@
             }
             // A branch da chamada é a da linha onde ela termina (Moraes et al., 2024)
             var lines = getLines(iid);
-            callStack.push({ branch: lineToBranch[lines[1]], depth: functionDepth });
+            callStack.push({ branch: lineToBranch[lines[1]], depth: functionDepth, line: lines[0] });
             return { f: f, base: base, args: args, skip: false };
         },
 
@@ -344,6 +356,16 @@
                 callStack.pop();
             }
             functionDepth--;
+        },
+
+        // Parâmetros: o valor vem da chamada que está sendo executada, empilhada pelo chamador
+        // na profundidade logo abaixo da atual (chamadas implícitas, como getters, não têm entrada).
+        declare: function (iid, name, val, isArgument, argumentIndex, isCatchParam) {
+            var call = callStack[callStack.length - 1];
+            if (isArgument && name !== 'arguments' && call && call.depth === functionDepth - 1) {
+                handleParameterBinding(variableTarget(name), call.line, stackBranch() || "Base");
+            }
+            return { result: val };
         },
 
         // ==============================================================

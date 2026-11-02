@@ -54,6 +54,7 @@ Sem `SMemory` a análise recai em nome (variáveis) e `WeakMap` (objetos), mas e
   * **Leituras não alteram o OA**: só escritas entram no algoritmo.
 * **Interprocedural (pilha de chamadas):** cada chamada empilha a branch da linha onde termina. Uma operação cuja própria linha é da Base é atribuída à branch da chamada mais recente que tenha uma. Vale para escritas (OA e DF) e leituras (DF).
   * Se uma função termina por exceção, o `invokeFun` não é chamado. A análise acompanha a profundidade de funções (`functionEnter`/`functionExit`) e descarta as chamadas pendentes dessa função e a que a invocou.
+* **Passagem de parâmetros:** ao entrar numa função, cada parâmetro recebe valor da branch do ponto de chamada (`declare` com `isArgument`). Conta como produtor só para o DF; o OA considera apenas atribuições explícitas no código (Moraes et al., 2024), então a ligação do argumento nunca gera OA.
 * **Atribuição de função:** `X.prototype.foo = function () {...}` conta só a primeira linha da atribuição. O corpo é analisado linha a linha quando executa; se contasse inteiro, a definição seria atribuída à branch de qualquer linha dele e uma chamada `m.foo()` acusaria DF sobre o próprio método.
 * **Métodos de array in-place** (`push`, `pop`, `shift`, `unshift`, `splice`, `fill`, `copyWithin`, `reverse`, `sort`): cada posição afetada é uma escrita no array. Para a comparação de valores, `push` e `fill` usam o valor inserido; nos demais o valor é tratado como desconhecido (sempre diferente).
 * **Data Flow:** a tabela `lastWrite` guarda o último escritor de cada elemento. Uma leitura por uma branch de um elemento cujo último escritor é a **outra** branch registra um DF.
@@ -83,6 +84,9 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 | 13 | `test_exception_stack.js` | `[8]` / `[14]` | 0 | 0 |
 | 14 | `test_array_inplace_oa.js` | `[3]` / `[4]` | 1 | 0 |
 | 15 | `test_array_inplace_safe.js` | `[3]` / `[4]` | 0 | 0 |
+| 16 | `test_dataflow_param.js` | `[6]` / `[2]` | 0 | 1 |
+| 17 | `test_dataflow_param_safe.js` | `[]` / `[2]` | 0 | 0 |
+| 18 | `test_dataflow_param_reassign.js` | `[6]` / `[2]` | 0 | 2 |
 
 ### 1. `example.js` — Overriding Assignment original (Amanda Moraes, SBLP 2024)
 * **Objetivo:** regressão do algoritmo de OA original.
@@ -148,6 +152,19 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 * **Cenário:** `L` faz `fila.push(4)` (posição 3) e `R` faz `fila.fill(9, 0, 2)` (posições 0 e 1).
 * **Objetivo:** posições diferentes são elementos de estado independentes; não há conflito.
 
+### 16. `test_dataflow_param.js` — Data Flow por parâmetro
+* **Cenário:** `L` chama `dobrar(base + 1)` (linha 6) e `R` lê o parâmetro `n` dentro da função (linha 2).
+* **Conflito:** o valor que `L` passou como argumento chega a uma instrução de `R`.
+
+### 17. `test_dataflow_param_safe.js` — Parâmetro passado pela Base
+* **Cenário:** igual ao 16, mas a chamada `dobrar(21)` é da Base.
+* **Objetivo:** o argumento não é de nenhuma branch, então a leitura de `R` não consome valor de `L`.
+
+### 18. `test_dataflow_param_reassign.js` — Parâmetro reatribuído
+* **Cenário:** `L` chama `ajustar(5)` (linha 6). `R` faz `n = n + 1` (linha 2), e o `return n` (linha 3) é da Base.
+* **DF = 2:** (1) `R` lê o `n` que veio de `L`; (2) o `return n`, executado a mando da chamada de `L`, lê o `n` que `R` reatribuiu.
+* **OA = 0:** a ligação do argumento ao parâmetro não é uma atribuição explícita no código.
+
 ---
 
 ## 🚀 Como executar
@@ -208,6 +225,7 @@ O que cada recurso contribui (desligando um de cada vez):
 
 * **Exceção lançada por função nativa** (por exemplo `JSON.parse`) e capturada na mesma função: não há `functionExit` instrumentado, então a chamada fica na pilha até a função sair.
 * **Exceção em *getter*/*setter*** invocado implicitamente: a chamada pendente que a análise descarta pode não ser a do acesso.
+* **Receptor (`this`) e `arguments`** não são tratados como valores passados na chamada; só os parâmetros nomeados.
 * **Métodos de array que só leem** (`slice`, `join`, `indexOf`, `map`...) não geram leituras para o DF. Só as escritas dos métodos in-place são tratadas.
 * `sort` executa o comparador uma vez a mais, em uma cópia, para descobrir quais posições mudam.
 * **Confluence Flow e Control Dependence** ainda não foram implementados.
