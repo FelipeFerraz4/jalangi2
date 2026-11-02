@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     image: jalangi2-dataflow:latest
     container_name: jalangi2_dataflow_runner
+    user: "1000:1000"
     volumes:
       - ./experiments:/app/experiments
     command: node experiments/run_all_toys.js
