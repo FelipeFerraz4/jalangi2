@@ -10,7 +10,7 @@
 // com elas. Como no OA (run_oa_suite.js), compara-se a presença de conflito com o esperado.
 //
 // Os testes de ReachDefinition rodam no modo padrão (fluxo direto); os de Tainted, com DATAFLOW_MODE=tainted
-// (propagação transitiva, e array tratado como um único elemento de estado).
+// (propagação transitiva). Os índices de um array continuam sendo estados independentes.
 //
 // Uso: node experiments/run_df_suite.js [filtro]   (filtra por nome do teste ou da sample)
 const { execFileSync } = require('child_process');
@@ -62,7 +62,7 @@ const cases = [
         expected: 2,
         source: [{ java: 8, js: 15, code: 'arr[4] = 10' }],
         sink: [{ java: 10, js: 16, code: 'arr[3]' }, { java: 12, js: 17, code: 'console.info(b)' }],
-        note: 'Tainted trata o array como um todo (arr[4] contamina arr[3]); a análise trata cada índice como estado independente.'
+        note: 'Divergência intencional: o Tainted trata o array como um todo (arr[4] contamina arr[3]); a análise trata cada índice como estado independente, como no OA, para evitar falsos positivos.'
     },
     // --- Fora do escopo da análise atual ---
     { test: 'ConfluenceWithTransitivityTest', analysis: 'ConfluentTainted', sample: 'ConfluenceWithTransitivitySample', expected: 1, skip: NOT_CONFLUENCE },

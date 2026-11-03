@@ -184,20 +184,6 @@
     var ARRAY_MUTATORS = ["push", "pop", "unshift", "shift", "splice", "fill", "copyWithin", "reverse", "sort"]
         .map(function (name) { return Array.prototype[name]; });
 
-    // Modo tainted: a análise do Java trata um array como um único elemento de estado, então
-    // escrever em arr[i] contamina também a leitura de arr[j]. Além do índice, guarda-se o array inteiro.
-    function wholeArrayTarget(base) {
-        return Array.isArray(base) ? fieldTarget(base, '[*]', false) : undefined;
-    }
-
-    function writeField(base, offset, line, branch, val) {
-        handleWrite(fieldTarget(base, offset, false), line, branch, val);
-        var whole = taintMode ? wholeArrayTarget(base) : undefined;
-        if (whole && branch !== "Base") {
-            origins[whole] = mergeOrigins(origins[whole] || [], [{ branch: branch, line: line }]);
-        }
-    }
-
     function range(from, to) {
         var r = [];
         for (var i = from; i < to; i++) r.push(i);
@@ -380,7 +366,7 @@
                 var line = getLines(iid)[0];
                 var branch = effectiveBranch(iid);
                 inPlaceArrayWrites(f, base, args).forEach(function (w) {
-                    writeField(base, w.offset, line, branch, w.val);
+                    handleWrite(fieldTarget(base, w.offset, false), line, branch, w.val);
                 });
             }
             // A branch da chamada é a da linha onde ela termina (Moraes et al., 2024)
@@ -464,7 +450,7 @@
         // ==============================================================
         putFieldPre: function (iid, base, offset, val, isComputed, isOpAssign) {
             if (!isInternal(base, offset)) {
-                writeField(base, offset, getLines(iid)[0], effectiveBranch(iid, val), val);
+                handleWrite(fieldTarget(base, offset, false), getLines(iid)[0], effectiveBranch(iid, val), val);
             }
             return { base: base, offset: offset, val: val, skip: false };
         },
@@ -474,10 +460,7 @@
         // ==============================================================
         getField: function (iid, base, offset, val, isComputed, isOpAssign, isMethodCall) {
             if (!isInternal(base, offset)) {
-                var line = getLines(iid)[0], readingBranch = effectiveBranch(iid);
-                handleRead(fieldTarget(base, offset, true), line, readingBranch);
-                var whole = taintMode ? wholeArrayTarget(base) : undefined;
-                if (whole) handleRead(whole, line, readingBranch);
+                handleRead(fieldTarget(base, offset, true), getLines(iid)[0], effectiveBranch(iid));
             }
             return { result: val };
         },

@@ -58,7 +58,7 @@ Sem `SMemory` a análise recai em nome (variáveis) e `WeakMap` (objetos), mas e
   * Se uma função termina por exceção, o `invokeFun` não é chamado. A análise acompanha a profundidade de funções (`functionEnter`/`functionExit`) e descarta as chamadas pendentes dessa função e a que a invocou.
 * **Modos de Data Flow** (variável `DATAFLOW_MODE`):
   * **padrão (`reach`):** fluxo direto, equivalente à ReachDefinition do `conflict-static-analysis`. Uma leitura só conta se o último escritor do elemento foi a outra branch.
-  * **`tainted`:** fluxo transitivo, como o Tainted. Cada leitura leva as origens do valor lido para o que for atribuído na mesma expressão (`y = x + 1` faz `y` herdar as origens de `x`, mesmo escrito pela Base). A Base só interrompe a contaminação se atribuir um valor que não vem de um valor contaminado. As origens passam por parâmetros e pelo `return`. Um array é um único elemento de estado: escrever em `arr[4]` contamina a leitura de `arr[3]`.
+  * **`tainted`:** fluxo transitivo, como o Tainted. Cada leitura leva as origens do valor lido para o que for atribuído na mesma expressão (`y = x + 1` faz `y` herdar as origens de `x`, mesmo escrito pela Base). A Base só interrompe a contaminação se atribuir um valor que não vem de um valor contaminado. As origens passam por parâmetros e pelo `return`. Os índices de um array continuam sendo estados independentes (escrever em `arr[4]` não contamina `arr[3]`), como no OA.
   * Um conflito é o **par** (linha que produz, linha que consome), como o par source/sink do Java: vários elementos de estado entre as mesmas duas linhas contam uma vez.
 * **Passagem de parâmetros:** ao entrar numa função, cada parâmetro recebe valor da branch do ponto de chamada (`declare` com `isArgument`). Conta como produtor só para o DF; o OA considera apenas atribuições explícitas no código (Moraes et al., 2024), então a ligação do argumento nunca gera OA.
 * **Atribuição de função:** `X.prototype.foo = function () {...}` conta só a primeira linha da atribuição. O corpo é analisado linha a linha quando executa; se contasse inteiro, a definição seria atribuída à branch de qualquer linha dele e uma chamada `m.foo()` acusaria DF sobre o próprio método.
@@ -245,7 +245,7 @@ Os testes de DF do [`spgroup/conflict-static-analysis`](https://github.com/spgro
 node experiments/run_df_suite.js
 ```
 
-Resultado atual: ReachDefinition, 3 de 3, e Tainted, 3 de 3, com a contagem exata de conflitos em todos os 6 testes executados. Os testes de Tainted rodam no modo `DATAFLOW_MODE=tainted`. Os 6 testes Confluent e o Containment não são executados. Detalhes e a tabela em [df_samples/README.md](df_samples/README.md).
+Resultado atual: ReachDefinition, 3 de 3, e Tainted, 2 de 3, com a contagem exata nos 5 que batem. O que diverge é `ArrayTaintedAnalysisOneConflictIndirectTest`, **por escolha**: o Tainted do Java trata o array como um único elemento (`arr[4]` contamina `arr[3]`), e aqui cada índice é um estado independente, o que evita falsos positivos. Os testes de Tainted rodam no modo `DATAFLOW_MODE=tainted`. Os 6 testes Confluent e o Containment não são executados. Detalhes e a tabela em [df_samples/README.md](df_samples/README.md).
 
 ---
 
