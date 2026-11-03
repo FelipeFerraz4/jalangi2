@@ -51,8 +51,8 @@ function report(records) {
     }
     const summary = summarize(records);
     console.log('--------------------------------------------------------------------------------');
-    console.log(`Total: ${records.length} | com esperado: ${records.filter(r => r.expected !== undefined).length} | corretos: ${summary.ok}`);
-    console.log(`Falsos negativos: ${summary.falseNegatives} | Falsos positivos: ${summary.falsePositives} | Erros de execução: ${summary.error}`);
+    console.log(`Total: ${records.length} = corretos ${summary.ok} + divergentes ${summary.wrong} + erros de execução ${summary.error} + sem esperado ${summary.noexpected}`);
+    console.log(`Divergentes: falsos negativos ${summary.falseNegatives}, falsos positivos ${summary.falsePositives}. Casos com esperado definido: ${records.filter(r => r.expected !== undefined).length}`);
     console.log('================================================================================');
 }
 

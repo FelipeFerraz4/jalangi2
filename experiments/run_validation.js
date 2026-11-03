@@ -13,8 +13,12 @@ const { runAnalysis } = require('./lib/analysis');
 
 const scazDir = path.resolve(process.argv[2] || oa.defaultScazDir);
 
-function fmt(label, s, extra) {
-    return `${label.padEnd(26)} corretos ${String(s.ok).padStart(2)} | divergentes ${s.wrong} | erros ${s.error}${extra ? ' | ' + extra : ''}`;
+// A soma das colunas fecha com o total de casos
+function fmt(label, s, total, extra) {
+    const parts = [`corretos ${s.ok}`, `divergentes ${s.wrong}`, `erros ${s.error}`];
+    if (s.noexpected) parts.push(`sem esperado ${s.noexpected}`);
+    if (s.skipped) parts.push(`não executados ${s.skipped}`);
+    return `${label.padEnd(26)} ${total} = ${parts.join(' + ')}${extra ? ' | ' + extra : ''}`;
 }
 
 console.log('================================================================================');
@@ -34,11 +38,11 @@ try {
 const dfRecords = df.collect({ scazDir });
 
 // Divergências e erros, para o leitor ver o que fugiu do esperado
-const problems = oaRecords.concat(dfRecords).filter(r => r.status === 'wrong' || r.status === 'error' || r.status === 'skipped');
+const problems = oaRecords.concat(dfRecords).filter(r => r.status !== 'ok');
 if (problems.length > 0) {
     console.log('Fora do esperado:');
     for (const r of problems) {
-        const kind = { wrong: 'divergente', error: 'erro de execução', skipped: 'não executado' }[r.status];
+        const kind = { wrong: 'divergente', error: 'erro de execução', skipped: 'não executado', noexpected: 'sem esperado definido no SCAz.js' }[r.status];
         console.log(`  [${r.suite}] ${r.name}: ${kind}${r.note && r.status === 'wrong' ? ' — ' + r.note : ''}`);
     }
     console.log('');
@@ -51,10 +55,10 @@ if (oaNote) {
     console.log(`OA (SCAz.js)               não executado — ${oaNote}`);
 } else {
     const s = oa.summarize(oaRecords);
-    console.log(fmt('OA (SCAz.js)', s, `${oaRecords.length} casos, ${oaRecords.filter(r => r.expected !== undefined).length} com esperado`));
+    console.log(fmt('OA (SCAz.js)', s, oaRecords.length));
 }
 const d = df.summarize(dfRecords);
-console.log(fmt('DF + CF (conflict-static)', d, `${dfRecords.length} testes${d.countDiffers ? ', contagem difere em ' + d.countDiffers : ''}`));
+console.log(fmt('DF + CF (conflict-static)', d, dfRecords.length, d.countDiffers ? `contagem difere em ${d.countDiffers}` : ''));
 
 // 3) toys
 const toysTotal = require('fs').readdirSync(path.join(__dirname, 'toys')).filter(f => /^(test_|example).*\.js$/.test(f) && !/_jalangi_/.test(f)).length;
