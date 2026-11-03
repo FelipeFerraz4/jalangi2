@@ -161,7 +161,7 @@ function collect({ scazDir = defaultScazDir, filter } = {}) {
         record.found = metric.value(r);
         record.output = r.output;
         record.status = (record.found > 0) === (c.expected > 0) ? 'ok' : 'wrong';
-        record.detail = `OA=${r.oa} DF=${r.df}+${r.dfTransitive} CF=${r.cf}+${r.cfTransitive}`;
+        record.detail = '';
         return record;
     });
 }
@@ -178,7 +178,7 @@ function report(records) {
         } else {
             const countDiffers = r.status === 'ok' && r.found !== r.expected;
             console.log(`${r.status === 'ok' ? '✔' : '✖'} ${r.name}`);
-            console.log(`    ${r.sample} (${r.analysis}) | esperado ${r.metric}=${r.expected} | detectado ${r.metric}=${r.found} | ${r.detail}${countDiffers ? ' | presença bate, contagem difere' : ''}`);
+            console.log(`    ${r.sample} (${r.analysis}) | esperado ${r.metric}=${r.expected} | detectado ${r.metric}=${r.found} ${countDiffers ? ' | presença bate, contagem difere' : ''}`);
             if (r.note && (r.status === 'wrong' || countDiffers)) console.log(`    ↳ ${r.note}`);
         }
         if (records.length === 1 && r.output) {

@@ -2,7 +2,6 @@
 // RUNNER CONSOLIDADO DE EXECUÇÃO DOS TOYS NO JALANGI2
 // ==============================================================================
 // Cada toy roda uma única vez e a análise reporta OA, Data Flow e Confluence Flow.
-// Data Flow e Confluence Flow saem em direto e transitivo.
 const { runAnalysis } = require('./lib/analysis');
 
 const tests = [
@@ -168,15 +167,13 @@ console.log("===================================================================
 const results = selectedTests.map(t => Object.assign({ t }, runAnalysis({ file: t.file, branchMap: t.branchMap })));
 const executionErrors = results.filter(r => r.failed).length;
 
-const withTransitive = (direct, transitive) => direct + (transitive > 0 ? ` (+${transitive} transitivo)` : '');
-
 console.log("--------------------------------------------------------------------------------");
 console.log("📋 RELATÓRIO CONSOLIDADO DAS DETECÇÕES");
 console.log("--------------------------------------------------------------------------------");
 results.forEach(r => {
     const statusIcon = r.failed ? "✖ ERRO DE EXECUÇÃO" : "✔";
     console.log(`${statusIcon} ${r.t.name}`);
-    console.log(`   • Conflitos Detectados: Overriding Assignment (OA): ${r.oa} | Data Flow (DF): ${withTransitive(r.df, r.dfTransitive)} | Confluence Flow (CF): ${withTransitive(r.cf, r.cfTransitive)}`);
+    console.log(`   • Conflitos Detectados: Overriding Assignment (OA): ${r.oa} | Data Flow (DF): ${r.dfTotal} | Confluence Flow (CF): ${r.cfTotal}`);
     console.log(`   • Descrição: ${r.t.description}\n`);
 
     if (selectedTests.length === 1) {

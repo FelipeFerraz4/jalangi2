@@ -505,14 +505,24 @@
             var onlyTransitive = function (transitive, direct) {
                 return transitive.filter(function (k) { return direct.indexOf(k) === -1; }).length;
             };
+            var df = {
+                direct: detectedConflicts.dataFlowsDirect.length,
+                transitive: onlyTransitive(detectedConflicts.dataFlowsTransitive, detectedConflicts.dataFlowsDirect)
+            };
+            var cf = {
+                direct: detectedConflicts.confluencesDirect.length,
+                transitive: onlyTransitive(detectedConflicts.confluencesTransitive, detectedConflicts.confluencesDirect)
+            };
             console.log("\n==================================================");
             console.log("📊 RELATÓRIO FINAL DE ANÁLISE DINÂMICA DE MERGE");
             console.log(`   - Conflitos de Overriding Assignment (OA): ${detectedConflicts.overridingAssignments.length}`);
-            console.log(`   - Conflitos de Data Flow Inter-Branch:     ${detectedConflicts.dataFlowsDirect.length}`);
-            console.log(`   - Conflitos de Data Flow Transitivo:       ${onlyTransitive(detectedConflicts.dataFlowsTransitive, detectedConflicts.dataFlowsDirect)}`);
-            console.log(`   - Conflitos de Confluence Flow:            ${detectedConflicts.confluencesDirect.length}`);
-            console.log(`   - Conflitos de Confluence Flow Transitivo: ${onlyTransitive(detectedConflicts.confluencesTransitive, detectedConflicts.confluencesDirect)}`);
+            console.log(`   - Conflitos de Data Flow (DF):             ${df.direct + df.transitive}`);
+            console.log(`   - Conflitos de Confluence Flow (CF):       ${cf.direct + cf.transitive}`);
             console.log("==================================================");
+            // Os runners de teste comparam cada análise do Java com um recorte (direto ou direto + transitivo)
+            if (typeof process !== 'undefined' && process.env && process.env.ANALYSIS_DETAIL) {
+                console.log("DETALHE " + JSON.stringify({ dfDireto: df.direct, dfTransitivo: df.transitive, cfDireto: cf.direct, cfTransitivo: cf.transitive }));
+            }
         }
     };
 }());

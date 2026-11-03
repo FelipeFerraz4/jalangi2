@@ -32,7 +32,7 @@ function collect({ scazDir = defaultScazDir, filter } = {}) {
         const dir = path.join(casesDir, name);
         const r = runAnalysis({ file: path.join(dir, 'index.js'), branchMapFile: path.join(dir, 'line_to_branch_map.json') });
         const exp = expected[name];
-        const record = { suite: 'OA', name, expected: exp ? exp.conflict : undefined, found: r.oa > 0, detail: `OA=${r.oa} DF=${r.df} CF=${r.cf}` };
+        const record = { suite: 'OA', name, expected: exp ? exp.conflict : undefined, found: r.oa > 0, detail: `OA=${r.oa} DF=${r.dfTotal} CF=${r.cfTotal}` };
         if (exp && exp.divergent) record.detail += ' (marcado "divergent" no SCAz.js)';
         record.status = r.failed ? 'error' : !exp ? 'noexpected' : (r.oa > 0) === exp.conflict ? 'ok' : 'wrong';
         records.push(record);

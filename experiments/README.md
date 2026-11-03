@@ -40,14 +40,13 @@ Formatos aceitos: `{"L":[4],"R":[6,7]}` ou o do SCAz.js, `{"4":"L","6":"R","7":"
 Uma operação pertence à branch da última linha mapeada que ela ocupa (uma atribuição que se estende por várias linhas conta todas elas).
 
 ### Relatório da análise
-A análise imprime ao final:
+A análise imprime ao final três números:
 ```
 - Conflitos de Overriding Assignment (OA): n
-- Conflitos de Data Flow Inter-Branch:     n   (direto)
-- Conflitos de Data Flow Transitivo:       n   (além dos diretos)
-- Conflitos de Confluence Flow:            n   (direto)
-- Conflitos de Confluence Flow Transitivo: n   (além dos diretos)
+- Conflitos de Data Flow (DF):             n
+- Conflitos de Confluence Flow (CF):       n
 ```
+DF e CF já incluem os diretos e os transitivos. Por dentro, cada conflito é marcado como direto ou transitivo (aparece no log de cada detecção), e os runners de teste pedem esse detalhe com `ANALYSIS_DETAIL=1` para comparar com a análise do Java que cada teste representa.
 
 ### Como executar a análise
 A análise precisa da memória sombra do Jalangi2, então deve ser encadeada com `ChainedAnalyses.js` e `SMemory.js`, nesta ordem (veja o exemplo em "Direto pelo Jalangi2"). Os runners já fazem isso.
@@ -109,12 +108,12 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 | 16 | `test_dataflow_param.js` | `[6]` / `[2]` | 0 | 1 |
 | 17 | `test_dataflow_param_safe.js` | `[]` / `[2]` | 0 | 0 |
 | 18 | `test_dataflow_param_reassign.js` | `[6]` / `[2]` | 0 | 2 |
-| 19 | `test_taint_transitive.js` | `[2]` / `[4]` | 0 | 0 (+1 transitivo) |
-| 20 | `test_taint_function.js` | `[5]` / `[7]` | 0 | 0 (+1 transitivo) |
+| 19 | `test_taint_transitive.js` | `[2]` / `[4]` | 0 | 1 |
+| 20 | `test_taint_function.js` | `[5]` / `[7]` | 0 | 1 |
 | 21 | `test_taint_kill.js` | `[1]` / `[4]` | 0 | 0 |
 | 22 | `test_confluence_direct.js` | `[3]` / `[4]` | 0 | CF 1 |
 | 23 | `test_confluence_separate.js` | `[3]` / `[4]` | 0 | CF 0 |
-| 24 | `test_confluence_transitive.js` | `[3]` / `[4]` | 0 | CF 0 (+1 transitivo) |
+| 24 | `test_confluence_transitive.js` | `[3]` / `[4]` | 0 | CF 1 |
 
 ### 1. `example.js` — Overriding Assignment original (Amanda Moraes, SBLP 2024)
 * **Objetivo:** regressão do algoritmo de OA original.
@@ -194,14 +193,14 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 * **OA = 0:** a ligação do argumento ao parâmetro não é uma atribuição explícita no código.
 
 ### 19 a 21. Data Flow transitivo
-* **19:** `L` define `origem` (linha 2), a Base deriva `derivado = origem + 1` e `R` lê `derivado` (linha 4). O valor de `L` chega a `R` passando por uma escrita da Base. Não é fluxo direto (a Base escreveu `derivado`), mas é transitivo.
+* **19:** `L` define `origem` (linha 2), a Base deriva `derivado = origem + 1` e `R` lê `derivado` (linha 4). O valor de `L` chega a `R` passando por uma escrita da Base. O valor não vem direto de uma escrita de `L` (a Base escreveu `derivado`), e mesmo assim o conflito é detectado.
 * **20:** o valor de `L` passa por um parâmetro e por um `return` antes de `R` o ler.
 * **21:** a Base reatribui `derivado = 0`, uma constante, antes de `R` ler. A contaminação é interrompida e não há conflito, nem direto nem transitivo.
 
 ### 22 a 24. Confluence Flow
 * **22:** `L` escreve `a`, `R` escreve `b`, e um comando da Base (`soma = a + b`) usa os dois. É o ponto de confluência direto.
 * **23:** a Base usa `a` num comando e `b` em outro. Os valores nunca se encontram, então não há confluência.
-* **24:** `x` e `y` derivam de `a` e `b` na Base e se encontram em `z = x + y`. Não é confluência direta (a Base escreveu `x` e `y`), mas é transitiva.
+* **24:** `x` e `y` derivam de `a` e `b` na Base e se encontram em `z = x + y`. Os valores não vêm direto das escritas (a Base escreveu `x` e `y`), e mesmo assim a confluência é detectada.
 
 ---
 
