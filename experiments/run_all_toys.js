@@ -151,11 +151,15 @@ const tests = [
     }
 ];
 
-// Suporte a filtro opcional: node run_all_toys.js [numero ou termo]
+// Filtro opcional: node run_all_toys.js [número ou parte do nome]
+// Um número seleciona só o toy daquela posição; qualquer outro texto filtra por nome ou arquivo.
 const filterArg = process.argv[2];
-const selectedTests = filterArg
-    ? tests.filter((t, idx) => (idx + 1).toString() === filterArg || t.file.toLowerCase().includes(filterArg.toLowerCase()) || t.name.toLowerCase().includes(filterArg.toLowerCase()))
-    : tests;
+const byNumber = /^\d+$/.test(filterArg || '');
+const selectedTests = !filterArg
+    ? tests
+    : byNumber
+        ? tests.filter((t, idx) => String(idx + 1) === filterArg)
+        : tests.filter(t => t.file.toLowerCase().includes(filterArg.toLowerCase()) || t.name.toLowerCase().includes(filterArg.toLowerCase()));
 
 console.log("================================================================================");
 console.log("🔬 EXECUTANDO ANÁLISE DINÂMICA DE MERGE (JALANGI2)");
