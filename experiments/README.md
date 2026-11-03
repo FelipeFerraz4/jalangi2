@@ -9,7 +9,9 @@ experiments/
 │   └── analysis_dataflow.js   # OA + Data Flow (motor estendido)
 ├── toys/                      # programas sintéticos (JS puro, só comentários // [Branch L] e // [Branch R])
 ├── run_all_toys.js            # runner: instrumenta cada toy e imprime o relatório consolidado
-└── run_oa_suite.js            # regressão de OA com os casos de teste do SCAz.js (Moraes et al.)
+├── run_oa_suite.js            # regressão de OA com os casos de teste do SCAz.js (Moraes et al.)
+├── run_df_suite.js            # validação de DF com os testes do conflict-static-analysis
+└── df_samples/                # samples de DF traduzidas (JSweet, convertidas para ES5); veja o README da pasta
 ```
 
 ---
@@ -221,6 +223,18 @@ O que cada recurso contribui (desligando um de cada vez):
 
 ---
 
+## ✅ Validação de DF com as samples do conflict-static-analysis
+
+Os testes de DF do [`spgroup/conflict-static-analysis`](https://github.com/spgroup/conflict-static-analysis) (Santos et al., 2023) usam Soot e não são traduzíveis. O que roda são as classes `sample` que eles analisam, traduzidas com JSweet por Italo Correia (`tjtjdf`) e convertidas para ES5 em `df_samples/`. Cada teste fornece source (L), sink (R) e o esperado.
+
+```bash
+node experiments/run_df_suite.js
+```
+
+Resultado atual: ReachDefinition, 3 de 3. Tainted, 2 de 3 em presença de conflito (a análise do Java é transitiva e trata arrays como um todo; a nossa só vê fluxo direto e trata cada índice como independente). Os 6 testes Confluent e o Containment não são executados. Detalhes e a tabela em [df_samples/README.md](df_samples/README.md).
+
+---
+
 ## ⚠️ Limitações conhecidas
 
 * **Exceção lançada por função nativa** (por exemplo `JSON.parse`) e capturada na mesma função: não há `functionExit` instrumentado, então a chamada fica na pilha até a função sair.
@@ -229,4 +243,5 @@ O que cada recurso contribui (desligando um de cada vez):
 * **Métodos de array que só leem** (`slice`, `join`, `indexOf`, `map`...) não geram leituras para o DF. Só as escritas dos métodos in-place são tratadas.
 * `sort` executa o comparador uma vez a mais, em uma cópia, para descobrir quais posições mudam.
 * **Confluence Flow e Control Dependence** ainda não foram implementados.
+* **Sem propagação transitiva (Tainted):** se `x` define `y` e a branch R usa `y`, a análise só acusa DF se o uso for de `x`.
 * A detecção depende de o script exercitar as linhas relevantes (análise dinâmica).
