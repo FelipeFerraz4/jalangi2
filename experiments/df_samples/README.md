@@ -37,11 +37,11 @@ Os 13 testes de DF e CF (`src/test/java/br/unb/cic/analysis/df`) dependem de Soo
 | Linhas de **sink** | Branch **R** |
 | Resultado esperado | Gabarito. As asserções estão **comentadas** no Java, exceto em `ContainmentConflictTest` |
 
-As linhas do Java são convertidas para as do JS à mão e conferidas pelo runner (`experiments/run_df_suite.js`), que exige que cada linha mapeada contenha o comando esperado.
+As linhas do Java são convertidas para as do JS à mão e conferidas pelo runner (`experiments/run_df_cf_suite.js`), que exige que cada linha mapeada contenha o comando esperado.
 
 ```bash
-node experiments/run_df_suite.js                        # os 13 testes
-node experiments/run_df_suite.js IntraproceduralDataFlow  # filtra e mostra o log da análise
+node experiments/run_df_cf_suite.js                        # os 13 testes
+node experiments/run_df_cf_suite.js IntraproceduralDataFlow  # filtra e mostra o log da análise
 ```
 
 ## Resultado atual

@@ -8,7 +8,7 @@
 // Uso: node experiments/run_validation.js [caminho do SCAz.js]
 const path = require('path');
 const oa = require('./run_oa_suite');
-const df = require('./run_df_suite');
+const df = require('./run_df_cf_suite');
 const { runAnalysis } = require('./lib/analysis');
 
 const scazDir = path.resolve(process.argv[2] || oa.defaultScazDir);
@@ -61,7 +61,7 @@ const d = df.summarize(dfRecords);
 console.log(fmt('DF + CF (conflict-static)', d, dfRecords.length, d.countDiffers ? `contagem difere em ${d.countDiffers}` : ''));
 
 // 3) toys
-const toysTotal = require('fs').readdirSync(path.join(__dirname, 'toys')).filter(f => /^(test_|example).*\.js$/.test(f) && !/_jalangi_/.test(f)).length;
+const toysTotal = require('fs').readdirSync(path.join(__dirname, 'toys')).filter(f => /^\d+_.*\.js$/.test(f) && !/_jalangi_/.test(f)).length;
 console.log(`Toys                       ${toysTotal} programas (rode "node experiments/run_all_toys.js")`);
 console.log('================================================================================');
 

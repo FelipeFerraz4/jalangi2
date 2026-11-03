@@ -18,7 +18,7 @@
 //   DFPInterProcedural (Containment) -> Data Flow direto + transitivo
 // Os índices de um array continuam sendo estados independentes.
 //
-// Uso: node experiments/run_df_suite.js [filtro]   (filtra por nome do teste ou da sample)
+// Uso: node experiments/run_df_cf_suite.js [filtro]   (filtra por nome do teste ou da sample)
 const fs = require('fs');
 const path = require('path');
 const { runAnalysis, rootDir } = require('./lib/analysis');
