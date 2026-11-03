@@ -1,7 +1,7 @@
 // ==============================================================================
-// VALIDAÇÃO DE DATA FLOW: TESTES DO conflict-static-analysis (Santos et al., 2023)
+// VALIDAÇÃO DE DATA FLOW E CONFLUENCE FLOW: TESTES DO conflict-static-analysis (Santos et al., 2023)
 // ==============================================================================
-// Os 13 testes de DF do repositório spgroup/conflict-static-analysis (pacote br.unb.cic.analysis.df)
+// Os 13 testes de DF e CF do repositório spgroup/conflict-static-analysis (pacote br.unb.cic.analysis.df)
 // usam Soot/JUnit e não podem ser traduzidos para JavaScript. O que roda aqui são as classes `sample`
 // que eles analisam, traduzidas com JSweet (experiments/df_samples/). Cada teste fornece:
 //   - as linhas de source (tratadas como Left) e de sink (tratadas como Right), em linhas do Java;
@@ -9,25 +9,32 @@
 // As linhas do Java são convertidas para as do JavaScript (campo `js`), e o mapa L/R é montado
 // com elas. Como no OA (run_oa_suite.js), compara-se a presença de conflito com o esperado.
 //
-// Cada análise do Java corresponde a um modo (DATAFLOW_MODE): ReachDefinition -> reach (fluxo direto),
-// Tainted -> tainted (transitivo), Confluent -> confluent e ConfluentTainted -> confluent-tainted. Nos
-// testes Confluent compara-se o número de conflitos de Confluence Flow. Os índices de um array continuam
-// sendo estados independentes.
+// A análise roda uma única vez por caso e reporta OA, DF e CF, cada um em direto e transitivo. Cada
+// análise do Java corresponde a um recorte desses números:
+//   ReachDefinition   -> Data Flow direto
+//   Tainted           -> Data Flow direto + transitivo
+//   Confluent         -> Confluence Flow direto
+//   ConfluentTainted  -> Confluence Flow direto + transitivo
+//   DFPInterProcedural (Containment) -> Data Flow direto + transitivo
+// Os índices de um array continuam sendo estados independentes.
 //
 // Uso: node experiments/run_df_suite.js [filtro]   (filtra por nome do teste ou da sample)
-const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { runAnalysis, rootDir } = require('./lib/analysis');
 
-const rootDir = path.resolve(__dirname, '..');
 const samplesDir = path.join(__dirname, 'df_samples', 'es5');
-const filter = process.argv[2];
+const defaultScazDir = path.resolve(rootDir, '..', 'SCAz.js');
+
+const METRICS = {
+    ReachDefinition: { name: 'DF', value: r => r.df },
+    Tainted: { name: 'DF', value: r => r.df + r.dfTransitive },
+    Confluent: { name: 'CF', value: r => r.cf },
+    ConfluentTainted: { name: 'CF', value: r => r.cf + r.cfTransitive },
+    DFPInterProcedural: { name: 'DF', value: r => r.df + r.dfTransitive }
+};
 
 // java: linha no Java; js: linha no JavaScript (ES5); code: trecho que a linha deve conter
-// Modo da análise que corresponde a cada análise do Java (as demais usam o padrão, 'reach')
-const MODES = { Tainted: 'tainted', Confluent: 'confluent', ConfluentTainted: 'confluent-tainted' };
-// Métrica comparada com o esperado: conflitos de Confluence Flow nas análises Confluent*, DF nas demais
-const isConfluence = c => c.analysis.indexOf('Confluent') === 0;
 
 const cases = [
     {
@@ -106,13 +113,17 @@ const cases = [
         source: [{ java: 9, js: 17, code: 'x = 10' }],
         sink: [{ java: 11, js: 19, code: 'y = z + 2' }]
     },
-    // --- Fora do escopo da análise atual ---
-    { test: 'ContainmentConflictTest', analysis: 'DFPInterProcedural', sample: 'ioa.ContainmentSample', expected: 1, skip: 'sample de OA (pacote ioa), fora das 9 samples de DF traduzidas' }
+    // Sample de OA (pacote ioa): não está entre as 9 do Italo, então usa a tradução da Amanda (SCAz.js).
+    // A análise do Java (DFP/SVFA, sobre grafo de fluxo de valores) é aproximada por Data Flow.
+    {
+        test: 'ContainmentConflictTest', analysis: 'DFPInterProcedural', sample: 'ioa.ContainmentSample',
+        expected: 1,
+        external: 'src/analyses/overriding_assignment/test_cases/containmentSample/index.js',
+        source: [{ java: 7, js: 37, code: 'new br.unb.cic.analysis.samples.ioa.Point()' }],
+        sink: [{ java: 9, js: 39, code: 'x.y = 5' }],
+        note: 'O Java usa a análise DFP/SVFA, que não implementamos; aqui conta-se o Data Flow (direto + transitivo).'
+    }
 ];
-
-const selected = filter
-    ? cases.filter(c => c.test.toLowerCase().includes(filter.toLowerCase()) || c.sample.toLowerCase().includes(filter.toLowerCase()))
-    : cases;
 
 // Confere que a linha mapeada ainda contém o comando esperado (evita mapa desatualizado)
 function checkLines(c, file) {
@@ -124,66 +135,77 @@ function checkLines(c, file) {
     }
 }
 
-const results = [];
-for (const c of selected) {
-    if (c.skip) {
-        results.push({ c, skipped: true });
-        continue;
-    }
-    const file = path.join(samplesDir, `${c.sample}.js`);
-    const branchMap = { L: c.source.map(m => m.js), R: c.sink.map(m => m.js) };
-    let output = '', error = null;
-    try {
-        checkLines(c, file);
-        output = execFileSync('node', [
-            'src/js/commands/jalangi.js', '--inlineIID', '--inlineSource',
-            '--analysis', 'src/js/sample_analyses/ChainedAnalyses.js',
-            '--analysis', 'src/js/runtime/SMemory.js',
-            '--analysis', 'experiments/analyses/analysis_dataflow.js',
-            file
-        ], { cwd: rootDir, encoding: 'utf-8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { BRANCH_MAP: JSON.stringify(branchMap), DATAFLOW_MODE: MODES[c.analysis] || 'reach' }) });
-    } catch (e) {
-        error = e.message.split('\n')[0];
-        output = (e.stdout || '') + (e.stderr || '');
-    }
-    const df = output.match(/Conflitos de Data Flow Inter-Branch:\s*(\d+)/);
-    const oa = output.match(/Conflitos de Overriding Assignment \(OA\):\s*(\d+)/);
-    const cf = output.match(/Conflitos de Confluence Flow:\s*(\d+)/);
-    results.push({ c, error: error || (df ? null : 'sem relatório da análise'), df: df ? +df[1] : 0, oa: oa ? +oa[1] : 0, cf: cf ? +cf[1] : 0, output });
+// Executa os casos e devolve um registro por caso:
+// { suite, name, status: 'ok' | 'wrong' | 'error' | 'skipped', expected, found, metric, detail, note, output }
+function collect({ scazDir = defaultScazDir, filter } = {}) {
+    const selected = filter
+        ? cases.filter(c => c.test.toLowerCase().includes(filter.toLowerCase()) || c.sample.toLowerCase().includes(filter.toLowerCase()))
+        : cases;
+
+    return selected.map(c => {
+        const record = { suite: 'DF/CF', name: c.test, sample: c.sample, analysis: c.analysis, expected: c.expected, note: c.note };
+        const file = c.external ? path.join(scazDir, c.external) : path.join(samplesDir, `${c.sample}.js`);
+        if (!fs.existsSync(file)) {
+            return Object.assign(record, { status: 'skipped', detail: `tradução não encontrada: ${c.external ? 'clone do SCAz.js em ' + scazDir : file}` });
+        }
+        try {
+            checkLines(c, file);
+        } catch (e) {
+            return Object.assign(record, { status: 'error', detail: e.message });
+        }
+        const r = runAnalysis({ file, branchMap: { L: c.source.map(m => m.js), R: c.sink.map(m => m.js) } });
+        if (r.failed) return Object.assign(record, { status: 'error', detail: r.error, output: r.output });
+
+        const metric = METRICS[c.analysis];
+        record.metric = metric.name;
+        record.found = metric.value(r);
+        record.output = r.output;
+        record.status = (record.found > 0) === (c.expected > 0) ? 'ok' : 'wrong';
+        record.detail = `OA=${r.oa} DF=${r.df}+${r.dfTransitive} CF=${r.cf}+${r.cfTransitive}`;
+        return record;
+    });
 }
 
-console.log('================================================================================');
-console.log('🔬 VALIDAÇÃO DE DATA FLOW — TESTES DO conflict-static-analysis');
-console.log('================================================================================');
-let ok = 0, wrong = 0, errors = 0, skipped = 0, countDiffers = 0;
-for (const r of results) {
-    const c = r.c;
-    if (r.skipped) {
-        skipped++;
-        console.log(`• ${c.test}\n    ${c.sample} (${c.analysis}): não executado — ${c.skip}`);
-        continue;
+function report(records) {
+    console.log('================================================================================');
+    console.log('🔬 VALIDAÇÃO DE DATA FLOW E CONFLUENCE FLOW — TESTES DO conflict-static-analysis');
+    console.log('================================================================================');
+    for (const r of records) {
+        if (r.status === 'skipped') {
+            console.log(`• ${r.name}\n    ${r.sample} (${r.analysis}): não executado — ${r.detail}`);
+        } else if (r.status === 'error') {
+            console.log(`✖ ERRO ${r.name}\n    ${r.detail}`);
+        } else {
+            const countDiffers = r.status === 'ok' && r.found !== r.expected;
+            console.log(`${r.status === 'ok' ? '✔' : '✖'} ${r.name}`);
+            console.log(`    ${r.sample} (${r.analysis}) | esperado ${r.metric}=${r.expected} | detectado ${r.metric}=${r.found} | ${r.detail}${countDiffers ? ' | presença bate, contagem difere' : ''}`);
+            if (r.note && (r.status === 'wrong' || countDiffers)) console.log(`    ↳ ${r.note}`);
+        }
+        if (records.length === 1 && r.output) {
+            console.log('--- LOG DA ANÁLISE ---');
+            console.log(r.output.trim());
+            console.log('----------------------');
+        }
     }
-    if (r.error) {
-        errors++;
-        console.log(`✖ ERRO ${c.test}\n    ${r.error}`);
-        continue;
-    }
-    const found = isConfluence(c) ? r.cf : r.df;
-    const metric = isConfluence(c) ? 'Confluence' : 'DF';
-    const match = (found > 0) === (c.expected > 0);
-    match ? ok++ : wrong++;
-    if (match && found !== c.expected) countDiffers++;
-    console.log(`${match ? '✔' : '✖'} ${c.test}`);
-    console.log(`    ${c.sample} (${c.analysis}) | esperado ${metric}=${c.expected} | detectado ${metric}=${found} (${isConfluence(c) ? 'DF=' + r.df + ', ' : ''}OA=${r.oa})${match && found !== c.expected ? ' | presença bate, contagem difere' : ''}`);
-    if (c.note && (!match || found !== c.expected)) console.log(`    ↳ ${c.note}`);
-    if (selected.length === 1) {
-        console.log('--- LOG DA ANÁLISE ---');
-        console.log(r.output.trim());
-        console.log('----------------------');
-    }
+    const s = summarize(records);
+    console.log('--------------------------------------------------------------------------------');
+    console.log(`Total: ${records.length} | executados: ${records.length - s.skipped} | presença correta: ${s.ok} | divergentes: ${s.wrong} | erros: ${s.error} | não executados: ${s.skipped}`);
+    if (s.countDiffers > 0) console.log(`Em ${s.countDiffers} caso(s) a presença bate, mas a contagem difere do esperado.`);
+    console.log('================================================================================');
 }
-console.log('--------------------------------------------------------------------------------');
-console.log(`Total: ${results.length} | executados: ${results.length - skipped} | presença correta: ${ok} | divergentes: ${wrong} | erros: ${errors} | não executados: ${skipped}`);
-if (countDiffers > 0) console.log(`Em ${countDiffers} caso(s) a presença bate, mas a contagem difere do esperado.`);
-console.log('================================================================================');
-process.exit(errors > 0 ? 1 : 0);
+
+function summarize(records) {
+    const count = st => records.filter(r => r.status === st).length;
+    return {
+        ok: count('ok'), wrong: count('wrong'), error: count('error'), skipped: count('skipped'),
+        countDiffers: records.filter(r => r.status === 'ok' && r.found !== r.expected).length
+    };
+}
+
+module.exports = { collect, report, summarize };
+
+if (require.main === module) {
+    const records = collect({ scazDir: defaultScazDir, filter: process.argv[2] });
+    report(records);
+    process.exit(summarize(records).error > 0 ? 1 : 0);
+}

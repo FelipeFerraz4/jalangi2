@@ -29,7 +29,7 @@ NODE_PATH=/tmp/babel/node_modules node experiments/df_samples/to-es5.js <origina
 
 ## Como os testes viram casos
 
-Os 13 testes de DF (`src/test/java/br/unb/cic/analysis/df`) dependem de Soot e JUnit e não são traduzíveis. Cada um informa o que a Amanda anotava com `// Left` e `// Right` nas samples de OA:
+Os 13 testes de DF e CF (`src/test/java/br/unb/cic/analysis/df`) dependem de Soot e JUnit e não são traduzíveis. Cada um informa o que a Amanda anotava com `// Left` e `// Right` nas samples de OA:
 
 | Informação do teste | Uso aqui |
 |---|---|
@@ -46,6 +46,8 @@ node experiments/run_df_suite.js IntraproceduralDataFlow  # filtra e mostra o lo
 
 ## Resultado atual
 
+A análise roda **uma única vez** por teste e reporta OA, DF e CF, cada um em direto e transitivo. Cada análise do Java corresponde a um recorte desses números: ReachDefinition é o DF direto, Tainted é DF direto + transitivo, Confluent é o CF direto e ConfluentTainted é CF direto + transitivo.
+
 | Teste | Análise | Esperado | Detectado | |
 |---|---|:-:|:-:|---|
 | ReachDefinitionAnalysisOneConflictTest | ReachDefinition | 1 | 1 | ✔ |
@@ -60,11 +62,12 @@ node experiments/run_df_suite.js IntraproceduralDataFlow  # filtra e mostra o lo
 | SourceSinkConfluenceAnalysisVariableAttributionTest | Confluent | 1 | 1 | ✔ |
 | SourceSinkVariableAttributionWithAutoIncrementConfluentTest | Confluent | 0 | 0 | ✔ |
 | SourceSinkVariableAttributionWithAutoIncrementTaintedConfluentTest | ConfluentTainted | 1 | 1 | ✔ |
-| ContainmentConflictTest | DFPInterProcedural | | | não executado: sample de OA (`ioa`) |
+| ContainmentConflictTest | DFPInterProcedural | ≥ 1 | 1 | ✔ (aproximação) |
 
-* **ReachDefinition (3 de 3):** é a análise que a nossa equivale (definição que alcança o uso). Os três batem.
-* **Tainted (2 de 3):** os testes rodam com `DATAFLOW_MODE=tainted`. A análise do Java é transitiva (se `x` contamina `y`, o uso de `y` conta), e o modo `tainted` faz o mesmo. Os dois testes que batem têm a contagem exata. No modo padrão (fluxo direto), `TaintedAnalysisOneConflictTest` detectaria 0.
-* **A divergência que sobra é intencional.** No `ArrayIndirectDataFlowSample`, o Tainted do Java trata o array como um único elemento, então `arr[4] = 10` contamina a leitura de `arr[3]`. Aqui cada índice é um estado independente, como no OA, porque tratar o array inteiro gera falsos positivos (`arr[4]` e `arr[3]` são posições distintas). Se um dia quisermos igualar o Java nesse ponto, o caminho é uma opção separada, desligada por padrão.
-* **Confluent (6 de 6, contagem exata):** os testes rodam nos modos `confluent` e `confluent-tainted`, e a métrica é o número de conflitos de Confluence Flow. O par `SourceSinkVariableAttributionWithAutoIncrement` mostra a diferença entre os dois: com `x++` na Base, o modo direto dá 0 (a Base redefine `x`) e o transitivo dá 1 (`x` continua contaminado pelo source).
-* **Não executado:** o `ContainmentConflictTest` usa uma sample do pacote `ioa` (de OA, não traduzida pelo Italo) e a análise `DFPInterProcedural`, que não é nenhuma das que implementamos.
-* Os acertos dependem de a análise ser a mesma que o Java: com poucos casos e gabarito vindo de asserções comentadas, isto mostra consistência com o `conflict-static-analysis`, não precisão em código real.
+* **12 de 13 corretos, com a contagem exata em todos eles.**
+* **ReachDefinition (3 de 3):** é a análise a que o DF direto equivale (definição que alcança o uso).
+* **Tainted (2 de 3):** o Tainted do Java é transitivo (se `x` contamina `y`, o uso de `y` conta), e o DF transitivo da análise faz o mesmo. Um exemplo claro está em `IntraproceduralIndirectSource`: o teste de ReachDefinition espera 0 e o de Tainted espera 1, e a mesma execução responde aos dois (DF direto 0, transitivo +1).
+* **A divergência que sobra é intencional.** No `ArrayIndirectDataFlowSample`, o Tainted do Java trata o array como um único elemento, então `arr[4] = 10` contamina a leitura de `arr[3]`. Aqui cada índice é um estado independente, como no OA, porque tratar o array inteiro gera falsos positivos (`arr[4]` e `arr[3]` são posições distintas).
+* **Confluent (6 de 6):** o par `SourceSinkVariableAttributionWithAutoIncrement` mostra a diferença entre direto e transitivo: com `x++` na Base, o CF direto dá 0 (a Base redefine `x`) e o transitivo dá +1 (`x` continua contaminado pelo source).
+* **Containment:** a sample é de OA (pacote `ioa`) e não está entre as 9 traduzidas pelo Italo. Roda com a tradução da Amanda, lida do clone `../SCAz.js` (não é copiada para cá). O Java usa a análise DFP/SVFA, que não implementamos; aqui conta-se o Data Flow (direto + transitivo), então o resultado só confirma que o valor criado por L chega a R.
+* Com poucos casos e o gabarito vindo de asserções comentadas, o resultado mostra consistência com o `conflict-static-analysis`, não precisão em código real.

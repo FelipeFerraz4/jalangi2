@@ -1,10 +1,9 @@
 // ==============================================================================
 // RUNNER CONSOLIDADO DE EXECUÇÃO DOS TOYS NO JALANGI2
 // ==============================================================================
-const { execSync } = require('child_process');
-const path = require('path');
-
-const rootDir = path.resolve(__dirname, '..');
+// Cada toy roda uma única vez e a análise reporta OA, Data Flow e Confluence Flow.
+// Data Flow e Confluence Flow saem em direto e transitivo.
+const { runAnalysis } = require('./lib/analysis');
 
 const tests = [
     {
@@ -116,59 +115,40 @@ const tests = [
         description: "R lê e reatribui o parâmetro de L (DF), e o return, executado a mando de L, lê o valor de R (DF); sem OA"
     },
     {
-        name: "19. Fluxo transitivo, modo tainted (test_taint_transitive.js)",
+        name: "19. Fluxo transitivo (test_taint_transitive.js)",
         file: "experiments/toys/test_taint_transitive.js",
         branchMap: { "L": [2], "R": [4] },
-        mode: "tainted",
         description: "L define origem, a Base deriva derivado dela e R lê derivado: x -> y -> uso"
     },
     {
-        name: "20. Mesmo fluxo transitivo, modo padrão (test_taint_transitive.js)",
-        file: "experiments/toys/test_taint_transitive.js",
-        branchMap: { "L": [2], "R": [4] },
-        description: "Sem propagação, R lê um valor escrito pela Base e nada é detectado (ReachDefinition)"
-    },
-    {
-        name: "21. Transitivo por função, modo tainted (test_taint_function.js)",
+        name: "20. Transitivo por função (test_taint_function.js)",
         file: "experiments/toys/test_taint_function.js",
         branchMap: { "L": [5], "R": [7] },
-        mode: "tainted",
         description: "O valor de L passa por parâmetro e retorno antes de R lê-lo"
     },
     {
-        name: "22. Base interrompe a contaminação (test_taint_kill.js)",
+        name: "21. Base interrompe a contaminação (test_taint_kill.js)",
         file: "experiments/toys/test_taint_kill.js",
         branchMap: { "L": [1], "R": [4] },
-        mode: "tainted",
         description: "A Base reatribui derivado com uma constante antes de R ler: sem conflito"
     },
     {
-        name: "23. Confluence Flow direto (test_confluence_direct.js)",
+        name: "22. Confluence Flow direto (test_confluence_direct.js)",
         file: "experiments/toys/test_confluence_direct.js",
         branchMap: { "L": [3], "R": [4] },
-        mode: "confluent",
         description: "Um comando da Base usa o valor de L e o de R ao mesmo tempo"
     },
     {
-        name: "24. Valores usados em comandos separados (test_confluence_separate.js)",
+        name: "23. Valores usados em comandos separados (test_confluence_separate.js)",
         file: "experiments/toys/test_confluence_separate.js",
         branchMap: { "L": [3], "R": [4] },
-        mode: "confluent-tainted",
         description: "A Base usa o valor de L num comando e o de R em outro: não há confluência"
     },
     {
-        name: "25. Confluence Flow transitivo (test_confluence_transitive.js)",
+        name: "24. Confluence Flow transitivo (test_confluence_transitive.js)",
         file: "experiments/toys/test_confluence_transitive.js",
         branchMap: { "L": [3], "R": [4] },
-        mode: "confluent-tainted",
         description: "Os valores de L e R passam por variáveis da Base antes de se encontrarem em z"
-    },
-    {
-        name: "26. Mesmo arquivo, Confluence Flow direto (test_confluence_transitive.js)",
-        file: "experiments/toys/test_confluence_transitive.js",
-        branchMap: { "L": [3], "R": [4] },
-        mode: "confluent",
-        description: "Sem propagação, x e y são escritos pela Base e a confluência em z não é vista"
     }
 ];
 
@@ -185,58 +165,19 @@ if (filterArg) {
 }
 console.log("================================================================================\n");
 
-const results = [];
-let executionErrors = 0;
+const results = selectedTests.map(t => Object.assign({ t }, runAnalysis({ file: t.file, branchMap: t.branchMap })));
+const executionErrors = results.filter(r => r.failed).length;
 
-for (const t of selectedTests) {
-    const cmd = `node src/js/commands/jalangi.js --inlineIID --inlineSource --analysis src/js/sample_analyses/ChainedAnalyses.js --analysis src/js/runtime/SMemory.js --analysis experiments/analyses/analysis_dataflow.js ${t.file}`;
-    let output = "";
-    let oaFound = 0;
-    let dfFound = 0;
-    let cfFound = 0;
-    let success = true;
-
-    try {
-        const env = Object.assign({}, process.env, {
-            BRANCH_MAP: JSON.stringify(t.branchMap),
-            DATAFLOW_MODE: t.mode || 'reach'
-        });
-        output = execSync(cmd, { cwd: rootDir, encoding: 'utf-8', env: env });
-        
-        const oaMatch = output.match(/Conflitos de Overriding Assignment \(OA\):\s*(\d+)/);
-        const dfMatch = output.match(/Conflitos de Data Flow Inter-Branch:\s*(\d+)/);
-
-        if (oaMatch) oaFound = parseInt(oaMatch[1], 10);
-        if (dfMatch) dfFound = parseInt(dfMatch[1], 10);
-        const cfMatch = output.match(/Conflitos de Confluence Flow:\s*(\d+)/);
-        if (cfMatch) cfFound = parseInt(cfMatch[1], 10);
-    } catch (e) {
-        success = false;
-        executionErrors++;
-        output = e.stdout || e.message;
-    }
-
-    results.push({
-        name: t.name,
-        file: t.file,
-        success,
-        oaFound,
-        dfFound,
-        cfFound,
-        mode: t.mode,
-        description: t.description,
-        output: output
-    });
-}
+const withTransitive = (direct, transitive) => direct + (transitive > 0 ? ` (+${transitive} transitivo)` : '');
 
 console.log("--------------------------------------------------------------------------------");
 console.log("📋 RELATÓRIO CONSOLIDADO DAS DETECÇÕES");
 console.log("--------------------------------------------------------------------------------");
 results.forEach(r => {
-    const statusIcon = r.success ? "✔" : "✖ ERRO DE EXECUÇÃO";
-    console.log(`${statusIcon} ${r.name}`);
-    console.log(`   • Conflitos Detectados: Overriding Assignment (OA): ${r.oaFound} | Data Flow (DF): ${r.dfFound}${r.mode && r.mode.indexOf('confluent') === 0 ? ` | Confluence Flow (CF): ${r.cfFound}` : ''}`);
-    console.log(`   • Descrição: ${r.description}\n`);
+    const statusIcon = r.failed ? "✖ ERRO DE EXECUÇÃO" : "✔";
+    console.log(`${statusIcon} ${r.t.name}`);
+    console.log(`   • Conflitos Detectados: Overriding Assignment (OA): ${r.oa} | Data Flow (DF): ${withTransitive(r.df, r.dfTransitive)} | Confluence Flow (CF): ${withTransitive(r.cf, r.cfTransitive)}`);
+    console.log(`   • Descrição: ${r.t.description}\n`);
 
     if (selectedTests.length === 1) {
         console.log("--- LOG COMPLETO DE INSTRUMENTAÇÃO DO JALANGI2 ---");

@@ -1,13 +1,19 @@
-# 🧪 Experimentos: Análise Dinâmica de Data Flow & Overriding Assignment (Jalangi2)
+# 🧪 Experimentos: Análise Dinâmica de OA, Data Flow e Confluence Flow (Jalangi2)
 
-Este diretório contém a análise dinâmica de conflitos semânticos de **Overriding Assignment (OA)** e **Data Flow (DF)** implementada sobre o **Jalangi2**, os programas sintéticos (*toys*) usados para validá-la e o runner que executa tudo em lote.
+Este diretório contém a análise dinâmica de conflitos semânticos de **Overriding Assignment (OA)**, **Data Flow (DF)** e **Confluence Flow (CF)** implementada sobre o **Jalangi2**, os programas sintéticos (*toys*) usados para validá-la e os runners que executam tudo em lote. A ferramenta roda **uma única vez** por programa e reporta os três tipos de interferência juntos: OA, Data Flow (DF) e Confluence Flow (CF).
+
+```bash
+node experiments/run_validation.js     # OA (72 casos do SCAz.js) + DF/CF (13 testes) em uma execução
+```
 
 ```
 experiments/
 ├── analyses/
 │   ├── analysis.js            # OA original (Amanda Moraes, SBLP 2024)
-│   └── analysis_dataflow.js   # OA + Data Flow (motor estendido)
+│   └── analysis_dataflow.js   # OA + Data Flow + Confluence Flow (motor estendido)
 ├── toys/                      # programas sintéticos (JS puro, só comentários // [Branch L] e // [Branch R])
+├── lib/analysis.js            # executa a análise sobre um arquivo (usado pelos runners)
+├── run_validation.js          # tudo junto: OA do SCAz.js + DF/CF dos testes do conflict-static-analysis
 ├── run_all_toys.js            # runner: instrumenta cada toy e imprime o relatório consolidado
 ├── run_oa_suite.js            # regressão de OA com os casos de teste do SCAz.js (Moraes et al.)
 ├── run_df_suite.js            # validação de DF com os testes do conflict-static-analysis
@@ -33,6 +39,16 @@ Formatos aceitos: `{"L":[4],"R":[6,7]}` ou o do SCAz.js, `{"4":"L","6":"R","7":"
 
 Uma operação pertence à branch da última linha mapeada que ela ocupa (uma atribuição que se estende por várias linhas conta todas elas).
 
+### Relatório da análise
+A análise imprime ao final:
+```
+- Conflitos de Overriding Assignment (OA): n
+- Conflitos de Data Flow Inter-Branch:     n   (direto)
+- Conflitos de Data Flow Transitivo:       n   (além dos diretos)
+- Conflitos de Confluence Flow:            n   (direto)
+- Conflitos de Confluence Flow Transitivo: n   (além dos diretos)
+```
+
 ### Como executar a análise
 A análise precisa da memória sombra do Jalangi2, então deve ser encadeada com `ChainedAnalyses.js` e `SMemory.js`, nesta ordem (veja o exemplo em "Direto pelo Jalangi2"). Os runners já fazem isso.
 
@@ -54,21 +70,18 @@ Sem `SMemory` a análise recai em nome (variáveis) e `WeakMap` (objetos), mas e
   * A comparação de valores (`!==`) vem do SCAz.js e não está descrita no artigo: atribuir o mesmo valor não é conflito.
   * Uma escrita da **Base** no elemento limpa o OA nas duas branches (`removeAssignmentFromAllBranches`).
   * **Leituras não alteram o OA**: só escritas entram no algoritmo.
-* **Interprocedural (pilha de chamadas):** cada chamada empilha a branch da linha onde termina. Uma operação cuja própria linha é da Base é atribuída à branch da chamada mais recente que tenha uma. Vale para escritas (OA e DF) e leituras (DF).
+* **Interprocedural (pilha de chamadas):** cada chamada empilha a branch da linha onde termina. Uma operação cuja própria linha é da Base é atribuída à branch da chamada mais recente que tenha uma. Vale para escritas (OA e DF) e leituras (DF e CF).
   * Se uma função termina por exceção, o `invokeFun` não é chamado. A análise acompanha a profundidade de funções (`functionEnter`/`functionExit`) e descarta as chamadas pendentes dessa função e a que a invocou.
-* **Modos** (variável `DATAFLOW_MODE`: `reach`, `tainted`, `confluent`, `confluent-tainted`):
-  * **padrão (`reach`):** fluxo direto, equivalente à ReachDefinition do `conflict-static-analysis`. Uma leitura só conta se o último escritor do elemento foi a outra branch.
-  * **`tainted`:** fluxo transitivo, como o Tainted. Cada leitura leva as origens do valor lido para o que for atribuído na mesma expressão (`y = x + 1` faz `y` herdar as origens de `x`, mesmo escrito pela Base). A Base só interrompe a contaminação se atribuir um valor que não vem de um valor contaminado. As origens passam por parâmetros e pelo `return`. Os índices de um array continuam sendo estados independentes (escrever em `arr[4]` não contamina `arr[3]`), como no OA.
-  * Um conflito é o **par** (linha que produz, linha que consome), como o par source/sink do Java: vários elementos de estado entre as mesmas duas linhas contam uma vez.
-* **Confluence Flow** (modos `confluent` e `confluent-tainted`): um comando da **Base** que usa ao mesmo tempo um valor produzido por L e um produzido por R é um ponto de confluência. O conflito é o trio (linha de L, linha de R, comando da Base) e sai na linha `Conflitos de Confluence Flow` do relatório. O modo `confluent-tainted` também segue os valores derivados na Base.
+* **Data Flow:** uma leitura por uma branch de um valor produzido pela **outra** registra um DF. Cada origem de um valor é **direta** (a própria escrita da branch produziu o valor) ou **transitiva** (o valor chegou passando por outros valores).
+  * **Direto**, equivalente à ReachDefinition do `conflict-static-analysis`: uma escrita da **Base** no elemento encerra o fluxo (*kill*), e leituras pela Base nunca geram DF.
+  * **Transitivo**, equivalente ao Tainted: cada leitura leva as origens do valor lido para o que for atribuído na mesma expressão (`y = x + 1` faz `y` herdar as origens de `x`, mesmo escrito pela Base). A Base só interrompe a contaminação se atribuir um valor que não vem de um valor contaminado. As origens passam por parâmetros e pelo `return`. Os índices de um array continuam sendo estados independentes (escrever em `arr[4]` não contamina `arr[3]`), como no OA.
+  * Um conflito é o **par** (linha que produz, linha que consome), como o par source/sink do Java: vários elementos de estado entre as mesmas duas linhas contam uma vez. Um par que aparece como direto e como transitivo conta só como direto.
+* **Confluence Flow:** um comando da **Base** que usa ao mesmo tempo um valor produzido por L e um produzido por R é um ponto de confluência. O conflito é o trio (linha de L, linha de R, comando da Base). É **direto** quando os dois valores vieram direto das escritas (Confluent) e **transitivo** quando algum passou por outro valor (ConfluentTainted).
   * Os comandos de L e de R não contam como ponto de confluência.
   * Valores que chegam a uma função por parâmetro não contam como confluência dentro dela, só no ponto da chamada, como no Java, em que cada corpo de método é analisado sozinho.
 * **Passagem de parâmetros:** ao entrar numa função, cada parâmetro recebe valor da branch do ponto de chamada (`declare` com `isArgument`). Conta como produtor só para o DF; o OA considera apenas atribuições explícitas no código (Moraes et al., 2024), então a ligação do argumento nunca gera OA.
 * **Atribuição de função:** `X.prototype.foo = function () {...}` conta só a primeira linha da atribuição. O corpo é analisado linha a linha quando executa; se contasse inteiro, a definição seria atribuída à branch de qualquer linha dele e uma chamada `m.foo()` acusaria DF sobre o próprio método.
 * **Métodos de array in-place** (`push`, `pop`, `shift`, `unshift`, `splice`, `fill`, `copyWithin`, `reverse`, `sort`): cada posição afetada é uma escrita no array. Para a comparação de valores, `push` e `fill` usam o valor inserido; nos demais o valor é tratado como desconhecido (sempre diferente).
-* **Data Flow:** a tabela `lastWrite` guarda o último escritor de cada elemento. Uma leitura por uma branch de um elemento cujo último escritor é a **outra** branch registra um DF.
-  * Uma escrita da Base sobrescreve `lastWrite` e encerra o fluxo (*kill*).
-  * Leituras pela Base nunca geram DF.
 
 ---
 
@@ -96,14 +109,12 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 | 16 | `test_dataflow_param.js` | `[6]` / `[2]` | 0 | 1 |
 | 17 | `test_dataflow_param_safe.js` | `[]` / `[2]` | 0 | 0 |
 | 18 | `test_dataflow_param_reassign.js` | `[6]` / `[2]` | 0 | 2 |
-| 19 | `test_taint_transitive.js` (modo tainted) | `[2]` / `[4]` | 0 | 1 |
-| 20 | `test_taint_transitive.js` (modo padrão) | `[2]` / `[4]` | 0 | 0 |
-| 21 | `test_taint_function.js` (modo tainted) | `[5]` / `[7]` | 0 | 1 |
-| 22 | `test_taint_kill.js` (modo tainted) | `[1]` / `[4]` | 0 | 0 |
-| 23 | `test_confluence_direct.js` (modo confluent) | `[3]` / `[4]` | 0 | CF 1 |
-| 24 | `test_confluence_separate.js` (modo confluent-tainted) | `[3]` / `[4]` | 0 | CF 0 |
-| 25 | `test_confluence_transitive.js` (modo confluent-tainted) | `[3]` / `[4]` | 0 | CF 1 |
-| 26 | `test_confluence_transitive.js` (modo confluent) | `[3]` / `[4]` | 0 | CF 0 |
+| 19 | `test_taint_transitive.js` | `[2]` / `[4]` | 0 | 0 (+1 transitivo) |
+| 20 | `test_taint_function.js` | `[5]` / `[7]` | 0 | 0 (+1 transitivo) |
+| 21 | `test_taint_kill.js` | `[1]` / `[4]` | 0 | 0 |
+| 22 | `test_confluence_direct.js` | `[3]` / `[4]` | 0 | CF 1 |
+| 23 | `test_confluence_separate.js` | `[3]` / `[4]` | 0 | CF 0 |
+| 24 | `test_confluence_transitive.js` | `[3]` / `[4]` | 0 | CF 0 (+1 transitivo) |
 
 ### 1. `example.js` — Overriding Assignment original (Amanda Moraes, SBLP 2024)
 * **Objetivo:** regressão do algoritmo de OA original.
@@ -182,17 +193,15 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 * **DF = 2:** (1) `R` lê o `n` que veio de `L`; (2) o `return n`, executado a mando da chamada de `L`, lê o `n` que `R` reatribuiu.
 * **OA = 0:** a ligação do argumento ao parâmetro não é uma atribuição explícita no código.
 
-### 19 a 22. Propagação transitiva (modo tainted)
-* **19:** `L` define `origem` (linha 2), a Base deriva `derivado = origem + 1` e `R` lê `derivado` (linha 4). O valor de `L` chega a `R` passando por uma escrita da Base.
-* **20:** o mesmo arquivo no modo padrão. Como `R` lê um valor escrito pela Base, nada é detectado. A diferença entre 19 e 20 é a diferença entre Tainted e ReachDefinition.
-* **21:** o valor de `L` passa por um parâmetro e por um `return` antes de `R` o ler.
-* **22:** a Base reatribui `derivado = 0`, uma constante, antes de `R` ler. A contaminação é interrompida e não há conflito.
+### 19 a 21. Data Flow transitivo
+* **19:** `L` define `origem` (linha 2), a Base deriva `derivado = origem + 1` e `R` lê `derivado` (linha 4). O valor de `L` chega a `R` passando por uma escrita da Base. Não é fluxo direto (a Base escreveu `derivado`), mas é transitivo.
+* **20:** o valor de `L` passa por um parâmetro e por um `return` antes de `R` o ler.
+* **21:** a Base reatribui `derivado = 0`, uma constante, antes de `R` ler. A contaminação é interrompida e não há conflito, nem direto nem transitivo.
 
-### 23 a 26. Confluence Flow
-* **23:** `L` escreve `a`, `R` escreve `b`, e um comando da Base (`soma = a + b`) usa os dois. É o ponto de confluência.
-* **24:** a Base usa `a` num comando e `b` em outro. Os valores nunca se encontram, então não há confluência (mesmo no modo transitivo).
-* **25:** `x` e `y` derivam de `a` e `b` na Base e se encontram em `z = x + y`. O modo `confluent-tainted` propaga as origens e vê a confluência.
-* **26:** o mesmo arquivo no modo `confluent`. Sem propagação, `x` e `y` são escritos pela Base e a confluência não é vista.
+### 22 a 24. Confluence Flow
+* **22:** `L` escreve `a`, `R` escreve `b`, e um comando da Base (`soma = a + b`) usa os dois. É o ponto de confluência direto.
+* **23:** a Base usa `a` num comando e `b` em outro. Os valores nunca se encontram, então não há confluência.
+* **24:** `x` e `y` derivam de `a` e `b` na Base e se encontram em `z = x + y`. Não é confluência direta (a Base escreveu `x` e `y`), mas é transitiva.
 
 ---
 
@@ -250,15 +259,33 @@ O que cada recurso contribui (desligando um de cada vez):
 
 ---
 
-## ✅ Validação de DF com as samples do conflict-static-analysis
+## ✅ Validação de DF e CF com as samples do conflict-static-analysis
 
-Os testes de DF do [`spgroup/conflict-static-analysis`](https://github.com/spgroup/conflict-static-analysis) (Santos et al., 2023) usam Soot e não são traduzíveis. O que roda são as classes `sample` que eles analisam, traduzidas com JSweet por Italo Correia (`tjtjdf`) e convertidas para ES5 em `df_samples/`. Cada teste fornece source (L), sink (R) e o esperado.
+Os testes de DF e CF do [`spgroup/conflict-static-analysis`](https://github.com/spgroup/conflict-static-analysis) (Santos et al., 2023) usam Soot e não são traduzíveis. O que roda são as classes `sample` que eles analisam, traduzidas com JSweet por Italo Correia (`tjtjdf`) e convertidas para ES5 em `df_samples/`. Cada teste fornece source (L), sink (R) e o esperado.
 
 ```bash
 node experiments/run_df_suite.js
 ```
 
-Resultado atual: ReachDefinition, 3 de 3, Tainted, 2 de 3, e Confluent, 6 de 6, com a contagem exata em todos os que batem. O que diverge é `ArrayTaintedAnalysisOneConflictIndirectTest`, **por escolha**: o Tainted do Java trata o array como um único elemento (`arr[4]` contamina `arr[3]`), e aqui cada índice é um estado independente, o que evita falsos positivos. Cada análise do Java corresponde a um modo da nossa (`DATAFLOW_MODE`). O `ContainmentConflictTest` não é executado. Detalhes e a tabela em [df_samples/README.md](df_samples/README.md).
+A análise roda **uma única vez** por teste, e cada análise do Java corresponde a um recorte do que ela reporta:
+
+| Análise do Java | Recorte comparado |
+|---|---|
+| ReachDefinition | Data Flow direto |
+| Tainted | Data Flow direto + transitivo |
+| Confluent | Confluence Flow direto |
+| ConfluentTainted | Confluence Flow direto + transitivo |
+| DFPInterProcedural (Containment) | Data Flow direto + transitivo (aproximação) |
+
+Resultado atual: **12 de 13 corretos, com a contagem exata em todos eles**. O que diverge é `ArrayTaintedAnalysisOneConflictIndirectTest`, **por escolha**: o Tainted do Java trata o array como um único elemento (`arr[4]` contamina `arr[3]`), e aqui cada índice é um estado independente, o que evita falsos positivos. O `ContainmentConflictTest` usa uma sample de OA, que não está entre as 9 do Italo: roda com a tradução da Amanda, do clone `../SCAz.js`. Detalhes e a tabela em [df_samples/README.md](df_samples/README.md).
+
+## ✅ Validação completa
+
+```bash
+node experiments/run_validation.js
+```
+
+Roda numa só execução os 72 casos de OA do SCAz.js e os 13 testes de DF e CF, e imprime um resumo. Os toys têm o próprio runner (`run_all_toys.js`) e não têm gabarito.
 
 ---
 
@@ -270,6 +297,6 @@ Resultado atual: ReachDefinition, 3 de 3, Tainted, 2 de 3, e Confluent, 6 de 6, 
 * **Métodos de array que só leem** (`slice`, `join`, `indexOf`, `map`...) não geram leituras para o DF. Só as escritas dos métodos in-place são tratadas.
 * `sort` executa o comparador uma vez a mais, em uma cópia, para descobrir quais posições mudam.
 * **Control Dependence** ainda não foi implementado.
-* **Modo tainted é aproximado:** a contaminação segue as leituras da expressão corrente (limpa em `endExpression` e `conditional`). Uma atribuição em cadeia (`a = b = c`) só leva as origens para o primeiro alvo, e todos os parâmetros de uma chamada recebem a união das origens dos argumentos.
+* **O fluxo transitivo é aproximado:** a contaminação segue as leituras da expressão corrente (limpa em `endExpression` e `conditional`). Uma atribuição em cadeia (`a = b = c`) só leva as origens para o primeiro alvo, e todos os parâmetros de uma chamada recebem a união das origens dos argumentos.
 * **Sem dependência de controle:** um `if` cuja condição leu um valor contaminado não contamina o que é atribuído dentro dele.
 * A detecção depende de o script exercitar as linhas relevantes (análise dinâmica).

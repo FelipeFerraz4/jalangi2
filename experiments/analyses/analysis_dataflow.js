@@ -1,10 +1,12 @@
 (function () {
     // =========================================================================
-    // MOTOR DE ANÁLISE DINÂMICA DE DATA FLOW & OVERRIDING ASSIGNMENT (Jalangi2)
+    // MOTOR DE ANÁLISE DINÂMICA DE MERGE (Jalangi2): OA, DATA FLOW E CONFLUENCE FLOW
     // =========================================================================
-    // Expansão da técnica de Amanda Moraes (SBLP 2024) para detecção de 
-    // Data Flow (Def-Use inter-branch) conforme formalizado por 
-    // Galileu Santos, Paulo Borba, Rodrigo Bonifácio e Matheus Barbosa (2023/2024).
+    // Expansão da técnica de Amanda Moraes (SBLP 2024) para detecção de Data Flow e
+    // Confluence Flow conforme formalizados por Santos, Borba, Bonifácio e Barbosa (2023).
+    // Uma única execução detecta os três tipos de interferência. Data Flow e Confluence Flow
+    // saem separados em diretos (o valor veio direto da escrita) e transitivos (o valor
+    // passou por outros valores antes de chegar ao uso).
     // Suporta variáveis escalares, propriedades de objetos e índices de arrays.
     //
     // Execução: encadeada com ChainedAnalyses.js e SMemory.js (memória sombra),
@@ -56,33 +58,14 @@
     };
 
     // --- ESTADO DO DATA FLOW ---
-    // origins[target] = lista de { branch, line } que produziram o valor atual do elemento de estado.
-    // No modo padrão (equivalente à ReachDefinition) é só o último escritor, e a Base limpa a lista.
-    // No modo "tainted" a lista também carrega as origens dos valores lidos para produzi-lo,
-    // o que torna o fluxo transitivo (Santos et al., 2023): x -> y -> uso de y.
+    // origins[target] = lista de origens do valor atual do elemento de estado. Cada origem é
+    //   { branch, line, derived, viaParam }
+    //   derived:  false se a escrita da branch produziu o valor; true se ele chegou por outros valores
+    //             (x -> y -> uso de y), que é o fluxo transitivo (Tainted)
+    //   viaParam: o valor entrou na função por parâmetro
     var origins = {};
 
-    // Modos (variável DATAFLOW_MODE):
-    //   reach             fluxo direto (padrão, equivale à ReachDefinition do conflict-static-analysis)
-    //   tainted           fluxo transitivo
-    //   confluent         Confluence Flow direto
-    //   confluent-tainted Confluence Flow transitivo
-    var taintMode = false;
-    var confluenceMode = false;
-
-    function setMode(mode) {
-        mode = String(mode || 'reach').toLowerCase();
-        taintMode = mode.indexOf('tainted') !== -1;
-        confluenceMode = mode.indexOf('confluent') === 0;
-    }
-    if (typeof process !== 'undefined' && process.env) setMode(process.env.DATAFLOW_MODE);
-
-    // A leitura de valores só precisa ser acompanhada nos modos que a usam
-    function tracksReads() {
-        return taintMode || confluenceMode;
-    }
-
-    // Origens lidas na expressão em andamento, ainda não atribuídas a nenhum alvo (modos tainted e confluent).
+    // Origens lidas na expressão em andamento, ainda não atribuídas a nenhum alvo.
     // A pilha guarda as da função chamadora enquanto a chamada executa.
     var pending = [];
     var pendingStack = [];
@@ -98,14 +81,14 @@
     var callStack = [];
     var functionDepth = 0;
 
-    var detectedConflicts = {
-        overridingAssignments: [],
-        dataFlows: [], dataFlowPairs: [], confluences: []
-    };
-
-    // Identificador único para instâncias de objetos em memória
-    var objectIds = (typeof WeakMap !== 'undefined') ? new WeakMap() : null;
-    var nextObjectId = 1;
+    function emptyReport() {
+        return {
+            overridingAssignments: [],
+            dataFlowsDirect: [], dataFlowsTransitive: [],           // pares "L@linha->R@linha"
+            confluencesDirect: [], confluencesTransitive: []        // trios "linhaL|linhaR@linhaBase"
+        };
+    }
+    var detectedConflicts = emptyReport();
 
     function smemory() {
         return (typeof J$ !== 'undefined') ? J$.smemory : undefined;
@@ -268,19 +251,36 @@
         return labels[target] || target;
     }
 
+    function originKey(o) {
+        return o.branch + '|' + o.line + '|' + !!o.derived + '|' + !!o.viaParam;
+    }
+
     function mergeOrigins(a, b) {
         var result = a.slice();
+        var seen = {};
+        result.forEach(function (o) { seen[originKey(o)] = true; });
         b.forEach(function (o) {
-            var exists = result.some(function (r) { return r.branch === o.branch && r.line === o.line; });
-            if (!exists) result.push(o);
+            if (!seen[originKey(o)]) {
+                seen[originKey(o)] = true;
+                result.push(o);
+            }
         });
         return result;
+    }
+
+    // O valor passou por outro valor: deixa de ser direto
+    function asDerived(list) {
+        return list.map(function (o) {
+            return { branch: o.branch, line: o.line, derived: true, viaParam: o.viaParam };
+        });
     }
 
     // --- CONFLUENCE FLOW ---
     // Um comando da Base que usa, ao mesmo tempo, valores produzidos por L e por R é um ponto de
     // confluência: o par (linha de L, linha de R) chega ao mesmo uso sem que nenhuma das duas
     // contribuições o tenha escrito (Santos et al., 2023). Conta-se o trio (L, R, comando).
+    // É direto quando os dois valores vieram direto das escritas, e transitivo quando algum passou
+    // por outro valor.
     function reportConfluence(line) {
         // Valores que entraram por parâmetro não contam dentro da função: a confluência é do corpo onde os
         // dois valores se encontram, e o ponto da chamada já a reporta (cada corpo é analisado sozinho no Java)
@@ -289,9 +289,11 @@
         sources.forEach(function (source) {
             sinks.forEach(function (sink) {
                 var key = source.line + '|' + sink.line + '@' + line;
-                if (detectedConflicts.confluences.indexOf(key) === -1) {
-                    detectedConflicts.confluences.push(key);
-                    console.log(`\n🔀 [CONFLITO CONFLUENCE] Os valores produzidos por 'L' (linha ${source.line}) e por 'R' (linha ${sink.line}) confluem no comando da Base na linha ${line}!\n`);
+                var direct = !source.derived && !sink.derived;
+                var list = direct ? detectedConflicts.confluencesDirect : detectedConflicts.confluencesTransitive;
+                if (list.indexOf(key) === -1) {
+                    list.push(key);
+                    console.log(`\n🔀 [CONFLITO CONFLUENCE${direct ? '' : ' TRANSITIVO'}] Os valores produzidos por 'L' (linha ${source.line}) e por 'R' (linha ${sink.line}) confluem no comando da Base na linha ${line}!\n`);
                 }
             });
         });
@@ -301,7 +303,7 @@
     function handleWrite(target, line, branch, val) {
         if (!target || target === 'undefined' || target === 'null') return;
 
-        if (confluenceMode && branch === "Base") reportConfluence(line);
+        if (branch === "Base") reportConfluence(line);
 
         if (branch !== "Base") {
             var otherBranch = branch === "L" ? "R" : "L";
@@ -320,27 +322,27 @@
             assignments[branch][target] = { line: line, val: val };
 
             // [REGRA DATA FLOW: Registro de Escrita do Produtor]
-            origins[target] = mergeOrigins([{ branch: branch, line: line }], taintMode ? pending : []);
+            // A escrita produz o valor diretamente; o que foi lido para calculá-lo chega de forma transitiva
+            origins[target] = mergeOrigins([{ branch: branch, line: line, derived: false }], asDerived(pending));
             console.log(`[ESCRITA] '${label(target)}' modificado pela branch '${branch}' na linha ${line}`);
         } else {
             // [OPERAÇÃO DE KILL PELA BASE]
-            // A Base sobrescreve o estado, limpando o rastro de mutações concorrentes
+            // A Base sobrescreve o estado: não sobra origem direta, só a dos valores lidos para calculá-lo
             delete assignments["L"][target];
             delete assignments["R"][target];
-            // No modo tainted a Base só limpa o estado se o valor novo não vem de um valor contaminado
-            origins[target] = taintMode ? pending.slice() : [];
+            origins[target] = asDerived(pending);
         }
-        if (tracksReads()) pending = [];
+        pending = [];
     }
 
     // --- PASSAGEM DE PARÂMETROS (PRODUTOR - DATA FLOW) ---
     // Ligar um argumento ao parâmetro produz um valor na branch do ponto de chamada. Conta apenas
     // para o Data Flow: o OA considera atribuições explícitas no código (Moraes et al., 2024).
+    // O que foi lido nos argumentos chega ao parâmetro de forma transitiva.
     function handleParameterBinding(target, line, branch) {
-        var produced = branch !== "Base" ? [{ branch: branch, line: line }] : [];
-        // As origens marcadas com viaParam vieram de fora da função (usado no Confluence Flow)
-        origins[target] = mergeOrigins(produced, taintMode ? entryTaint : []).map(function (o) {
-            return { branch: o.branch, line: o.line, viaParam: true };
+        var produced = branch !== "Base" ? [{ branch: branch, line: line, derived: false }] : [];
+        origins[target] = mergeOrigins(produced, asDerived(entryTaint)).map(function (o) {
+            return { branch: o.branch, line: o.line, derived: o.derived, viaParam: true };
         });
         if (branch !== "Base") {
             console.log(`[PARÂMETRO] '${label(target)}' recebe valor da branch '${branch}' (chamada na linha ${line})`);
@@ -358,15 +360,13 @@
             produced.forEach(function (origin) {
                 // Se o estado foi produzido por uma branch concorrente (L -> R ou R -> L):
                 if (origin.branch !== readingBranch) {
-                    var dfMsg = `[CONFLITO DATA FLOW] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${origin.branch}' (linha ${origin.line})!`;
-
                     // Um conflito é o par (linha que produz, linha que consome), como o par source/sink do Java:
                     // vários elementos de estado entre as mesmas duas linhas contam uma vez
                     var pair = origin.branch + '@' + origin.line + '->' + readingBranch + '@' + line;
-                    if (detectedConflicts.dataFlowPairs.indexOf(pair) === -1) {
-                        detectedConflicts.dataFlowPairs.push(pair);
-                        detectedConflicts.dataFlows.push(dfMsg);
-                        console.log(`\n⚡ ${dfMsg}`);
+                    var list = origin.derived ? detectedConflicts.dataFlowsTransitive : detectedConflicts.dataFlowsDirect;
+                    if (list.indexOf(pair) === -1) {
+                        list.push(pair);
+                        console.log(`\n⚡ [CONFLITO DATA FLOW${origin.derived ? ' TRANSITIVO' : ''}] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${origin.branch}' (linha ${origin.line})!`);
                         console.log(`   └─> Risco Semântico: Branch '${readingBranch}' está consumindo estado mutado concorrentemente por '${origin.branch}'.\n`);
                     }
                 }
@@ -374,13 +374,10 @@
         }
 
         // O valor lido leva suas origens para o que for atribuído com ele
-        if (tracksReads()) pending = mergeOrigins(pending, produced);
+        pending = mergeOrigins(pending, produced);
     }
 
     J$.analysis = {
-        // Escolhe o modo: "reach", "tainted", "confluent" ou "confluent-tainted"
-        setMode: setMode,
-
         // Função para configurar programaticamente as linhas das branches
         setBranches: function (map) {
             loadBranchMap(map);
@@ -391,7 +388,7 @@
             entryTaint = [];
             callStack = [];
             functionDepth = 0;
-            detectedConflicts = { overridingAssignments: [], dataFlows: [], dataFlowPairs: [], confluences: [] };
+            detectedConflicts = emptyReport();
         },
 
         // ==============================================================
@@ -421,12 +418,10 @@
         // instrumentadas permite descartar as chamadas que ficaram pendentes na pilha.
         functionEnter: function (iid, f, dis, args) {
             functionDepth++;
-            if (tracksReads()) {
-                // O que foi lido nos argumentos contamina os parâmetros; o corpo começa limpo
-                pendingStack.push(pending);
-                entryTaint = pending;
-                pending = [];
-            }
+            // O que foi lido nos argumentos contamina os parâmetros; o corpo começa limpo
+            pendingStack.push(pending);
+            entryTaint = pending;
+            pending = [];
         },
 
         functionExit: function (iid, returnVal, wrappedExceptionVal) {
@@ -440,24 +435,22 @@
                 callStack.pop();
             }
             functionDepth--;
-            if (tracksReads()) {
-                // O valor devolvido leva as origens lidas no return para a expressão do chamador
-                // De volta ao chamador, as origens voltam a valer no corpo dele
-                pending = mergeOrigins(pendingStack.pop() || [], pending.map(function (o) {
-                    return { branch: o.branch, line: o.line };
-                }));
-            }
+            // O valor devolvido leva as origens lidas no return para a expressão do chamador.
+            // De volta ao chamador, as origens voltam a valer no corpo dele
+            pending = mergeOrigins(pendingStack.pop() || [], pending.map(function (o) {
+                return { branch: o.branch, line: o.line, derived: o.derived };
+            }));
         },
 
         // Fim de um comando: o que foi lido não alimenta mais nenhuma atribuição
         endExpression: function (iid) {
-            if (confluenceMode && effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
-            if (tracksReads()) pending = [];
+            if (effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
+            pending = [];
         },
 
         conditional: function (iid, result) {
-            if (confluenceMode && effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
-            if (tracksReads()) pending = [];
+            if (effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
+            pending = [];
             return { result: result };
         },
 
@@ -508,11 +501,17 @@
         },
 
         endExecution: function () {
+            // Um conflito transitivo só conta se o mesmo conflito não aparece também como direto
+            var onlyTransitive = function (transitive, direct) {
+                return transitive.filter(function (k) { return direct.indexOf(k) === -1; }).length;
+            };
             console.log("\n==================================================");
             console.log("📊 RELATÓRIO FINAL DE ANÁLISE DINÂMICA DE MERGE");
             console.log(`   - Conflitos de Overriding Assignment (OA): ${detectedConflicts.overridingAssignments.length}`);
-            console.log(`   - Conflitos de Data Flow Inter-Branch:     ${detectedConflicts.dataFlows.length}`);
-            console.log(`   - Conflitos de Confluence Flow:            ${detectedConflicts.confluences.length}`);
+            console.log(`   - Conflitos de Data Flow Inter-Branch:     ${detectedConflicts.dataFlowsDirect.length}`);
+            console.log(`   - Conflitos de Data Flow Transitivo:       ${onlyTransitive(detectedConflicts.dataFlowsTransitive, detectedConflicts.dataFlowsDirect)}`);
+            console.log(`   - Conflitos de Confluence Flow:            ${detectedConflicts.confluencesDirect.length}`);
+            console.log(`   - Conflitos de Confluence Flow Transitivo: ${onlyTransitive(detectedConflicts.confluencesTransitive, detectedConflicts.confluencesDirect)}`);
             console.log("==================================================");
         }
     };
