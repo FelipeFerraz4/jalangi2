@@ -13,6 +13,8 @@ experiments/
 │   └── analysis_dataflow.js   # OA + Data Flow + Confluence Flow (motor estendido)
 ├── toys/                      # programas sintéticos (JS puro, só comentários // [Branch L] e // [Branch R])
 ├── lib/analysis.js            # executa a análise sobre um arquivo (usado pelos runners)
+├── tools/line-map.js          # gerador do mapa L/R de um merge a partir de base/left/right/merge
+├── tools/test-line-map.js     # autoteste do gerador (cenários sintéticos)
 ├── run_validation.js          # tudo junto: OA do SCAz.js + DF/CF dos testes do conflict-static-analysis
 ├── run_all_toys.js            # runner: instrumenta cada toy e imprime o relatório consolidado
 ├── run_oa_suite.js            # regressão de OA com os casos de teste do SCAz.js (Moraes et al.)
@@ -285,6 +287,51 @@ node experiments/run_validation.js
 ```
 
 Roda numa só execução os 72 casos de OA do SCAz.js e os 13 testes de DF e CF, e imprime um resumo. Os toys têm o próprio runner (`run_all_toys.js`) e não têm gabarito.
+
+---
+
+## 🗺️ Gerador do mapa L/R
+
+A análise precisa saber quais linhas do arquivo integrado vieram da Left e quais da Right. Em casos reais esse mapa não existe pronto, e `tools/line-map.js` o gera **só com as quatro versões do arquivo** (base, left, right e merge), sem o histórico do Git:
+
+1. as linhas que a Left acrescentou ou alterou em relação à base (`git diff base left`);
+2. quais delas sobrevivem, iguais, no merge (`git diff left merge`);
+3. o mesmo para a Right.
+
+As linhas do merge que não vieram de nenhuma contribuição (código da base ou editado ao resolver o merge) ficam sem rótulo e valem como Base. A comparação ignora espaços em branco (`-w`). Se as duas fizeram a mesma alteração na mesma linha, ela vale como L e não conta como linha de R (não há divergência entre as contribuições). A saída é `{"linha":"L"|"R"}`, o formato do SCAz.js, aceito por `BRANCH_MAP_FILE`.
+
+```bash
+# um cenário
+node experiments/tools/line-map.js base.js left.js right.js merge.js --out mapa.json
+# os pacotes de versões do dataset de merges (um ZIP por projeto); grava mapas/<amostra>.json e mapa_linhas.csv
+node experiments/tools/line-map.js --versoes /caminho/MinerreporJavascriptMerge/versoes --out-dir /caminho/saida
+node experiments/tools/test-line-map.js   # autoteste
+```
+
+O CSV traz, por amostra, as linhas de L e de R e o estado: `ok` (tem L e R, analisável), `sem-L`, `sem-R` ou `sem-L-e-R`. Só as amostras `ok` ganham arquivo de mapa.
+
+**No dataset de merges minerados** (10.162 amostras, 34 projetos, 4m38s para gerar tudo):
+
+| Estado | Amostras |
+|---|---:|
+| `ok` (tem linhas de L e de R) | 6.127 (60%) |
+| `sem-R` (só a Left alterou, ou as duas fizeram a mesma alteração) | 3.287 |
+| `sem-L` | 552 |
+| `sem-L-e-R` (o merge só reaproveita a base) | 196 |
+
+As 6.127 amostras analisáveis vêm de 2.973 merges e de 33 dos 34 projetos; 5.243 delas não são arquivos de teste (`test`/`spec` no caminho). Elas têm em mediana 8 linhas de L e 6 de R. O mapa é só o primeiro passo: para **executar** o arquivo ainda são necessários o projeto no commit do merge e as dependências instaladas, e o Jalangi2 só instrumenta ES5.1.
+
+**Validação contra o método da Amanda** (`git blame -w -M` no merge, cruzado com `git log ancestor..pai`), nas 447 amostras do Express:
+
+| Medida | Resultado |
+|---|---|
+| Os dois métodos concordam se a amostra é analisável (tem L e R) | 435 de 447 (97%) |
+| Amostras analisáveis para o blame que o gerador perdeu | 0 |
+| Analisáveis só para o gerador | 12 |
+| Mapas idênticos, entre as 252 analisáveis nos dois | 113 (45%); similaridade média das linhas: L 0,87, R 0,94 |
+| O mesmo, sem o `-M` no blame | mapas idênticos em 69%; similaridade R 0,99, L 0,93 |
+
+A diferença vem de os métodos medirem coisas diferentes: o blame olha o **histórico de commits** e, com `-M`, atribui linhas copiadas dentro do arquivo ao commit original; o gerador olha a **mudança líquida** entre as versões. Por isso um mapa não é igual ao outro linha a linha, mas o gerador não perde nenhuma amostra analisável. Precisa do histórico clonado apenas para executar o arquivo, não para gerar o mapa.
 
 ---
 
