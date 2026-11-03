@@ -9,8 +9,10 @@
 // As linhas do Java são convertidas para as do JavaScript (campo `js`), e o mapa L/R é montado
 // com elas. Como no OA (run_oa_suite.js), compara-se a presença de conflito com o esperado.
 //
-// Os testes de ReachDefinition rodam no modo padrão (fluxo direto); os de Tainted, com DATAFLOW_MODE=tainted
-// (propagação transitiva). Os índices de um array continuam sendo estados independentes.
+// Cada análise do Java corresponde a um modo (DATAFLOW_MODE): ReachDefinition -> reach (fluxo direto),
+// Tainted -> tainted (transitivo), Confluent -> confluent e ConfluentTainted -> confluent-tainted. Nos
+// testes Confluent compara-se o número de conflitos de Confluence Flow. Os índices de um array continuam
+// sendo estados independentes.
 //
 // Uso: node experiments/run_df_suite.js [filtro]   (filtra por nome do teste ou da sample)
 const { execFileSync } = require('child_process');
@@ -21,9 +23,12 @@ const rootDir = path.resolve(__dirname, '..');
 const samplesDir = path.join(__dirname, 'df_samples', 'es5');
 const filter = process.argv[2];
 
-const NOT_CONFLUENCE = 'Confluence Flow ainda não está implementado na análise';
-
 // java: linha no Java; js: linha no JavaScript (ES5); code: trecho que a linha deve conter
+// Modo da análise que corresponde a cada análise do Java (as demais usam o padrão, 'reach')
+const MODES = { Tainted: 'tainted', Confluent: 'confluent', ConfluentTainted: 'confluent-tainted' };
+// Métrica comparada com o esperado: conflitos de Confluence Flow nas análises Confluent*, DF nas demais
+const isConfluence = c => c.analysis.indexOf('Confluent') === 0;
+
 const cases = [
     {
         test: 'ReachDefinitionAnalysisOneConflictTest', analysis: 'ReachDefinition', sample: 'IntraproceduralDataFlow',
@@ -64,13 +69,44 @@ const cases = [
         sink: [{ java: 10, js: 16, code: 'arr[3]' }, { java: 12, js: 17, code: 'console.info(b)' }],
         note: 'Divergência intencional: o Tainted trata o array como um todo (arr[4] contamina arr[3]); a análise trata cada índice como estado independente, como no OA, para evitar falsos positivos.'
     },
+    // --- Confluence Flow: o conflito está num comando da Base que usa o source e o sink ---
+    {
+        test: 'ConfluenceWithTransitivityTest', analysis: 'ConfluentTainted', sample: 'ConfluenceWithTransitivitySample',
+        expected: 1,
+        source: [{ java: 9, js: 17, code: 'x = 10' }],
+        sink: [{ java: 13, js: 19, code: 'y++' }]
+    },
+    {
+        test: 'SourceSinkConfluenceAnalysisMethodCallTest', analysis: 'Confluent', sample: 'SourceSinkMethodCallSample',
+        expected: 1,
+        source: [{ java: 8, js: 16, code: 'x = this.one()' }],
+        sink: [{ java: 10, js: 17, code: 'y = this.two()' }]
+    },
+    {
+        test: 'SourceSinkConfluenceAnalysisOneConflictTest', analysis: 'Confluent', sample: 'DoubleSourceSample',
+        expected: 1,
+        source: [{ java: 8, js: 16, code: 'x = x + 1' }],
+        sink: [{ java: 12, js: 18, code: 'y = y - 1' }]
+    },
+    {
+        test: 'SourceSinkConfluenceAnalysisVariableAttributionTest', analysis: 'Confluent', sample: 'SourceSinkVariableAttributionSample',
+        expected: 1,
+        source: [{ java: 18, js: 27, code: 'x = 10' }],
+        sink: [{ java: 20, js: 28, code: 'y = z + 2' }]
+    },
+    {
+        test: 'SourceSinkVariableAttributionWithAutoIncrementConfluentTest', analysis: 'Confluent', sample: 'SourceSinkVariableAttributionWithAutoIncrement',
+        expected: 0,
+        source: [{ java: 9, js: 17, code: 'x = 10' }],
+        sink: [{ java: 11, js: 19, code: 'y = z + 2' }]
+    },
+    {
+        test: 'SourceSinkVariableAttributionWithAutoIncrementTaintedConfluentTest', analysis: 'ConfluentTainted', sample: 'SourceSinkVariableAttributionWithAutoIncrement',
+        expected: 1,
+        source: [{ java: 9, js: 17, code: 'x = 10' }],
+        sink: [{ java: 11, js: 19, code: 'y = z + 2' }]
+    },
     // --- Fora do escopo da análise atual ---
-    { test: 'ConfluenceWithTransitivityTest', analysis: 'ConfluentTainted', sample: 'ConfluenceWithTransitivitySample', expected: 1, skip: NOT_CONFLUENCE },
-    { test: 'SourceSinkConfluenceAnalysisMethodCallTest', analysis: 'Confluent', sample: 'SourceSinkMethodCallSample', expected: 1, skip: NOT_CONFLUENCE },
-    { test: 'SourceSinkConfluenceAnalysisOneConflictTest', analysis: 'Confluent', sample: 'DoubleSourceSample', expected: 1, skip: NOT_CONFLUENCE },
-    { test: 'SourceSinkConfluenceAnalysisVariableAttributionTest', analysis: 'Confluent', sample: 'SourceSinkVariableAttributionSample', expected: 1, skip: NOT_CONFLUENCE },
-    { test: 'SourceSinkVariableAttributionWithAutoIncrementConfluentTest', analysis: 'Confluent', sample: 'SourceSinkVariableAttributionWithAutoIncrement', expected: 0, skip: NOT_CONFLUENCE },
-    { test: 'SourceSinkVariableAttributionWithAutoIncrementTaintedConfluentTest', analysis: 'ConfluentTainted', sample: 'SourceSinkVariableAttributionWithAutoIncrement', expected: 1, skip: NOT_CONFLUENCE },
     { test: 'ContainmentConflictTest', analysis: 'DFPInterProcedural', sample: 'ioa.ContainmentSample', expected: 1, skip: 'sample de OA (pacote ioa), fora das 9 samples de DF traduzidas' }
 ];
 
@@ -105,14 +141,15 @@ for (const c of selected) {
             '--analysis', 'src/js/runtime/SMemory.js',
             '--analysis', 'experiments/analyses/analysis_dataflow.js',
             file
-        ], { cwd: rootDir, encoding: 'utf-8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { BRANCH_MAP: JSON.stringify(branchMap), DATAFLOW_MODE: c.analysis === 'Tainted' ? 'tainted' : 'reach' }) });
+        ], { cwd: rootDir, encoding: 'utf-8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { BRANCH_MAP: JSON.stringify(branchMap), DATAFLOW_MODE: MODES[c.analysis] || 'reach' }) });
     } catch (e) {
         error = e.message.split('\n')[0];
         output = (e.stdout || '') + (e.stderr || '');
     }
     const df = output.match(/Conflitos de Data Flow Inter-Branch:\s*(\d+)/);
     const oa = output.match(/Conflitos de Overriding Assignment \(OA\):\s*(\d+)/);
-    results.push({ c, error: error || (df ? null : 'sem relatório da análise'), df: df ? +df[1] : 0, oa: oa ? +oa[1] : 0, output });
+    const cf = output.match(/Conflitos de Confluence Flow:\s*(\d+)/);
+    results.push({ c, error: error || (df ? null : 'sem relatório da análise'), df: df ? +df[1] : 0, oa: oa ? +oa[1] : 0, cf: cf ? +cf[1] : 0, output });
 }
 
 console.log('================================================================================');
@@ -131,12 +168,14 @@ for (const r of results) {
         console.log(`✖ ERRO ${c.test}\n    ${r.error}`);
         continue;
     }
-    const match = (r.df > 0) === (c.expected > 0);
+    const found = isConfluence(c) ? r.cf : r.df;
+    const metric = isConfluence(c) ? 'Confluence' : 'DF';
+    const match = (found > 0) === (c.expected > 0);
     match ? ok++ : wrong++;
-    if (match && r.df !== c.expected) countDiffers++;
+    if (match && found !== c.expected) countDiffers++;
     console.log(`${match ? '✔' : '✖'} ${c.test}`);
-    console.log(`    ${c.sample} (${c.analysis}) | esperado DF=${c.expected} | detectado DF=${r.df} (OA=${r.oa})${match && r.df !== c.expected ? ' | presença bate, contagem difere' : ''}`);
-    if (c.note && (!match || r.df !== c.expected)) console.log(`    ↳ ${c.note}`);
+    console.log(`    ${c.sample} (${c.analysis}) | esperado ${metric}=${c.expected} | detectado ${metric}=${found} (${isConfluence(c) ? 'DF=' + r.df + ', ' : ''}OA=${r.oa})${match && found !== c.expected ? ' | presença bate, contagem difere' : ''}`);
+    if (c.note && (!match || found !== c.expected)) console.log(`    ↳ ${c.note}`);
     if (selected.length === 1) {
         console.log('--- LOG DA ANÁLISE ---');
         console.log(r.output.trim());

@@ -62,13 +62,27 @@
     // o que torna o fluxo transitivo (Santos et al., 2023): x -> y -> uso de y.
     var origins = {};
 
-    // Modo: DATAFLOW_MODE=tainted liga a propagação transitiva
+    // Modos (variável DATAFLOW_MODE):
+    //   reach             fluxo direto (padrão, equivale à ReachDefinition do conflict-static-analysis)
+    //   tainted           fluxo transitivo
+    //   confluent         Confluence Flow direto
+    //   confluent-tainted Confluence Flow transitivo
     var taintMode = false;
-    if (typeof process !== 'undefined' && process.env && process.env.DATAFLOW_MODE) {
-        taintMode = String(process.env.DATAFLOW_MODE).toLowerCase() === 'tainted';
+    var confluenceMode = false;
+
+    function setMode(mode) {
+        mode = String(mode || 'reach').toLowerCase();
+        taintMode = mode.indexOf('tainted') !== -1;
+        confluenceMode = mode.indexOf('confluent') === 0;
+    }
+    if (typeof process !== 'undefined' && process.env) setMode(process.env.DATAFLOW_MODE);
+
+    // A leitura de valores só precisa ser acompanhada nos modos que a usam
+    function tracksReads() {
+        return taintMode || confluenceMode;
     }
 
-    // Modo tainted: origens lidas na expressão em andamento, ainda não atribuídas a nenhum alvo.
+    // Origens lidas na expressão em andamento, ainda não atribuídas a nenhum alvo (modos tainted e confluent).
     // A pilha guarda as da função chamadora enquanto a chamada executa.
     var pending = [];
     var pendingStack = [];
@@ -86,7 +100,7 @@
 
     var detectedConflicts = {
         overridingAssignments: [],
-        dataFlows: [], dataFlowPairs: []
+        dataFlows: [], dataFlowPairs: [], confluences: []
     };
 
     // Identificador único para instâncias de objetos em memória
@@ -263,9 +277,31 @@
         return result;
     }
 
+    // --- CONFLUENCE FLOW ---
+    // Um comando da Base que usa, ao mesmo tempo, valores produzidos por L e por R é um ponto de
+    // confluência: o par (linha de L, linha de R) chega ao mesmo uso sem que nenhuma das duas
+    // contribuições o tenha escrito (Santos et al., 2023). Conta-se o trio (L, R, comando).
+    function reportConfluence(line) {
+        // Valores que entraram por parâmetro não contam dentro da função: a confluência é do corpo onde os
+        // dois valores se encontram, e o ponto da chamada já a reporta (cada corpo é analisado sozinho no Java)
+        var sources = pending.filter(function (o) { return o.branch === "L" && !o.viaParam; });
+        var sinks = pending.filter(function (o) { return o.branch === "R" && !o.viaParam; });
+        sources.forEach(function (source) {
+            sinks.forEach(function (sink) {
+                var key = source.line + '|' + sink.line + '@' + line;
+                if (detectedConflicts.confluences.indexOf(key) === -1) {
+                    detectedConflicts.confluences.push(key);
+                    console.log(`\n🔀 [CONFLITO CONFLUENCE] Os valores produzidos por 'L' (linha ${source.line}) e por 'R' (linha ${sink.line}) confluem no comando da Base na linha ${line}!\n`);
+                }
+            });
+        });
+    }
+
     // --- LÓGICA CENTRAL DE ESCRITA (PRODUTOR) ---
     function handleWrite(target, line, branch, val) {
         if (!target || target === 'undefined' || target === 'null') return;
+
+        if (confluenceMode && branch === "Base") reportConfluence(line);
 
         if (branch !== "Base") {
             var otherBranch = branch === "L" ? "R" : "L";
@@ -294,7 +330,7 @@
             // No modo tainted a Base só limpa o estado se o valor novo não vem de um valor contaminado
             origins[target] = taintMode ? pending.slice() : [];
         }
-        if (taintMode) pending = [];
+        if (tracksReads()) pending = [];
     }
 
     // --- PASSAGEM DE PARÂMETROS (PRODUTOR - DATA FLOW) ---
@@ -302,7 +338,10 @@
     // para o Data Flow: o OA considera atribuições explícitas no código (Moraes et al., 2024).
     function handleParameterBinding(target, line, branch) {
         var produced = branch !== "Base" ? [{ branch: branch, line: line }] : [];
-        origins[target] = mergeOrigins(produced, taintMode ? entryTaint : []);
+        // As origens marcadas com viaParam vieram de fora da função (usado no Confluence Flow)
+        origins[target] = mergeOrigins(produced, taintMode ? entryTaint : []).map(function (o) {
+            return { branch: o.branch, line: o.line, viaParam: true };
+        });
         if (branch !== "Base") {
             console.log(`[PARÂMETRO] '${label(target)}' recebe valor da branch '${branch}' (chamada na linha ${line})`);
         }
@@ -335,14 +374,12 @@
         }
 
         // O valor lido leva suas origens para o que for atribuído com ele
-        if (taintMode) pending = mergeOrigins(pending, produced);
+        if (tracksReads()) pending = mergeOrigins(pending, produced);
     }
 
     J$.analysis = {
-        // Liga (true) ou desliga a propagação transitiva do modo tainted
-        setTaintMode: function (enabled) {
-            taintMode = !!enabled;
-        },
+        // Escolhe o modo: "reach", "tainted", "confluent" ou "confluent-tainted"
+        setMode: setMode,
 
         // Função para configurar programaticamente as linhas das branches
         setBranches: function (map) {
@@ -354,7 +391,7 @@
             entryTaint = [];
             callStack = [];
             functionDepth = 0;
-            detectedConflicts = { overridingAssignments: [], dataFlows: [], dataFlowPairs: [] };
+            detectedConflicts = { overridingAssignments: [], dataFlows: [], dataFlowPairs: [], confluences: [] };
         },
 
         // ==============================================================
@@ -384,7 +421,7 @@
         // instrumentadas permite descartar as chamadas que ficaram pendentes na pilha.
         functionEnter: function (iid, f, dis, args) {
             functionDepth++;
-            if (taintMode) {
+            if (tracksReads()) {
                 // O que foi lido nos argumentos contamina os parâmetros; o corpo começa limpo
                 pendingStack.push(pending);
                 entryTaint = pending;
@@ -403,19 +440,24 @@
                 callStack.pop();
             }
             functionDepth--;
-            if (taintMode) {
+            if (tracksReads()) {
                 // O valor devolvido leva as origens lidas no return para a expressão do chamador
-                pending = mergeOrigins(pendingStack.pop() || [], pending);
+                // De volta ao chamador, as origens voltam a valer no corpo dele
+                pending = mergeOrigins(pendingStack.pop() || [], pending.map(function (o) {
+                    return { branch: o.branch, line: o.line };
+                }));
             }
         },
 
         // Fim de um comando: o que foi lido não alimenta mais nenhuma atribuição
         endExpression: function (iid) {
-            if (taintMode) pending = [];
+            if (confluenceMode && effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
+            if (tracksReads()) pending = [];
         },
 
         conditional: function (iid, result) {
-            if (taintMode) pending = [];
+            if (confluenceMode && effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
+            if (tracksReads()) pending = [];
             return { result: result };
         },
 
@@ -470,6 +512,7 @@
             console.log("📊 RELATÓRIO FINAL DE ANÁLISE DINÂMICA DE MERGE");
             console.log(`   - Conflitos de Overriding Assignment (OA): ${detectedConflicts.overridingAssignments.length}`);
             console.log(`   - Conflitos de Data Flow Inter-Branch:     ${detectedConflicts.dataFlows.length}`);
+            console.log(`   - Conflitos de Confluence Flow:            ${detectedConflicts.confluences.length}`);
             console.log("==================================================");
         }
     };

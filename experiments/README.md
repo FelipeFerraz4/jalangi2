@@ -56,10 +56,13 @@ Sem `SMemory` a análise recai em nome (variáveis) e `WeakMap` (objetos), mas e
   * **Leituras não alteram o OA**: só escritas entram no algoritmo.
 * **Interprocedural (pilha de chamadas):** cada chamada empilha a branch da linha onde termina. Uma operação cuja própria linha é da Base é atribuída à branch da chamada mais recente que tenha uma. Vale para escritas (OA e DF) e leituras (DF).
   * Se uma função termina por exceção, o `invokeFun` não é chamado. A análise acompanha a profundidade de funções (`functionEnter`/`functionExit`) e descarta as chamadas pendentes dessa função e a que a invocou.
-* **Modos de Data Flow** (variável `DATAFLOW_MODE`):
+* **Modos** (variável `DATAFLOW_MODE`: `reach`, `tainted`, `confluent`, `confluent-tainted`):
   * **padrão (`reach`):** fluxo direto, equivalente à ReachDefinition do `conflict-static-analysis`. Uma leitura só conta se o último escritor do elemento foi a outra branch.
   * **`tainted`:** fluxo transitivo, como o Tainted. Cada leitura leva as origens do valor lido para o que for atribuído na mesma expressão (`y = x + 1` faz `y` herdar as origens de `x`, mesmo escrito pela Base). A Base só interrompe a contaminação se atribuir um valor que não vem de um valor contaminado. As origens passam por parâmetros e pelo `return`. Os índices de um array continuam sendo estados independentes (escrever em `arr[4]` não contamina `arr[3]`), como no OA.
   * Um conflito é o **par** (linha que produz, linha que consome), como o par source/sink do Java: vários elementos de estado entre as mesmas duas linhas contam uma vez.
+* **Confluence Flow** (modos `confluent` e `confluent-tainted`): um comando da **Base** que usa ao mesmo tempo um valor produzido por L e um produzido por R é um ponto de confluência. O conflito é o trio (linha de L, linha de R, comando da Base) e sai na linha `Conflitos de Confluence Flow` do relatório. O modo `confluent-tainted` também segue os valores derivados na Base.
+  * Os comandos de L e de R não contam como ponto de confluência.
+  * Valores que chegam a uma função por parâmetro não contam como confluência dentro dela, só no ponto da chamada, como no Java, em que cada corpo de método é analisado sozinho.
 * **Passagem de parâmetros:** ao entrar numa função, cada parâmetro recebe valor da branch do ponto de chamada (`declare` com `isArgument`). Conta como produtor só para o DF; o OA considera apenas atribuições explícitas no código (Moraes et al., 2024), então a ligação do argumento nunca gera OA.
 * **Atribuição de função:** `X.prototype.foo = function () {...}` conta só a primeira linha da atribuição. O corpo é analisado linha a linha quando executa; se contasse inteiro, a definição seria atribuída à branch de qualquer linha dele e uma chamada `m.foo()` acusaria DF sobre o próprio método.
 * **Métodos de array in-place** (`push`, `pop`, `shift`, `unshift`, `splice`, `fill`, `copyWithin`, `reverse`, `sort`): cada posição afetada é uma escrita no array. Para a comparação de valores, `push` e `fill` usam o valor inserido; nos demais o valor é tratado como desconhecido (sempre diferente).
@@ -97,6 +100,10 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 | 20 | `test_taint_transitive.js` (modo padrão) | `[2]` / `[4]` | 0 | 0 |
 | 21 | `test_taint_function.js` (modo tainted) | `[5]` / `[7]` | 0 | 1 |
 | 22 | `test_taint_kill.js` (modo tainted) | `[1]` / `[4]` | 0 | 0 |
+| 23 | `test_confluence_direct.js` (modo confluent) | `[3]` / `[4]` | 0 | CF 1 |
+| 24 | `test_confluence_separate.js` (modo confluent-tainted) | `[3]` / `[4]` | 0 | CF 0 |
+| 25 | `test_confluence_transitive.js` (modo confluent-tainted) | `[3]` / `[4]` | 0 | CF 1 |
+| 26 | `test_confluence_transitive.js` (modo confluent) | `[3]` / `[4]` | 0 | CF 0 |
 
 ### 1. `example.js` — Overriding Assignment original (Amanda Moraes, SBLP 2024)
 * **Objetivo:** regressão do algoritmo de OA original.
@@ -181,6 +188,12 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 * **21:** o valor de `L` passa por um parâmetro e por um `return` antes de `R` o ler.
 * **22:** a Base reatribui `derivado = 0`, uma constante, antes de `R` ler. A contaminação é interrompida e não há conflito.
 
+### 23 a 26. Confluence Flow
+* **23:** `L` escreve `a`, `R` escreve `b`, e um comando da Base (`soma = a + b`) usa os dois. É o ponto de confluência.
+* **24:** a Base usa `a` num comando e `b` em outro. Os valores nunca se encontram, então não há confluência (mesmo no modo transitivo).
+* **25:** `x` e `y` derivam de `a` e `b` na Base e se encontram em `z = x + y`. O modo `confluent-tainted` propaga as origens e vê a confluência.
+* **26:** o mesmo arquivo no modo `confluent`. Sem propagação, `x` e `y` são escritos pela Base e a confluência não é vista.
+
 ---
 
 ## 🚀 Como executar
@@ -245,7 +258,7 @@ Os testes de DF do [`spgroup/conflict-static-analysis`](https://github.com/spgro
 node experiments/run_df_suite.js
 ```
 
-Resultado atual: ReachDefinition, 3 de 3, e Tainted, 2 de 3, com a contagem exata nos 5 que batem. O que diverge é `ArrayTaintedAnalysisOneConflictIndirectTest`, **por escolha**: o Tainted do Java trata o array como um único elemento (`arr[4]` contamina `arr[3]`), e aqui cada índice é um estado independente, o que evita falsos positivos. Os testes de Tainted rodam no modo `DATAFLOW_MODE=tainted`. Os 6 testes Confluent e o Containment não são executados. Detalhes e a tabela em [df_samples/README.md](df_samples/README.md).
+Resultado atual: ReachDefinition, 3 de 3, Tainted, 2 de 3, e Confluent, 6 de 6, com a contagem exata em todos os que batem. O que diverge é `ArrayTaintedAnalysisOneConflictIndirectTest`, **por escolha**: o Tainted do Java trata o array como um único elemento (`arr[4]` contamina `arr[3]`), e aqui cada índice é um estado independente, o que evita falsos positivos. Cada análise do Java corresponde a um modo da nossa (`DATAFLOW_MODE`). O `ContainmentConflictTest` não é executado. Detalhes e a tabela em [df_samples/README.md](df_samples/README.md).
 
 ---
 
@@ -256,7 +269,7 @@ Resultado atual: ReachDefinition, 3 de 3, e Tainted, 2 de 3, com a contagem exat
 * **Receptor (`this`) e `arguments`** não são tratados como valores passados na chamada; só os parâmetros nomeados.
 * **Métodos de array que só leem** (`slice`, `join`, `indexOf`, `map`...) não geram leituras para o DF. Só as escritas dos métodos in-place são tratadas.
 * `sort` executa o comparador uma vez a mais, em uma cópia, para descobrir quais posições mudam.
-* **Confluence Flow e Control Dependence** ainda não foram implementados.
+* **Control Dependence** ainda não foi implementado.
 * **Modo tainted é aproximado:** a contaminação segue as leituras da expressão corrente (limpa em `endExpression` e `conditional`). Uma atribuição em cadeia (`a = b = c`) só leva as origens para o primeiro alvo, e todos os parâmetros de uma chamada recebem a união das origens dos argumentos.
 * **Sem dependência de controle:** um `if` cuja condição leu um valor contaminado não contamina o que é atribuído dentro dele.
 * A detecção depende de o script exercitar as linhas relevantes (análise dinâmica).

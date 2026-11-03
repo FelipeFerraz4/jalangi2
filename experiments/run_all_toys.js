@@ -141,6 +141,34 @@ const tests = [
         branchMap: { "L": [1], "R": [4] },
         mode: "tainted",
         description: "A Base reatribui derivado com uma constante antes de R ler: sem conflito"
+    },
+    {
+        name: "23. Confluence Flow direto (test_confluence_direct.js)",
+        file: "experiments/toys/test_confluence_direct.js",
+        branchMap: { "L": [3], "R": [4] },
+        mode: "confluent",
+        description: "Um comando da Base usa o valor de L e o de R ao mesmo tempo"
+    },
+    {
+        name: "24. Valores usados em comandos separados (test_confluence_separate.js)",
+        file: "experiments/toys/test_confluence_separate.js",
+        branchMap: { "L": [3], "R": [4] },
+        mode: "confluent-tainted",
+        description: "A Base usa o valor de L num comando e o de R em outro: não há confluência"
+    },
+    {
+        name: "25. Confluence Flow transitivo (test_confluence_transitive.js)",
+        file: "experiments/toys/test_confluence_transitive.js",
+        branchMap: { "L": [3], "R": [4] },
+        mode: "confluent-tainted",
+        description: "Os valores de L e R passam por variáveis da Base antes de se encontrarem em z"
+    },
+    {
+        name: "26. Mesmo arquivo, Confluence Flow direto (test_confluence_transitive.js)",
+        file: "experiments/toys/test_confluence_transitive.js",
+        branchMap: { "L": [3], "R": [4] },
+        mode: "confluent",
+        description: "Sem propagação, x e y são escritos pela Base e a confluência em z não é vista"
     }
 ];
 
@@ -165,6 +193,7 @@ for (const t of selectedTests) {
     let output = "";
     let oaFound = 0;
     let dfFound = 0;
+    let cfFound = 0;
     let success = true;
 
     try {
@@ -179,6 +208,8 @@ for (const t of selectedTests) {
 
         if (oaMatch) oaFound = parseInt(oaMatch[1], 10);
         if (dfMatch) dfFound = parseInt(dfMatch[1], 10);
+        const cfMatch = output.match(/Conflitos de Confluence Flow:\s*(\d+)/);
+        if (cfMatch) cfFound = parseInt(cfMatch[1], 10);
     } catch (e) {
         success = false;
         executionErrors++;
@@ -191,6 +222,8 @@ for (const t of selectedTests) {
         success,
         oaFound,
         dfFound,
+        cfFound,
+        mode: t.mode,
         description: t.description,
         output: output
     });
@@ -202,7 +235,7 @@ console.log("-------------------------------------------------------------------
 results.forEach(r => {
     const statusIcon = r.success ? "✔" : "✖ ERRO DE EXECUÇÃO";
     console.log(`${statusIcon} ${r.name}`);
-    console.log(`   • Conflitos Detectados: Overriding Assignment (OA): ${r.oaFound} | Data Flow (DF): ${r.dfFound}`);
+    console.log(`   • Conflitos Detectados: Overriding Assignment (OA): ${r.oaFound} | Data Flow (DF): ${r.dfFound}${r.mode && r.mode.indexOf('confluent') === 0 ? ` | Confluence Flow (CF): ${r.cfFound}` : ''}`);
     console.log(`   • Descrição: ${r.description}\n`);
 
     if (selectedTests.length === 1) {
