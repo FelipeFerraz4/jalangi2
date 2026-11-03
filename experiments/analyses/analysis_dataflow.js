@@ -55,10 +55,24 @@
         "R": {}
     };
 
-    // --- ESTADO DO DATA FLOW (LAST WRITE TABLE) ---
-    // Guarda o último escritor de cada elemento de estado:
-    // lastWrite[target] = { branch: "L", line: 23 }
-    var lastWrite = {};
+    // --- ESTADO DO DATA FLOW ---
+    // origins[target] = lista de { branch, line } que produziram o valor atual do elemento de estado.
+    // No modo padrão (equivalente à ReachDefinition) é só o último escritor, e a Base limpa a lista.
+    // No modo "tainted" a lista também carrega as origens dos valores lidos para produzi-lo,
+    // o que torna o fluxo transitivo (Santos et al., 2023): x -> y -> uso de y.
+    var origins = {};
+
+    // Modo: DATAFLOW_MODE=tainted liga a propagação transitiva
+    var taintMode = false;
+    if (typeof process !== 'undefined' && process.env && process.env.DATAFLOW_MODE) {
+        taintMode = String(process.env.DATAFLOW_MODE).toLowerCase() === 'tainted';
+    }
+
+    // Modo tainted: origens lidas na expressão em andamento, ainda não atribuídas a nenhum alvo.
+    // A pilha guarda as da função chamadora enquanto a chamada executa.
+    var pending = [];
+    var pendingStack = [];
+    var entryTaint = [];
 
     // Rótulos legíveis dos alvos (a chave interna usa ids da memória sombra)
     var labels = {};
@@ -72,7 +86,7 @@
 
     var detectedConflicts = {
         overridingAssignments: [],
-        dataFlows: []
+        dataFlows: [], dataFlowPairs: []
     };
 
     // Identificador único para instâncias de objetos em memória
@@ -170,6 +184,20 @@
     var ARRAY_MUTATORS = ["push", "pop", "unshift", "shift", "splice", "fill", "copyWithin", "reverse", "sort"]
         .map(function (name) { return Array.prototype[name]; });
 
+    // Modo tainted: a análise do Java trata um array como um único elemento de estado, então
+    // escrever em arr[i] contamina também a leitura de arr[j]. Além do índice, guarda-se o array inteiro.
+    function wholeArrayTarget(base) {
+        return Array.isArray(base) ? fieldTarget(base, '[*]', false) : undefined;
+    }
+
+    function writeField(base, offset, line, branch, val) {
+        handleWrite(fieldTarget(base, offset, false), line, branch, val);
+        var whole = taintMode ? wholeArrayTarget(base) : undefined;
+        if (whole && branch !== "Base") {
+            origins[whole] = mergeOrigins(origins[whole] || [], [{ branch: branch, line: line }]);
+        }
+    }
+
     function range(from, to) {
         var r = [];
         for (var i = from; i < to; i++) r.push(i);
@@ -240,6 +268,15 @@
         return labels[target] || target;
     }
 
+    function mergeOrigins(a, b) {
+        var result = a.slice();
+        b.forEach(function (o) {
+            var exists = result.some(function (r) { return r.branch === o.branch && r.line === o.line; });
+            if (!exists) result.push(o);
+        });
+        return result;
+    }
+
     // --- LÓGICA CENTRAL DE ESCRITA (PRODUTOR) ---
     function handleWrite(target, line, branch, val) {
         if (!target || target === 'undefined' || target === 'null') return;
@@ -261,26 +298,27 @@
             assignments[branch][target] = { line: line, val: val };
 
             // [REGRA DATA FLOW: Registro de Escrita do Produtor]
-            lastWrite[target] = { branch: branch, line: line };
+            origins[target] = mergeOrigins([{ branch: branch, line: line }], taintMode ? pending : []);
             console.log(`[ESCRITA] '${label(target)}' modificado pela branch '${branch}' na linha ${line}`);
         } else {
             // [OPERAÇÃO DE KILL PELA BASE]
             // A Base sobrescreve o estado, limpando o rastro de mutações concorrentes
             delete assignments["L"][target];
             delete assignments["R"][target];
-            lastWrite[target] = { branch: "Base", line: line };
+            // No modo tainted a Base só limpa o estado se o valor novo não vem de um valor contaminado
+            origins[target] = taintMode ? pending.slice() : [];
         }
+        if (taintMode) pending = [];
     }
 
     // --- PASSAGEM DE PARÂMETROS (PRODUTOR - DATA FLOW) ---
     // Ligar um argumento ao parâmetro produz um valor na branch do ponto de chamada. Conta apenas
     // para o Data Flow: o OA considera atribuições explícitas no código (Moraes et al., 2024).
     function handleParameterBinding(target, line, branch) {
+        var produced = branch !== "Base" ? [{ branch: branch, line: line }] : [];
+        origins[target] = mergeOrigins(produced, taintMode ? entryTaint : []);
         if (branch !== "Base") {
-            lastWrite[target] = { branch: branch, line: line };
             console.log(`[PARÂMETRO] '${label(target)}' recebe valor da branch '${branch}' (chamada na linha ${line})`);
-        } else {
-            lastWrite[target] = { branch: "Base", line: line };
         }
     }
 
@@ -288,32 +326,49 @@
     function handleRead(target, line, readingBranch) {
         if (!target || target === 'undefined' || target === 'null') return;
 
+        var produced = origins[target] || [];
+
         // [REGRA DATA FLOW: Consumo Inter-Branch]
-        if (readingBranch !== "Base" && lastWrite[target]) {
-            var writingBranch = lastWrite[target].branch;
+        if (readingBranch !== "Base") {
+            produced.forEach(function (origin) {
+                // Se o estado foi produzido por uma branch concorrente (L -> R ou R -> L):
+                if (origin.branch !== readingBranch) {
+                    var dfMsg = `[CONFLITO DATA FLOW] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${origin.branch}' (linha ${origin.line})!`;
 
-            // Se o estado foi produzido por uma branch concorrente (L -> R ou R -> L):
-            if (writingBranch !== "Base" && writingBranch !== readingBranch) {
-                var dfMsg = `[CONFLITO DATA FLOW] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${writingBranch}' (linha ${lastWrite[target].line})!`;
-
-                if (detectedConflicts.dataFlows.indexOf(dfMsg) === -1) {
-                    detectedConflicts.dataFlows.push(dfMsg);
-                    console.log(`\n⚡ ${dfMsg}`);
-                    console.log(`   └─> Risco Semântico: Branch '${readingBranch}' está consumindo estado mutado concorrentemente por '${writingBranch}'.\n`);
+                    // Um conflito é o par (linha que produz, linha que consome), como o par source/sink do Java:
+                    // vários elementos de estado entre as mesmas duas linhas contam uma vez
+                    var pair = origin.branch + '@' + origin.line + '->' + readingBranch + '@' + line;
+                    if (detectedConflicts.dataFlowPairs.indexOf(pair) === -1) {
+                        detectedConflicts.dataFlowPairs.push(pair);
+                        detectedConflicts.dataFlows.push(dfMsg);
+                        console.log(`\n⚡ ${dfMsg}`);
+                        console.log(`   └─> Risco Semântico: Branch '${readingBranch}' está consumindo estado mutado concorrentemente por '${origin.branch}'.\n`);
+                    }
                 }
-            }
+            });
         }
+
+        // O valor lido leva suas origens para o que for atribuído com ele
+        if (taintMode) pending = mergeOrigins(pending, produced);
     }
 
     J$.analysis = {
+        // Liga (true) ou desliga a propagação transitiva do modo tainted
+        setTaintMode: function (enabled) {
+            taintMode = !!enabled;
+        },
+
         // Função para configurar programaticamente as linhas das branches
         setBranches: function (map) {
             loadBranchMap(map);
             assignments = { "L": {}, "R": {} };
-            lastWrite = {};
+            origins = {};
+            pending = [];
+            pendingStack = [];
+            entryTaint = [];
             callStack = [];
             functionDepth = 0;
-            detectedConflicts = { overridingAssignments: [], dataFlows: [] };
+            detectedConflicts = { overridingAssignments: [], dataFlows: [], dataFlowPairs: [] };
         },
 
         // ==============================================================
@@ -325,7 +380,7 @@
                 var line = getLines(iid)[0];
                 var branch = effectiveBranch(iid);
                 inPlaceArrayWrites(f, base, args).forEach(function (w) {
-                    handleWrite(fieldTarget(base, w.offset, false), line, branch, w.val);
+                    writeField(base, w.offset, line, branch, w.val);
                 });
             }
             // A branch da chamada é a da linha onde ela termina (Moraes et al., 2024)
@@ -343,6 +398,12 @@
         // instrumentadas permite descartar as chamadas que ficaram pendentes na pilha.
         functionEnter: function (iid, f, dis, args) {
             functionDepth++;
+            if (taintMode) {
+                // O que foi lido nos argumentos contamina os parâmetros; o corpo começa limpo
+                pendingStack.push(pending);
+                entryTaint = pending;
+                pending = [];
+            }
         },
 
         functionExit: function (iid, returnVal, wrappedExceptionVal) {
@@ -356,6 +417,20 @@
                 callStack.pop();
             }
             functionDepth--;
+            if (taintMode) {
+                // O valor devolvido leva as origens lidas no return para a expressão do chamador
+                pending = mergeOrigins(pendingStack.pop() || [], pending);
+            }
+        },
+
+        // Fim de um comando: o que foi lido não alimenta mais nenhuma atribuição
+        endExpression: function (iid) {
+            if (taintMode) pending = [];
+        },
+
+        conditional: function (iid, result) {
+            if (taintMode) pending = [];
+            return { result: result };
         },
 
         // Parâmetros: o valor vem da chamada que está sendo executada, empilhada pelo chamador
@@ -389,7 +464,7 @@
         // ==============================================================
         putFieldPre: function (iid, base, offset, val, isComputed, isOpAssign) {
             if (!isInternal(base, offset)) {
-                handleWrite(fieldTarget(base, offset, false), getLines(iid)[0], effectiveBranch(iid, val), val);
+                writeField(base, offset, getLines(iid)[0], effectiveBranch(iid, val), val);
             }
             return { base: base, offset: offset, val: val, skip: false };
         },
@@ -399,7 +474,10 @@
         // ==============================================================
         getField: function (iid, base, offset, val, isComputed, isOpAssign, isMethodCall) {
             if (!isInternal(base, offset)) {
-                handleRead(fieldTarget(base, offset, true), getLines(iid)[0], effectiveBranch(iid));
+                var line = getLines(iid)[0], readingBranch = effectiveBranch(iid);
+                handleRead(fieldTarget(base, offset, true), line, readingBranch);
+                var whole = taintMode ? wholeArrayTarget(base) : undefined;
+                if (whole) handleRead(whole, line, readingBranch);
             }
             return { result: val };
         },

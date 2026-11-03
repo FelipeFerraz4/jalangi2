@@ -56,6 +56,10 @@ Sem `SMemory` a análise recai em nome (variáveis) e `WeakMap` (objetos), mas e
   * **Leituras não alteram o OA**: só escritas entram no algoritmo.
 * **Interprocedural (pilha de chamadas):** cada chamada empilha a branch da linha onde termina. Uma operação cuja própria linha é da Base é atribuída à branch da chamada mais recente que tenha uma. Vale para escritas (OA e DF) e leituras (DF).
   * Se uma função termina por exceção, o `invokeFun` não é chamado. A análise acompanha a profundidade de funções (`functionEnter`/`functionExit`) e descarta as chamadas pendentes dessa função e a que a invocou.
+* **Modos de Data Flow** (variável `DATAFLOW_MODE`):
+  * **padrão (`reach`):** fluxo direto, equivalente à ReachDefinition do `conflict-static-analysis`. Uma leitura só conta se o último escritor do elemento foi a outra branch.
+  * **`tainted`:** fluxo transitivo, como o Tainted. Cada leitura leva as origens do valor lido para o que for atribuído na mesma expressão (`y = x + 1` faz `y` herdar as origens de `x`, mesmo escrito pela Base). A Base só interrompe a contaminação se atribuir um valor que não vem de um valor contaminado. As origens passam por parâmetros e pelo `return`. Um array é um único elemento de estado: escrever em `arr[4]` contamina a leitura de `arr[3]`.
+  * Um conflito é o **par** (linha que produz, linha que consome), como o par source/sink do Java: vários elementos de estado entre as mesmas duas linhas contam uma vez.
 * **Passagem de parâmetros:** ao entrar numa função, cada parâmetro recebe valor da branch do ponto de chamada (`declare` com `isArgument`). Conta como produtor só para o DF; o OA considera apenas atribuições explícitas no código (Moraes et al., 2024), então a ligação do argumento nunca gera OA.
 * **Atribuição de função:** `X.prototype.foo = function () {...}` conta só a primeira linha da atribuição. O corpo é analisado linha a linha quando executa; se contasse inteiro, a definição seria atribuída à branch de qualquer linha dele e uma chamada `m.foo()` acusaria DF sobre o próprio método.
 * **Métodos de array in-place** (`push`, `pop`, `shift`, `unshift`, `splice`, `fill`, `copyWithin`, `reverse`, `sort`): cada posição afetada é uma escrita no array. Para a comparação de valores, `push` e `fill` usam o valor inserido; nos demais o valor é tratado como desconhecido (sempre diferente).
@@ -89,6 +93,10 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 | 16 | `test_dataflow_param.js` | `[6]` / `[2]` | 0 | 1 |
 | 17 | `test_dataflow_param_safe.js` | `[]` / `[2]` | 0 | 0 |
 | 18 | `test_dataflow_param_reassign.js` | `[6]` / `[2]` | 0 | 2 |
+| 19 | `test_taint_transitive.js` (modo tainted) | `[2]` / `[4]` | 0 | 1 |
+| 20 | `test_taint_transitive.js` (modo padrão) | `[2]` / `[4]` | 0 | 0 |
+| 21 | `test_taint_function.js` (modo tainted) | `[5]` / `[7]` | 0 | 1 |
+| 22 | `test_taint_kill.js` (modo tainted) | `[1]` / `[4]` | 0 | 0 |
 
 ### 1. `example.js` — Overriding Assignment original (Amanda Moraes, SBLP 2024)
 * **Objetivo:** regressão do algoritmo de OA original.
@@ -167,6 +175,12 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 * **DF = 2:** (1) `R` lê o `n` que veio de `L`; (2) o `return n`, executado a mando da chamada de `L`, lê o `n` que `R` reatribuiu.
 * **OA = 0:** a ligação do argumento ao parâmetro não é uma atribuição explícita no código.
 
+### 19 a 22. Propagação transitiva (modo tainted)
+* **19:** `L` define `origem` (linha 2), a Base deriva `derivado = origem + 1` e `R` lê `derivado` (linha 4). O valor de `L` chega a `R` passando por uma escrita da Base.
+* **20:** o mesmo arquivo no modo padrão. Como `R` lê um valor escrito pela Base, nada é detectado. A diferença entre 19 e 20 é a diferença entre Tainted e ReachDefinition.
+* **21:** o valor de `L` passa por um parâmetro e por um `return` antes de `R` o ler.
+* **22:** a Base reatribui `derivado = 0`, uma constante, antes de `R` ler. A contaminação é interrompida e não há conflito.
+
 ---
 
 ## 🚀 Como executar
@@ -231,7 +245,7 @@ Os testes de DF do [`spgroup/conflict-static-analysis`](https://github.com/spgro
 node experiments/run_df_suite.js
 ```
 
-Resultado atual: ReachDefinition, 3 de 3. Tainted, 2 de 3 em presença de conflito (a análise do Java é transitiva e trata arrays como um todo; a nossa só vê fluxo direto e trata cada índice como independente). Os 6 testes Confluent e o Containment não são executados. Detalhes e a tabela em [df_samples/README.md](df_samples/README.md).
+Resultado atual: ReachDefinition, 3 de 3, e Tainted, 3 de 3, com a contagem exata de conflitos em todos os 6 testes executados. Os testes de Tainted rodam no modo `DATAFLOW_MODE=tainted`. Os 6 testes Confluent e o Containment não são executados. Detalhes e a tabela em [df_samples/README.md](df_samples/README.md).
 
 ---
 
@@ -243,5 +257,6 @@ Resultado atual: ReachDefinition, 3 de 3. Tainted, 2 de 3 em presença de confli
 * **Métodos de array que só leem** (`slice`, `join`, `indexOf`, `map`...) não geram leituras para o DF. Só as escritas dos métodos in-place são tratadas.
 * `sort` executa o comparador uma vez a mais, em uma cópia, para descobrir quais posições mudam.
 * **Confluence Flow e Control Dependence** ainda não foram implementados.
-* **Sem propagação transitiva (Tainted):** se `x` define `y` e a branch R usa `y`, a análise só acusa DF se o uso for de `x`.
+* **Modo tainted é aproximado:** a contaminação segue as leituras da expressão corrente (limpa em `endExpression` e `conditional`). Uma atribuição em cadeia (`a = b = c`) só leva as origens para o primeiro alvo, e todos os parâmetros de uma chamada recebem a união das origens dos argumentos.
+* **Sem dependência de controle:** um `if` cuja condição leu um valor contaminado não contamina o que é atribuído dentro dele.
 * A detecção depende de o script exercitar as linhas relevantes (análise dinâmica).

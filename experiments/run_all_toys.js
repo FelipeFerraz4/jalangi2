@@ -114,6 +114,33 @@ const tests = [
         file: "experiments/toys/test_dataflow_param_reassign.js",
         branchMap: { "L": [6], "R": [2] },
         description: "R lê e reatribui o parâmetro de L (DF), e o return, executado a mando de L, lê o valor de R (DF); sem OA"
+    },
+    {
+        name: "19. Fluxo transitivo, modo tainted (test_taint_transitive.js)",
+        file: "experiments/toys/test_taint_transitive.js",
+        branchMap: { "L": [2], "R": [4] },
+        mode: "tainted",
+        description: "L define origem, a Base deriva derivado dela e R lê derivado: x -> y -> uso"
+    },
+    {
+        name: "20. Mesmo fluxo transitivo, modo padrão (test_taint_transitive.js)",
+        file: "experiments/toys/test_taint_transitive.js",
+        branchMap: { "L": [2], "R": [4] },
+        description: "Sem propagação, R lê um valor escrito pela Base e nada é detectado (ReachDefinition)"
+    },
+    {
+        name: "21. Transitivo por função, modo tainted (test_taint_function.js)",
+        file: "experiments/toys/test_taint_function.js",
+        branchMap: { "L": [5], "R": [7] },
+        mode: "tainted",
+        description: "O valor de L passa por parâmetro e retorno antes de R lê-lo"
+    },
+    {
+        name: "22. Base interrompe a contaminação (test_taint_kill.js)",
+        file: "experiments/toys/test_taint_kill.js",
+        branchMap: { "L": [1], "R": [4] },
+        mode: "tainted",
+        description: "A Base reatribui derivado com uma constante antes de R ler: sem conflito"
     }
 ];
 
@@ -142,7 +169,8 @@ for (const t of selectedTests) {
 
     try {
         const env = Object.assign({}, process.env, {
-            BRANCH_MAP: JSON.stringify(t.branchMap)
+            BRANCH_MAP: JSON.stringify(t.branchMap),
+            DATAFLOW_MODE: t.mode || 'reach'
         });
         output = execSync(cmd, { cwd: rootDir, encoding: 'utf-8', env: env });
         

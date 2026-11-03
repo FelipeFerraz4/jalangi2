@@ -9,6 +9,9 @@
 // As linhas do Java são convertidas para as do JavaScript (campo `js`), e o mapa L/R é montado
 // com elas. Como no OA (run_oa_suite.js), compara-se a presença de conflito com o esperado.
 //
+// Os testes de ReachDefinition rodam no modo padrão (fluxo direto); os de Tainted, com DATAFLOW_MODE=tainted
+// (propagação transitiva, e array tratado como um único elemento de estado).
+//
 // Uso: node experiments/run_df_suite.js [filtro]   (filtra por nome do teste ou da sample)
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -102,7 +105,7 @@ for (const c of selected) {
             '--analysis', 'src/js/runtime/SMemory.js',
             '--analysis', 'experiments/analyses/analysis_dataflow.js',
             file
-        ], { cwd: rootDir, encoding: 'utf-8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { BRANCH_MAP: JSON.stringify(branchMap) }) });
+        ], { cwd: rootDir, encoding: 'utf-8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { BRANCH_MAP: JSON.stringify(branchMap), DATAFLOW_MODE: c.analysis === 'Tainted' ? 'tainted' : 'reach' }) });
     } catch (e) {
         error = e.message.split('\n')[0];
         output = (e.stdout || '') + (e.stderr || '');

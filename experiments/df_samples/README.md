@@ -51,12 +51,12 @@ node experiments/run_df_suite.js IntraproceduralDataFlow  # filtra e mostra o lo
 | ReachDefinitionAnalysisOneConflictTest | ReachDefinition | 1 | 1 | ✔ |
 | ReachDefinitionAnalysisTransitiveSourceNoConflictTest | ReachDefinition | 0 | 0 | ✔ |
 | ReachDefinitionAnalysisZeroConflictTest | ReachDefinition | 0 | 0 | ✔ |
-| TaintedAnalysisOneConflictTest | Tainted | 1 | 0 | ✖ fluxo transitivo |
-| ArrayTaintedAnalysisOneConflictTest | Tainted | 2 | 1 | ✔ presença; contagem difere |
-| ArrayTaintedAnalysisOneConflictIndirectTest | Tainted | 2 | 0 | ✖ array como um todo |
+| TaintedAnalysisOneConflictTest | Tainted | 1 | 1 | ✔ |
+| ArrayTaintedAnalysisOneConflictTest | Tainted | 2 | 2 | ✔ |
+| ArrayTaintedAnalysisOneConflictIndirectTest | Tainted | 2 | 2 | ✔ |
 | 6 testes Confluent* | Confluent | | | não executados: Confluence Flow não implementado |
 | ContainmentConflictTest | DFPInterProcedural | | | não executado: sample de OA (`ioa`) |
 
 * **ReachDefinition (3 de 3):** é a análise que a nossa equivale (definição que alcança o uso). Os três batem.
-* **Tainted (2 de 3 em presença):** a análise do Java é transitiva (se `x` contamina `y`, o uso de `y` conta). A nossa só vê o fluxo direto. Em `ArrayIndirectDataFlowSample` ela também trata o array como um todo, e nós tratamos cada índice como estado independente, como no OA.
-* As divergências do Tainted são diferenças de **definição**, não erros de implementação. Implementar propagação transitiva é o passo seguinte, se quisermos igualar o Tainted.
+* **Tainted (3 de 3, contagem exata):** os testes rodam com `DATAFLOW_MODE=tainted`. A análise do Java é transitiva (se `x` contamina `y`, o uso de `y` conta) e trata o array como um único elemento; o modo `tainted` faz o mesmo. No modo padrão (fluxo direto) estes três testes divergiam em 2 casos: `TaintedAnalysisOneConflictTest` (0 detectado) e `ArrayTaintedAnalysisOneConflictIndirectTest` (0 detectado).
+* Os acertos dependem de a análise ser a mesma que o Java: com poucos casos e gabarito vindo de asserções comentadas, isto mostra consistência com o `conflict-static-analysis`, não precisão em código real.
