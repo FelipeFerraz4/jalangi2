@@ -10,7 +10,7 @@ node experiments/run_validation.js     # OA (72 casos do SCAz.js) + DF/CF (13 te
 experiments/
 ├── analyses/
 │   └── analysis_dataflow.js   # OA + Data Flow + Confluence Flow (motor estendido)
-├── toys/                      # 24 programas sintéticos, numerados na ordem em que run_all_toys.js os executa
+├── toys/                      # 28 programas sintéticos, numerados na ordem em que run_all_toys.js os executa
 ├── lib/analysis.js            # executa a análise sobre um arquivo (usado pelos runners)
 ├── tools/line-map.js          # gerador do mapa L/R de um merge a partir de base/left/right/merge
 ├── tools/test-line-map.js     # autoteste do gerador (cenários sintéticos)
@@ -115,6 +115,10 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 | 22 | `22_test_confluence_direct.js` | `[3]` / `[4]` | 0 | CF 1 |
 | 23 | `23_test_confluence_separate.js` | `[3]` / `[4]` | 0 | CF 0 |
 | 24 | `24_test_confluence_transitive.js` | `[3]` / `[4]` | 0 | CF 1 |
+| 25 | `25_test_confluence_and.js` | `[3]` / `[4]` | 0 | CF 0 |
+| 26 | `26_test_taint_param_split.js` | `[6]` / `[2]` | 0 | 1 (transitivo) |
+| 27 | `27_test_oa_two_targets.js` | `[3,5]` / `[4,6]` | 2 | 1 |
+| 28 | `28_test_call_multiline.js` | `[6]` / `[8]` | 0 | 0 |
 
 ### 1. `01_example.js` — Overriding Assignment original (Amanda Moraes, SBLP 2024)
 * **Objetivo:** regressão do algoritmo de OA original.
@@ -202,6 +206,13 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 * **22:** `L` escreve `a`, `R` escreve `b`, e um comando da Base (`soma = a + b`) usa os dois. É o ponto de confluência direto.
 * **23:** a Base usa `a` num comando e `b` em outro. Os valores nunca se encontram, então não há confluência.
 * **24:** `x` e `y` derivam de `a` e `b` na Base e se encontram em `z = x + y`. Os valores não vêm direto das escritas (a Base escreveu `x` e `y`), e mesmo assim a confluência é detectada.
+
+### 25 a 28. Limites conhecidos
+Estes toys documentam o comportamento atual em pontos onde a análise se afasta do que se esperaria intuitivamente.
+* **25:** em `if (a && b)`, com `a` de `L` e `b` de `R`, não há CF. O Jalangi chama `conditional` para o lado esquerdo do `&&`, e isso encerra o comando antes de `b` ser lido. O mesmo vale para `||`, `?:` e para `c = a && b`, enquanto `if (a + b)` gera CF. É também como o Jimple do Java separa essas expressões, em desvios distintos.
+* **26:** todas as origens lidas nos argumentos de uma chamada vão para todos os parâmetros. Em `segundo(a, b)`, só `p` recebe o valor de `L`, mas `R` lê `q` e é reportado um DF transitivo (falso positivo).
+* **27:** OA e DF deduplicam de jeitos diferentes. Duas escritas na mesma linha de `L` (`o.x`, `p.x`) sobrescritas na mesma linha de `R` contam **2 OA**, porque o OA conta por alvo. Duas leituras de alvos de `L` na mesma linha de `R` contam **1 DF**, porque o DF conta por par de linhas.
+* **28:** a branch de uma chamada é a da linha onde ela termina. `guardar(` … `1` … `)` com só a linha do argumento em `L` é uma chamada da Base, então a escrita de `g` dentro da função não é de `L` e `R` não tem DF ao ler `g`.
 
 ---
 

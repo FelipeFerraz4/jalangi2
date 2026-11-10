@@ -148,6 +148,30 @@ const tests = [
         file: "experiments/toys/24_test_confluence_transitive.js",
         branchMap: { "L": [3], "R": [4] },
         description: "Os valores de L e R passam por variáveis da Base antes de se encontrarem em z"
+    },
+    {
+        name: "25. Confluência em && (25_test_confluence_and.js)",
+        file: "experiments/toys/25_test_confluence_and.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "if (a && b) com a de L e b de R: o conditional do && separa as leituras e não há CF (limitação)"
+    },
+    {
+        name: "26. Argumentos contaminam todos os parâmetros (26_test_taint_param_split.js)",
+        file: "experiments/toys/26_test_taint_param_split.js",
+        branchMap: { "L": [6], "R": [2] },
+        description: "Só p recebe o valor de L, mas R lê q e é reportado DF transitivo (falso positivo)"
+    },
+    {
+        name: "27. OA por alvo, DF por par de linhas (27_test_oa_two_targets.js)",
+        file: "experiments/toys/27_test_oa_two_targets.js",
+        branchMap: { "L": [3, 5], "R": [4, 6] },
+        description: "Dois alvos entre as mesmas linhas: OA conta 2, DF conta 1"
+    },
+    {
+        name: "28. Chamada em várias linhas (28_test_call_multiline.js)",
+        file: "experiments/toys/28_test_call_multiline.js",
+        branchMap: { "L": [6], "R": [8] },
+        description: "L altera o argumento no meio da chamada, que termina numa linha da Base: a chamada não é de L e não há DF"
     }
 ];
 
