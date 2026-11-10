@@ -1,10 +1,12 @@
 (function () {
     // =========================================================================
-    // MOTOR DE ANÁLISE DINÂMICA DE DATA FLOW & OVERRIDING ASSIGNMENT (Jalangi2)
+    // MOTOR DE ANÁLISE DINÂMICA DE MERGE (Jalangi2): OA, DATA FLOW E CONFLUENCE FLOW
     // =========================================================================
-    // Expansão da técnica de Amanda Moraes (SBLP 2024) para detecção de 
-    // Data Flow (Def-Use inter-branch) conforme formalizado por 
-    // Galileu Santos, Paulo Borba, Rodrigo Bonifácio e Matheus Barbosa (2023/2024).
+    // Expansão da técnica de Amanda Moraes (SBLP 2024) para detecção de Data Flow e
+    // Confluence Flow conforme formalizados por Santos, Borba, Bonifácio e Barbosa (2023).
+    // Uma única execução detecta os três tipos de interferência. Data Flow e Confluence Flow
+    // saem separados em diretos (o valor veio direto da escrita) e transitivos (o valor
+    // passou por outros valores antes de chegar ao uso).
     // Suporta variáveis escalares, propriedades de objetos e índices de arrays.
     //
     // Execução: encadeada com ChainedAnalyses.js e SMemory.js (memória sombra),
@@ -55,10 +57,19 @@
         "R": {}
     };
 
-    // --- ESTADO DO DATA FLOW (LAST WRITE TABLE) ---
-    // Guarda o último escritor de cada elemento de estado:
-    // lastWrite[target] = { branch: "L", line: 23 }
-    var lastWrite = {};
+    // --- ESTADO DO DATA FLOW ---
+    // origins[target] = lista de origens do valor atual do elemento de estado. Cada origem é
+    //   { branch, line, derived, viaParam }
+    //   derived:  false se a escrita da branch produziu o valor; true se ele chegou por outros valores
+    //             (x -> y -> uso de y), que é o fluxo transitivo (Tainted)
+    //   viaParam: o valor entrou na função por parâmetro
+    var origins = {};
+
+    // Origens lidas na expressão em andamento, ainda não atribuídas a nenhum alvo.
+    // A pilha guarda as da função chamadora enquanto a chamada executa.
+    var pending = [];
+    var pendingStack = [];
+    var entryTaint = [];
 
     // Rótulos legíveis dos alvos (a chave interna usa ids da memória sombra)
     var labels = {};
@@ -70,14 +81,14 @@
     var callStack = [];
     var functionDepth = 0;
 
-    var detectedConflicts = {
-        overridingAssignments: [],
-        dataFlows: []
-    };
-
-    // Identificador único para instâncias de objetos em memória
-    var objectIds = (typeof WeakMap !== 'undefined') ? new WeakMap() : null;
-    var nextObjectId = 1;
+    function emptyReport() {
+        return {
+            overridingAssignments: [],
+            dataFlowsDirect: [], dataFlowsTransitive: [],           // pares "L@linha->R@linha"
+            confluencesDirect: [], confluencesTransitive: []        // trios "linhaL|linhaR@linhaBase"
+        };
+    }
+    var detectedConflicts = emptyReport();
 
     function smemory() {
         return (typeof J$ !== 'undefined') ? J$.smemory : undefined;
@@ -240,9 +251,59 @@
         return labels[target] || target;
     }
 
+    function originKey(o) {
+        return o.branch + '|' + o.line + '|' + !!o.derived + '|' + !!o.viaParam;
+    }
+
+    function mergeOrigins(a, b) {
+        var result = a.slice();
+        var seen = {};
+        result.forEach(function (o) { seen[originKey(o)] = true; });
+        b.forEach(function (o) {
+            if (!seen[originKey(o)]) {
+                seen[originKey(o)] = true;
+                result.push(o);
+            }
+        });
+        return result;
+    }
+
+    // O valor passou por outro valor: deixa de ser direto
+    function asDerived(list) {
+        return list.map(function (o) {
+            return { branch: o.branch, line: o.line, derived: true, viaParam: o.viaParam };
+        });
+    }
+
+    // --- CONFLUENCE FLOW ---
+    // Um comando da Base que usa, ao mesmo tempo, valores produzidos por L e por R é um ponto de
+    // confluência: o par (linha de L, linha de R) chega ao mesmo uso sem que nenhuma das duas
+    // contribuições o tenha escrito (Santos et al., 2023). Conta-se o trio (L, R, comando).
+    // É direto quando os dois valores vieram direto das escritas, e transitivo quando algum passou
+    // por outro valor.
+    function reportConfluence(line) {
+        // Valores que entraram por parâmetro não contam dentro da função: a confluência é do corpo onde os
+        // dois valores se encontram, e o ponto da chamada já a reporta (cada corpo é analisado sozinho no Java)
+        var sources = pending.filter(function (o) { return o.branch === "L" && !o.viaParam; });
+        var sinks = pending.filter(function (o) { return o.branch === "R" && !o.viaParam; });
+        sources.forEach(function (source) {
+            sinks.forEach(function (sink) {
+                var key = source.line + '|' + sink.line + '@' + line;
+                var direct = !source.derived && !sink.derived;
+                var list = direct ? detectedConflicts.confluencesDirect : detectedConflicts.confluencesTransitive;
+                if (list.indexOf(key) === -1) {
+                    list.push(key);
+                    console.log(`\n🔀 [CONFLITO CONFLUENCE${direct ? '' : ' TRANSITIVO'}] Os valores produzidos por 'L' (linha ${source.line}) e por 'R' (linha ${sink.line}) confluem no comando da Base na linha ${line}!\n`);
+                }
+            });
+        });
+    }
+
     // --- LÓGICA CENTRAL DE ESCRITA (PRODUTOR) ---
     function handleWrite(target, line, branch, val) {
         if (!target || target === 'undefined' || target === 'null') return;
+
+        if (branch === "Base") reportConfluence(line);
 
         if (branch !== "Base") {
             var otherBranch = branch === "L" ? "R" : "L";
@@ -261,26 +322,30 @@
             assignments[branch][target] = { line: line, val: val };
 
             // [REGRA DATA FLOW: Registro de Escrita do Produtor]
-            lastWrite[target] = { branch: branch, line: line };
+            // A escrita produz o valor diretamente; o que foi lido para calculá-lo chega de forma transitiva
+            origins[target] = mergeOrigins([{ branch: branch, line: line, derived: false }], asDerived(pending));
             console.log(`[ESCRITA] '${label(target)}' modificado pela branch '${branch}' na linha ${line}`);
         } else {
             // [OPERAÇÃO DE KILL PELA BASE]
-            // A Base sobrescreve o estado, limpando o rastro de mutações concorrentes
+            // A Base sobrescreve o estado: não sobra origem direta, só a dos valores lidos para calculá-lo
             delete assignments["L"][target];
             delete assignments["R"][target];
-            lastWrite[target] = { branch: "Base", line: line };
+            origins[target] = asDerived(pending);
         }
+        pending = [];
     }
 
     // --- PASSAGEM DE PARÂMETROS (PRODUTOR - DATA FLOW) ---
     // Ligar um argumento ao parâmetro produz um valor na branch do ponto de chamada. Conta apenas
     // para o Data Flow: o OA considera atribuições explícitas no código (Moraes et al., 2024).
+    // O que foi lido nos argumentos chega ao parâmetro de forma transitiva.
     function handleParameterBinding(target, line, branch) {
+        var produced = branch !== "Base" ? [{ branch: branch, line: line, derived: false }] : [];
+        origins[target] = mergeOrigins(produced, asDerived(entryTaint)).map(function (o) {
+            return { branch: o.branch, line: o.line, derived: o.derived, viaParam: true };
+        });
         if (branch !== "Base") {
-            lastWrite[target] = { branch: branch, line: line };
             console.log(`[PARÂMETRO] '${label(target)}' recebe valor da branch '${branch}' (chamada na linha ${line})`);
-        } else {
-            lastWrite[target] = { branch: "Base", line: line };
         }
     }
 
@@ -288,21 +353,28 @@
     function handleRead(target, line, readingBranch) {
         if (!target || target === 'undefined' || target === 'null') return;
 
+        var produced = origins[target] || [];
+
         // [REGRA DATA FLOW: Consumo Inter-Branch]
-        if (readingBranch !== "Base" && lastWrite[target]) {
-            var writingBranch = lastWrite[target].branch;
-
-            // Se o estado foi produzido por uma branch concorrente (L -> R ou R -> L):
-            if (writingBranch !== "Base" && writingBranch !== readingBranch) {
-                var dfMsg = `[CONFLITO DATA FLOW] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${writingBranch}' (linha ${lastWrite[target].line})!`;
-
-                if (detectedConflicts.dataFlows.indexOf(dfMsg) === -1) {
-                    detectedConflicts.dataFlows.push(dfMsg);
-                    console.log(`\n⚡ ${dfMsg}`);
-                    console.log(`   └─> Risco Semântico: Branch '${readingBranch}' está consumindo estado mutado concorrentemente por '${writingBranch}'.\n`);
+        if (readingBranch !== "Base") {
+            produced.forEach(function (origin) {
+                // Se o estado foi produzido por uma branch concorrente (L -> R ou R -> L):
+                if (origin.branch !== readingBranch) {
+                    // Um conflito é o par (linha que produz, linha que consome), como o par source/sink do Java:
+                    // vários elementos de estado entre as mesmas duas linhas contam uma vez
+                    var pair = origin.branch + '@' + origin.line + '->' + readingBranch + '@' + line;
+                    var list = origin.derived ? detectedConflicts.dataFlowsTransitive : detectedConflicts.dataFlowsDirect;
+                    if (list.indexOf(pair) === -1) {
+                        list.push(pair);
+                        console.log(`\n⚡ [CONFLITO DATA FLOW${origin.derived ? ' TRANSITIVO' : ''}] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${origin.branch}' (linha ${origin.line})!`);
+                        console.log(`   └─> Risco Semântico: Branch '${readingBranch}' está consumindo estado mutado concorrentemente por '${origin.branch}'.\n`);
+                    }
                 }
-            }
+            });
         }
+
+        // O valor lido leva suas origens para o que for atribuído com ele
+        pending = mergeOrigins(pending, produced);
     }
 
     J$.analysis = {
@@ -310,10 +382,13 @@
         setBranches: function (map) {
             loadBranchMap(map);
             assignments = { "L": {}, "R": {} };
-            lastWrite = {};
+            origins = {};
+            pending = [];
+            pendingStack = [];
+            entryTaint = [];
             callStack = [];
             functionDepth = 0;
-            detectedConflicts = { overridingAssignments: [], dataFlows: [] };
+            detectedConflicts = emptyReport();
         },
 
         // ==============================================================
@@ -343,6 +418,10 @@
         // instrumentadas permite descartar as chamadas que ficaram pendentes na pilha.
         functionEnter: function (iid, f, dis, args) {
             functionDepth++;
+            // O que foi lido nos argumentos contamina os parâmetros; o corpo começa limpo
+            pendingStack.push(pending);
+            entryTaint = pending;
+            pending = [];
         },
 
         functionExit: function (iid, returnVal, wrappedExceptionVal) {
@@ -356,6 +435,23 @@
                 callStack.pop();
             }
             functionDepth--;
+            // O valor devolvido leva as origens lidas no return para a expressão do chamador.
+            // De volta ao chamador, as origens voltam a valer no corpo dele
+            pending = mergeOrigins(pendingStack.pop() || [], pending.map(function (o) {
+                return { branch: o.branch, line: o.line, derived: o.derived };
+            }));
+        },
+
+        // Fim de um comando: o que foi lido não alimenta mais nenhuma atribuição
+        endExpression: function (iid) {
+            if (effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
+            pending = [];
+        },
+
+        conditional: function (iid, result) {
+            if (effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
+            pending = [];
+            return { result: result };
         },
 
         // Parâmetros: o valor vem da chamada que está sendo executada, empilhada pelo chamador
@@ -405,11 +501,28 @@
         },
 
         endExecution: function () {
+            // Um conflito transitivo só conta se o mesmo conflito não aparece também como direto
+            var onlyTransitive = function (transitive, direct) {
+                return transitive.filter(function (k) { return direct.indexOf(k) === -1; }).length;
+            };
+            var df = {
+                direct: detectedConflicts.dataFlowsDirect.length,
+                transitive: onlyTransitive(detectedConflicts.dataFlowsTransitive, detectedConflicts.dataFlowsDirect)
+            };
+            var cf = {
+                direct: detectedConflicts.confluencesDirect.length,
+                transitive: onlyTransitive(detectedConflicts.confluencesTransitive, detectedConflicts.confluencesDirect)
+            };
             console.log("\n==================================================");
             console.log("📊 RELATÓRIO FINAL DE ANÁLISE DINÂMICA DE MERGE");
             console.log(`   - Conflitos de Overriding Assignment (OA): ${detectedConflicts.overridingAssignments.length}`);
-            console.log(`   - Conflitos de Data Flow Inter-Branch:     ${detectedConflicts.dataFlows.length}`);
+            console.log(`   - Conflitos de Data Flow (DF):             ${df.direct + df.transitive}`);
+            console.log(`   - Conflitos de Confluence Flow (CF):       ${cf.direct + cf.transitive}`);
             console.log("==================================================");
+            // Os runners de teste comparam cada análise do Java com um recorte (direto ou direto + transitivo)
+            if (typeof process !== 'undefined' && process.env && process.env.ANALYSIS_DETAIL) {
+                console.log("DETALHE " + JSON.stringify({ dfDireto: df.direct, dfTransitivo: df.transitive, cfDireto: cf.direct, cfTransitivo: cf.transitive }));
+            }
         }
     };
 }());
