@@ -18,7 +18,8 @@
 //
 // Uso (um cenário):
 //   node experiments/tools/line-map.js <base.js> <left.js> <right.js> <merge.js> [--out mapa.json]
-// Uso (pacotes do dataset, um ZIP por projeto):
+// Uso (pacotes do dataset, um ZIP por projeto). Grava mapas/<amostra>.json (um arquivo) e
+// por-merge/<projeto>__<commit>.json (todos os arquivos do merge, no formato { files: {...} }):
 //   node experiments/tools/line-map.js --zip <pacote.zip>... --out-dir <pasta>
 //   node experiments/tools/line-map.js --versoes <pasta versoes/> --out-dir <pasta>
 const { spawnSync, execFileSync } = require('child_process');
@@ -115,7 +116,7 @@ function status(result) {
     return result.left === 0 ? 'sem-L' : 'sem-R';
 }
 
-module.exports = { buildLineMap, status, readLines, diffRanges };
+module.exports = { buildLineMap, status, readLines, diffRanges, mergeMaps };
 
 // ------------------------------------------------------------------------------
 // Linha de comando
@@ -149,8 +150,38 @@ function main(argv) {
     if (!out) console.log(JSON.stringify(result.map));
 }
 
+// Mapa de um merge inteiro, no formato por arquivo da análise ({ files: { caminho: mapa } }).
+// Entram todos os arquivos com alguma linha de L ou de R, inclusive os que só têm uma das duas:
+// L num arquivo e R em outro também podem interferir quando o programa roda.
+// O merge só é útil para a análise se tiver linhas das duas contribuições em algum arquivo.
+function mergeMaps(samples) {
+    const byMerge = new Map();
+    for (const s of samples) {
+        if (s.result.left === 0 && s.result.right === 0) continue;
+        const key = s.project + '\u0000' + s.mergeCommit;
+        if (!byMerge.has(key)) byMerge.set(key, { project: s.project, mergeCommit: s.mergeCommit, files: {}, left: 0, right: 0 });
+        const m = byMerge.get(key);
+        m.files[s.filePath] = s.result.map;
+        m.left += s.result.left;
+        m.right += s.result.right;
+    }
+    return [...byMerge.values()].map(m => ({
+        project: m.project,
+        mergeCommit: m.mergeCommit,
+        status: status(m),
+        map: { files: m.files }
+    }));
+}
+
+function mergeFileName(m) {
+    const safe = s => String(s).replace(/[^A-Za-z0-9._-]+/g, '_');
+    return `${safe(m.project)}__${safe(m.mergeCommit)}.json`;
+}
+
 function batch(zips, outDir) {
     fs.mkdirSync(path.join(outDir, 'mapas'), { recursive: true });
+    fs.mkdirSync(path.join(outDir, 'por-merge'), { recursive: true });
+    const samples = [];
     const rows = [['project', 'merge_commit', 'file_path', 'sample_id', 'merge_lines', 'left_lines', 'right_lines', 'both_lines', 'status']];
     for (const zip of zips) {
         const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'linemap-'));
@@ -164,6 +195,7 @@ function batch(zips, outDir) {
                 const result = buildLineMap({ base: path.join(dir, 'base.js'), left: path.join(dir, 'left.js'), right: path.join(dir, 'right.js'), merge: path.join(dir, 'merge.js') });
                 const st = status(result);
                 if (st === 'ok') fs.writeFileSync(path.join(outDir, 'mapas', `${id}.json`), JSON.stringify(result.map) + '\n');
+                samples.push({ project: meta.project, mergeCommit: meta['merge commit'], filePath: meta['file path'], result });
                 rows.push([meta.project, meta['merge commit'], meta['file path'], id, result.mergeLines, result.left, result.right, result.both, st]);
             }
         } finally {
@@ -176,6 +208,19 @@ function batch(zips, outDir) {
     const counts = {};
     rows.slice(1).forEach(r => { counts[r[8]] = (counts[r[8]] || 0) + 1; });
     console.log(`amostras: ${rows.length - 1}`, counts);
+
+    const merges = mergeMaps(samples);
+    const mergeRows = [['project', 'merge_commit', 'files', 'status', 'map_file']];
+    for (const m of merges) {
+        const name = m.status === 'ok' ? mergeFileName(m) : '';
+        if (name) fs.writeFileSync(path.join(outDir, 'por-merge', name), JSON.stringify(m.map) + '\n');
+        mergeRows.push([m.project, m.mergeCommit, Object.keys(m.map.files).length, m.status, name]);
+    }
+    const mergeCsv = mergeRows.map(r => r.map(c => /[",\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : c).join(',')).join('\n') + '\n';
+    fs.writeFileSync(path.join(outDir, 'mapa_merges.csv'), mergeCsv);
+    const mergeCounts = {};
+    merges.forEach(m => { mergeCounts[m.status] = (mergeCounts[m.status] || 0) + 1; });
+    console.log(`merges: ${merges.length}`, mergeCounts);
 }
 
 if (require.main === module) {

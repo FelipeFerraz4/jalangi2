@@ -172,6 +172,12 @@ const tests = [
         file: "experiments/toys/28_test_call_multiline.js",
         branchMap: { "L": [6], "R": [8] },
         description: "L altera o argumento no meio da chamada, que termina numa linha da Base: a chamada não é de L e não há DF"
+    },
+    {
+        name: "29. Vários arquivos (29_test_multifile.js)",
+        file: "experiments/toys/29_test_multifile.js",
+        branchMap: { "files": { "experiments/toys/29_test_multifile.js": { "L": [3], "R": [5] } } },
+        description: "Mapa por arquivo: as linhas 3 e 5 do módulo carregado continuam Base; só o DF de total"
     }
 ];
 

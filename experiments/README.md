@@ -10,7 +10,7 @@ node experiments/run_validation.js     # OA (72 casos do SCAz.js) + DF/CF (13 te
 experiments/
 ├── analyses/
 │   └── analysis_dataflow.js   # OA + Data Flow + Confluence Flow (motor estendido)
-├── toys/                      # 28 programas sintéticos, numerados na ordem em que run_all_toys.js os executa
+├── toys/                      # 29 programas sintéticos (o 29 tem um módulo em toys/29_lib/), numerados na ordem em que run_all_toys.js os executa
 ├── lib/analysis.js            # executa a análise sobre um arquivo (usado pelos runners)
 ├── tools/line-map.js          # gerador do mapa L/R de um merge a partir de base/left/right/merge
 ├── tools/test-line-map.js     # autoteste do gerador (cenários sintéticos)
@@ -36,7 +36,21 @@ A análise não conhece nenhum arquivo; o mapa é sempre injetado de fora. Ordem
 | `BRANCH_MAP_FILE` | Caminho de um arquivo JSON (qualquer um dos dois formatos abaixo) |
 | `J$.analysis.setBranches(map)` | Configuração programática (reinicia o estado) |
 
-Formatos aceitos: `{"L":[4],"R":[6,7]}` ou o do SCAz.js, `{"4":"L","6":"R","7":"R"}`. Sem mapa, nenhuma linha pertence a `L` ou `R` e nada é detectado.
+Formatos aceitos para as linhas de um arquivo: `{"L":[4],"R":[6,7]}` ou o do SCAz.js, `{"4":"L","6":"R","7":"R"}`. Sem mapa, nenhuma linha pertence a `L` ou `R` e nada é detectado.
+
+**Um arquivo só (mapa sem arquivo):** o mapa vale apenas para o script principal, o que foi passado ao Jalangi2. Os módulos que ele carrega com `require` também são instrumentados, mas ficam inteiros como Base.
+
+**Vários arquivos (mapa por arquivo):** use `files`, com um mapa de linhas por arquivo:
+```json
+{ "root": "/caminho/do/projeto",
+  "files": { "src/a.js": {"4": "L"}, "lib/b.js": {"L": [2], "R": [9]} } }
+```
+* Chave absoluta: casa com o caminho exato do arquivo.
+* Chave relativa: é resolvida contra `root`, ou contra `BRANCH_MAP_ROOT`, que tem precedência. Sem raiz, casa com o fim do caminho do arquivo em execução, ignorando `node_modules` (a menos que a chave o mencione). Se várias chaves casam, vence a mais longa.
+* Arquivos fora do mapa são Base.
+* Nos conflitos, cada posição aparece como `arquivo:linha`, então a linha 4 de dois arquivos diferentes não se confunde.
+
+O `tools/line-map.js` gera esse formato para cada merge do dataset (veja abaixo).
 
 Uma operação pertence à branch da última linha mapeada que ela ocupa (uma atribuição que se estende por várias linhas conta todas elas).
 
@@ -119,6 +133,7 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 | 26 | `26_test_taint_param_split.js` | `[6]` / `[2]` | 0 | 1 (transitivo) |
 | 27 | `27_test_oa_two_targets.js` | `[3,5]` / `[4,6]` | 2 | 1 |
 | 28 | `28_test_call_multiline.js` | `[6]` / `[8]` | 0 | 0 |
+| 29 | `29_test_multifile.js` (+ `29_lib/contador.js`) | por arquivo: `[3]` / `[5]` no principal | 0 | 1 |
 
 ### 1. `01_example.js` — Overriding Assignment original (Amanda Moraes, SBLP 2024)
 * **Objetivo:** regressão do algoritmo de OA original.
@@ -213,6 +228,9 @@ Estes toys documentam o comportamento atual em pontos onde a análise se afasta 
 * **26:** todas as origens lidas nos argumentos de uma chamada vão para todos os parâmetros. Em `segundo(a, b)`, só `p` recebe o valor de `L`, mas `R` lê `q` e é reportado um DF transitivo (falso positivo).
 * **27:** OA e DF deduplicam de jeitos diferentes. Duas escritas na mesma linha de `L` (`o.x`, `p.x`) sobrescritas na mesma linha de `R` contam **2 OA**, porque o OA conta por alvo. Duas leituras de alvos de `L` na mesma linha de `R` contam **1 DF**, porque o DF conta por par de linhas.
 * **28:** a branch de uma chamada é a da linha onde ela termina. `guardar(` … `1` … `)` com só a linha do argumento em `L` é uma chamada da Base, então a escrita de `g` dentro da função não é de `L` e `R` não tem DF ao ler `g`.
+
+### 29. Vários arquivos
+O script principal carrega `29_lib/contador.js`, e o mapa marca as linhas 3 (`L`) e 5 (`R`) só do principal. O único conflito é o DF de `total`. Antes do mapa por arquivo, o mapa valia para qualquer arquivo carregado: as linhas 3 e 5 do módulo também viravam `L` e `R`. Isso gerava um DF e um CF espúrios em `estado.n`, e o DF verdadeiro ficava escondido atrás do falso, porque os dois tinham a mesma chave `L@3->R@5`.
 
 ---
 
@@ -313,12 +331,17 @@ As linhas do merge que não vieram de nenhuma contribuição (código da base ou
 ```bash
 # um cenário
 node experiments/tools/line-map.js base.js left.js right.js merge.js --out mapa.json
-# os pacotes de versões do dataset de merges (um ZIP por projeto); grava mapas/<amostra>.json e mapa_linhas.csv
+# os pacotes de versões do dataset de merges (um ZIP por projeto); grava mapas/<amostra>.json, mapa_linhas.csv,
+# por-merge/<projeto>__<commit>.json e mapa_merges.csv
 node experiments/tools/line-map.js --versoes /caminho/MinerreporJavascriptMerge/versoes --out-dir /caminho/saida
 node experiments/tools/test-line-map.js   # autoteste
 ```
 
-O CSV traz, por amostra, as linhas de L e de R e o estado: `ok` (tem L e R, analisável), `sem-L`, `sem-R` ou `sem-L-e-R`. Só as amostras `ok` ganham arquivo de mapa.
+O `mapa_linhas.csv` traz, por amostra (um arquivo de um merge), as linhas de L e de R e o estado: `ok` (tem L e R, analisável), `sem-L`, `sem-R` ou `sem-L-e-R`. Só as amostras `ok` ganham arquivo em `mapas/`.
+
+Para executar um merge inteiro, use `por-merge/`. Cada arquivo junta todos os arquivos do merge no formato por arquivo da análise (`{"files": {...}}`, com os caminhos relativos à raiz do repositório; passe a raiz em `BRANCH_MAP_ROOT`). Entram também os arquivos que só têm L ou só têm R, porque L num arquivo e R em outro podem interferir. O `mapa_merges.csv` dá o estado de cada merge, que é `ok` quando há linhas de L e de R em algum arquivo.
+
+**Por merge**, no mesmo dataset: 3.505 merges, dos quais 2.987 estão `ok` (405 `sem-R` e 113 `sem-L`), de 33 projetos. 1.344 dos merges `ok` alteram mais de um arquivo (mediana 1, máximo 88). Em 14 deles, L e R nunca aparecem no mesmo arquivo: nenhuma amostra deles é `ok`, e só o mapa por merge os torna analisáveis.
 
 **No dataset de merges minerados** (10.162 amostras, 34 projetos, 4m38s para gerar tudo):
 

@@ -14,24 +14,95 @@
     // Interprocedural: código executado dentro de uma função chamada por L ou R
     // é atribuído a essa branch (pilha de chamadas, Algoritmo 1 de Moraes et al.).
     // OA: só há interferência se os valores atribuídos pelas branches forem diferentes.
+    // Vários arquivos: o mapa de branches é por arquivo; os módulos carregados por require
+    // também são instrumentados, e fora do mapa são Base.
     // =========================================================================
 
-    // Mapa linha -> branch ("L" ou "R"); linhas fora do mapa pertencem à Base.
-    // Aceita dois formatos de entrada:
+    // --- MAPA DE BRANCHES ---
+    // Diz, para cada arquivo, quais linhas vieram de L e quais de R; o resto pertence à Base.
+    // O mapa de linhas de um arquivo aceita dois formatos:
     //   {"L":[4],"R":[6,7]}              (listas de linhas por branch)
     //   {"4":"L","6":"R","7":"R"}        (formato do SCAz.js / Amanda Moraes)
-    var lineToBranch = {};
+    // Mapa por arquivo (programas com vários módulos):
+    //   {"root": "/projeto", "files": {"src/a.js": {"4":"L"}, "lib/b.js": {"L":[2],"R":[9]}}}
+    //   Chave absoluta: casa com o caminho exato. Chave relativa: resolvida contra `root` (ou
+    //   BRANCH_MAP_ROOT, que tem precedência); sem raiz, casa com o fim do caminho do arquivo em
+    //   execução, ignorando node_modules (a não ser que a chave o mencione), e a chave mais longa vence.
+    // Mapa sem arquivo (formato antigo): vale só para o script principal, nunca para os módulos que
+    // ele carrega. Antes valia para qualquer arquivo, e a linha 4 de uma dependência virava L.
+    var nodePath = (typeof require === 'function') ? require('path') : null;
+    var singleFileLines = null;   // mapa sem arquivo
+    var fileEntries = [];         // [{ key, lines }] do mapa por arquivo
+    var mapRoot = null;
+    var fileCache = {};           // arquivo em execução -> { lines, name }
 
-    function loadBranchMap(map) {
-        lineToBranch = {};
-        if (!map) return;
+    function toLineMap(map) {
+        var lines = {};
+        if (!map) return lines;
         if (Array.isArray(map["L"]) || Array.isArray(map["R"])) {
             ["L", "R"].forEach(function (b) {
-                (map[b] || []).forEach(function (line) { lineToBranch[line] = b; });
+                (map[b] || []).forEach(function (line) { lines[Number(line)] = b; });
             });
         } else {
-            Object.keys(map).forEach(function (line) { lineToBranch[Number(line)] = map[line]; });
+            Object.keys(map).forEach(function (line) { lines[Number(line)] = map[line]; });
         }
+        return lines;
+    }
+
+    function normalizePath(p) {
+        p = String(p).replace(/\\/g, '/');
+        return nodePath ? nodePath.posix.normalize(p) : p;
+    }
+
+    function loadBranchMap(map) {
+        singleFileLines = null;
+        fileEntries = [];
+        mapRoot = null;
+        fileCache = {};
+        if (!map) return;
+        if (map.files && typeof map.files === 'object' && !Array.isArray(map.files)) {
+            var envRoot = (typeof process !== 'undefined' && process.env) ? process.env.BRANCH_MAP_ROOT : undefined;
+            mapRoot = envRoot || map.root || null;
+            Object.keys(map.files).forEach(function (key) {
+                fileEntries.push({ key: normalizePath(key), lines: toLineMap(map.files[key]) });
+            });
+        } else {
+            singleFileLines = toLineMap(map);
+        }
+    }
+
+    function mainScript() {
+        if (typeof process === 'undefined' || !process.argv || !process.argv[1]) return undefined;
+        return normalizePath(nodePath ? nodePath.resolve(process.argv[1]) : process.argv[1]);
+    }
+
+    function keyMatches(key, file) {
+        if (key.charAt(0) === '/') return file === key;
+        if (mapRoot && nodePath) return file === normalizePath(nodePath.resolve(mapRoot, key));
+        if (file !== key && file.slice(-(key.length + 1)) !== '/' + key) return false;
+        return file.indexOf('/node_modules/') === -1 || key.indexOf('node_modules') !== -1;
+    }
+
+    // Mapa de linhas do arquivo em execução e o nome que o identifica nos conflitos
+    function fileInfo(file) {
+        if (fileCache.hasOwnProperty(file)) return fileCache[file];
+        var info = { lines: null, name: file };
+        if (singleFileLines) {
+            if (file === mainScript()) info.lines = singleFileLines;
+        } else {
+            var best = null;
+            fileEntries.forEach(function (entry) {
+                if (keyMatches(entry.key, file) && (!best || entry.key.length > best.key.length)) best = entry;
+            });
+            if (best) {
+                info.lines = best.lines;
+                info.name = best.key;
+            } else if (mapRoot && nodePath) {
+                info.name = normalizePath(nodePath.relative(mapRoot, file));
+            }
+        }
+        fileCache[file] = info;
+        return info;
     }
 
     // Suporte a carregamento dinâmico via variável de ambiente ou arquivo JSON
@@ -141,13 +212,32 @@
         return false;
     }
 
-    // Localização no formato (arquivo:linhaIni:colIni:linhaFim:colFim)
-    function getLines(iid) {
-        if (!J$.sid) return [0, 0];
-        var loc = J$.iidToLocation(J$.sid, iid);
-        if (!loc) return [0, 0];
-        var parts = loc.split(':');
-        return [Number(parts[1]), Number(parts[3])];
+    // Localização de uma operação: arquivo (com seu mapa de linhas), linha inicial e linha final.
+    // O Jalangi troca J$.sid ao entrar em cada função, então o sid é sempre o do arquivo do iid.
+    // Código de eval não tem linhas do arquivo e fica sem mapa (Base).
+    var NO_LOCATION = { info: { lines: null, name: '?' }, start: 0, end: 0 };
+
+    function locate(iid) {
+        var script = (typeof J$ !== 'undefined' && J$.smap) ? J$.smap[J$.sid] : undefined;
+        var pos = script && script[iid];
+        if (!pos) return NO_LOCATION;
+        var file = script.evalSid === undefined ? normalizePath(script.originalCodeFileName) : undefined;
+        return {
+            info: file ? fileInfo(file) : NO_LOCATION.info,
+            start: pos[0],
+            end: pos[2]
+        };
+    }
+
+    // Posição de uma linha nos conflitos: só a linha com o mapa sem arquivo (um único arquivo
+    // analisado), "arquivo:linha" com o mapa por arquivo
+    function positionOf(loc, line) {
+        return singleFileLines ? line : loc.info.name + ':' + line;
+    }
+
+    function position(iid) {
+        var loc = locate(iid);
+        return positionOf(loc, loc.start);
     }
 
     // Branch de uma operação: percorre todas as linhas que ela ocupa (a última mapeada vence).
@@ -155,11 +245,12 @@
     // o corpo é analisado linha a linha quando a função executa, e se contasse o corpo inteiro a
     // definição seria atribuída à branch de qualquer linha dele.
     function getBranch(iid, val) {
-        var lines = getLines(iid);
-        var last = (typeof val === 'function') ? lines[0] : lines[1];
+        var loc = locate(iid);
+        if (!loc.info.lines) return undefined;
+        var last = (typeof val === 'function') ? loc.start : loc.end;
         var branch;
-        for (var line = lines[0]; line <= last; line++) {
-            branch = lineToBranch[line] || branch;
+        for (var line = loc.start; line <= last; line++) {
+            branch = loc.info.lines[line] || branch;
         }
         return branch;
     }
@@ -396,16 +487,20 @@
         // ==============================================================
         invokeFunPre: function (iid, f, base, args, isConstructor, isMethod, functionIid, functionSid) {
             // Métodos de array que alteram o array no lugar escrevem nas posições afetadas
+            var loc = locate(iid);
             if (isMethod && Array.isArray(base) && ARRAY_MUTATORS.indexOf(f) !== -1) {
-                var line = getLines(iid)[0];
+                var line = positionOf(loc, loc.start);
                 var branch = effectiveBranch(iid);
                 inPlaceArrayWrites(f, base, args).forEach(function (w) {
                     handleWrite(fieldTarget(base, w.offset, false), line, branch, w.val);
                 });
             }
             // A branch da chamada é a da linha onde ela termina (Moraes et al., 2024)
-            var lines = getLines(iid);
-            callStack.push({ branch: lineToBranch[lines[1]], depth: functionDepth, line: lines[0] });
+            callStack.push({
+                branch: loc.info.lines ? loc.info.lines[loc.end] : undefined,
+                depth: functionDepth,
+                line: positionOf(loc, loc.start)
+            });
             return { f: f, base: base, args: args, skip: false };
         },
 
@@ -444,12 +539,12 @@
 
         // Fim de um comando: o que foi lido não alimenta mais nenhuma atribuição
         endExpression: function (iid) {
-            if (effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
+            if (effectiveBranch(iid) === "Base") reportConfluence(position(iid));
             pending = [];
         },
 
         conditional: function (iid, result) {
-            if (effectiveBranch(iid) === "Base") reportConfluence(getLines(iid)[0]);
+            if (effectiveBranch(iid) === "Base") reportConfluence(position(iid));
             pending = [];
             return { result: result };
         },
@@ -468,7 +563,7 @@
         // 1. VARIÁVEIS LOCAIS / GLOBAIS: WRITE
         // ==============================================================
         write: function (iid, name, val, lhs, isGlobal, isScriptLocal) {
-            handleWrite(variableTarget(name), getLines(iid)[0], effectiveBranch(iid, val), val);
+            handleWrite(variableTarget(name), position(iid), effectiveBranch(iid, val), val);
             return { result: val };
         },
 
@@ -476,7 +571,7 @@
         // 2. VARIÁVEIS LOCAIS / GLOBAIS: READ
         // ==============================================================
         read: function (iid, name, val, isGlobal, isScriptLocal) {
-            handleRead(variableTarget(name), getLines(iid)[0], effectiveBranch(iid));
+            handleRead(variableTarget(name), position(iid), effectiveBranch(iid));
             return { result: val };
         },
 
@@ -485,7 +580,7 @@
         // ==============================================================
         putFieldPre: function (iid, base, offset, val, isComputed, isOpAssign) {
             if (!isInternal(base, offset)) {
-                handleWrite(fieldTarget(base, offset, false), getLines(iid)[0], effectiveBranch(iid, val), val);
+                handleWrite(fieldTarget(base, offset, false), position(iid), effectiveBranch(iid, val), val);
             }
             return { base: base, offset: offset, val: val, skip: false };
         },
@@ -495,7 +590,7 @@
         // ==============================================================
         getField: function (iid, base, offset, val, isComputed, isOpAssign, isMethodCall) {
             if (!isInternal(base, offset)) {
-                handleRead(fieldTarget(base, offset, true), getLines(iid)[0], effectiveBranch(iid));
+                handleRead(fieldTarget(base, offset, true), position(iid), effectiveBranch(iid));
             }
             return { result: val };
         },

@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { buildLineMap, status } = require('./line-map');
+const { buildLineMap, status, mergeMaps } = require('./line-map');
 
 function scenario(base, left, right, merge) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'linemap-test-'));
@@ -61,6 +61,22 @@ test('remoção não gera linhas, e as linhas seguintes mantêm a numeração do
 test('acréscimo no início desloca as linhas', () => {
     const r = scenario(['a', 'b'], ['n', 'a', 'b'], ['a', 'b', 'z'], ['n', 'a', 'b', 'z']);
     assert.deepStrictEqual(r.map, { 1: 'L', 4: 'R' });
+});
+
+test('mapa por merge junta os arquivos do mesmo merge, inclusive os que só têm L ou só R', () => {
+    const sample = (project, mergeCommit, filePath, map, left, right) =>
+        ({ project, mergeCommit, filePath, result: { map, left, right } });
+    const merges = mergeMaps([
+        sample('p', 'c1', 'src/a.js', { 3: 'L' }, 1, 0),        // só L
+        sample('p', 'c1', 'src/b.js', { 7: 'R' }, 0, 1),        // só R
+        sample('p', 'c1', 'src/c.js', {}, 0, 0),                // sem L nem R: fica de fora
+        sample('p', 'c2', 'src/a.js', { 1: 'L' }, 1, 0),        // outro merge, só L
+    ]);
+    assert.strictEqual(merges.length, 2);
+    const c1 = merges.find(m => m.mergeCommit === 'c1');
+    assert.deepStrictEqual(c1.map, { files: { 'src/a.js': { 3: 'L' }, 'src/b.js': { 7: 'R' } } });
+    assert.strictEqual(c1.status, 'ok');
+    assert.strictEqual(merges.find(m => m.mergeCommit === 'c2').status, 'sem-R');
 });
 
 let failed = 0;
