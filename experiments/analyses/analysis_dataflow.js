@@ -152,14 +152,24 @@
     var callStack = [];
     var functionDepth = 0;
 
+    // --- CONFLITOS DETECTADOS ---
+    // Um registro por conflito, indexado pela chave que define a unidade de contagem de cada tipo:
+    //   oa: "alvo|linha nova|linha anterior"
+    //   df: "tipo#L@linha->R@linha"            (par produtor/consumidor; tipo = direct | transitive)
+    //   cf: "tipo#linhaL|linhaR@linhaBase"     (trio)
+    // Cada registro guarda as posições ({file, line}) e a pilha de chamadas no momento da detecção.
     function emptyReport() {
-        return {
-            overridingAssignments: [],
-            dataFlowsDirect: [], dataFlowsTransitive: [],           // pares "L@linha->R@linha"
-            confluencesDirect: [], confluencesTransitive: []        // trios "linhaL|linhaR@linhaBase"
-        };
+        return { oa: {}, df: {}, cf: {} };
     }
     var detectedConflicts = emptyReport();
+
+    // Contagens, resumo de cobertura e formato do relatório JSON (compartilhado com tools/merge-reports.js)
+    var reportLib = require(__dirname + '/../lib/report.js');
+
+    // --- COBERTURA (A3) ---
+    // executedLines[arquivo][linha]: linhas mapeadas em que algum nó instrumentado executou.
+    // As linhas executáveis vêm da tabela de iids do Jalangi (J$.smap) no fim da execução.
+    var executedLines = {};
 
     function smemory() {
         return (typeof J$ !== 'undefined') ? J$.smemory : undefined;
@@ -230,14 +240,36 @@
     }
 
     // Posição de uma linha nos conflitos: só a linha com o mapa sem arquivo (um único arquivo
-    // analisado), "arquivo:linha" com o mapa por arquivo
+    // analisado), "arquivo:linha" com o mapa por arquivo. A chave é usada nas contagens; o relatório
+    // JSON recupera a posição estruturada ({file, line}) pelo registro abaixo.
+    var positions = {};
+
     function positionOf(loc, line) {
-        return singleFileLines ? line : loc.info.name + ':' + line;
+        var key = singleFileLines ? line : loc.info.name + ':' + line;
+        if (!positions[key]) positions[key] = { file: loc.info.name, line: line };
+        return key;
     }
 
     function position(iid) {
         var loc = locate(iid);
         return positionOf(loc, loc.start);
+    }
+
+    function where(key) {
+        return positions[key] || { file: '?', line: key };
+    }
+
+    // Pontos de chamada em andamento, do mais externo ao mais interno
+    function currentStack() {
+        return callStack.map(function (c) { return where(c.line); });
+    }
+
+    // Marca como executada a linha onde começa o nó do iid, se ela estiver no mapa
+    function touch(iid) {
+        var loc = locate(iid);
+        if (!loc.info.lines || !loc.info.lines[loc.start]) return;
+        var set = executedLines[loc.info.name] || (executedLines[loc.info.name] = {});
+        set[loc.start] = true;
     }
 
     // Branch de uma operação: percorre todas as linhas que ela ocupa (a última mapeada vence).
@@ -342,6 +374,14 @@
         return labels[target] || target;
     }
 
+    // Valor legível para o relatório (o valor em si não é guardado)
+    function describe(val) {
+        if (typeof val === 'function') return '[function ' + (val.name || 'anônima') + ']';
+        if (val !== null && typeof val === 'object') return '[' + typeName(val) + ']';
+        var s = typeof val === 'string' ? JSON.stringify(val) : String(val);
+        return s.length > 80 ? s.slice(0, 77) + '...' : s;
+    }
+
     function originKey(o) {
         return o.branch + '|' + o.line + '|' + !!o.derived + '|' + !!o.viaParam;
     }
@@ -381,9 +421,13 @@
             sinks.forEach(function (sink) {
                 var key = source.line + '|' + sink.line + '@' + line;
                 var direct = !source.derived && !sink.derived;
-                var list = direct ? detectedConflicts.confluencesDirect : detectedConflicts.confluencesTransitive;
-                if (list.indexOf(key) === -1) {
-                    list.push(key);
+                var kind = direct ? 'direct' : 'transitive';
+                if (!detectedConflicts.cf[kind + '#' + key]) {
+                    detectedConflicts.cf[kind + '#' + key] = {
+                        kind: kind, key: key,
+                        left: where(source.line), right: where(sink.line), base: where(line),
+                        stack: currentStack()
+                    };
                     console.log(`\n🔀 [CONFLITO CONFLUENCE${direct ? '' : ' TRANSITIVO'}] Os valores produzidos por 'L' (linha ${source.line}) e por 'R' (linha ${sink.line}) confluem no comando da Base na linha ${line}!\n`);
                 }
             });
@@ -402,10 +446,17 @@
             // [REGRA OA: Write -> Write sem outra escrita no meio, com valores diferentes]
             var previous = assignments[otherBranch][target];
             if (previous && differentValues(previous.val, val)) {
-                var oaMsg = `[CONFLITO OA] Estado '${label(target)}' (atribuído por '${branch}' na linha ${line}) sobrescreveu a atribuição anterior de '${otherBranch}' (linha ${previous.line})!`;
-                if (detectedConflicts.overridingAssignments.indexOf(oaMsg) === -1) {
-                    detectedConflicts.overridingAssignments.push(oaMsg);
-                    console.log(`🚨 ${oaMsg}`);
+                // A chave usa o rótulo do alvo, como antes: a mesma variável em frames diferentes (recursão,
+                // chamadas repetidas) entre as mesmas duas linhas conta uma vez
+                var oaKey = label(target) + '|' + line + '|' + previous.line;
+                if (!detectedConflicts.oa[oaKey]) {
+                    detectedConflicts.oa[oaKey] = {
+                        key: oaKey, target: label(target),
+                        branch: branch, position: where(line), value: describe(val),
+                        previous: { branch: otherBranch, position: where(previous.line), value: describe(previous.val) },
+                        stack: currentStack()
+                    };
+                    console.log(`🚨 [CONFLITO OA] Estado '${label(target)}' (atribuído por '${branch}' na linha ${line}) sobrescreveu a atribuição anterior de '${otherBranch}' (linha ${previous.line})!`);
                 }
             }
             // A atribuição da outra branch deixa de valer (Algoritmo 1, linha 7)
@@ -454,9 +505,19 @@
                     // Um conflito é o par (linha que produz, linha que consome), como o par source/sink do Java:
                     // vários elementos de estado entre as mesmas duas linhas contam uma vez
                     var pair = origin.branch + '@' + origin.line + '->' + readingBranch + '@' + line;
-                    var list = origin.derived ? detectedConflicts.dataFlowsTransitive : detectedConflicts.dataFlowsDirect;
-                    if (list.indexOf(pair) === -1) {
-                        list.push(pair);
+                    var kind = origin.derived ? 'transitive' : 'direct';
+                    var record = detectedConflicts.df[kind + '#' + pair];
+                    if (record) {
+                        // Mesmo par: só acrescenta o elemento de estado ao registro
+                        if (record.targets.indexOf(label(target)) === -1) record.targets.push(label(target));
+                    } else {
+                        detectedConflicts.df[kind + '#' + pair] = {
+                            kind: kind, key: pair,
+                            from: { branch: origin.branch, position: where(origin.line) },
+                            to: { branch: readingBranch, position: where(line) },
+                            targets: [label(target)],
+                            stack: currentStack()
+                        };
                         console.log(`\n⚡ [CONFLITO DATA FLOW${origin.derived ? ' TRANSITIVO' : ''}] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${origin.branch}' (linha ${origin.line})!`);
                         console.log(`   └─> Risco Semântico: Branch '${readingBranch}' está consumindo estado mutado concorrentemente por '${origin.branch}'.\n`);
                     }
@@ -468,7 +529,9 @@
         pending = mergeOrigins(pending, produced);
     }
 
-    J$.analysis = {
+    // J$.analysis é um getter do ChainedAnalyses: lê-lo devolve a cadeia, não este objeto.
+    // J$.mergeAnalysis dá acesso direto a ele (por exemplo, para chamar setBranches).
+    J$.mergeAnalysis = J$.analysis = {
         // Função para configurar programaticamente as linhas das branches
         setBranches: function (map) {
             loadBranchMap(map);
@@ -480,12 +543,15 @@
             callStack = [];
             functionDepth = 0;
             detectedConflicts = emptyReport();
+            executedLines = {};
+            positions = {};
         },
 
         // ==============================================================
         // 0. CHAMADAS DE FUNÇÃO: PILHA DE CHAMADAS (INTERPROCEDURAL)
         // ==============================================================
         invokeFunPre: function (iid, f, base, args, isConstructor, isMethod, functionIid, functionSid) {
+            touch(iid);
             // Métodos de array que alteram o array no lugar escrevem nas posições afetadas
             var loc = locate(iid);
             if (isMethod && Array.isArray(base) && ARRAY_MUTATORS.indexOf(f) !== -1) {
@@ -512,6 +578,7 @@
         // O invokeFun não roda quando a função chamada termina por exceção. A profundidade de funções
         // instrumentadas permite descartar as chamadas que ficaram pendentes na pilha.
         functionEnter: function (iid, f, dis, args) {
+            touch(iid);
             functionDepth++;
             // O que foi lido nos argumentos contamina os parâmetros; o corpo começa limpo
             pendingStack.push(pending);
@@ -539,11 +606,13 @@
 
         // Fim de um comando: o que foi lido não alimenta mais nenhuma atribuição
         endExpression: function (iid) {
+            touch(iid);
             if (effectiveBranch(iid) === "Base") reportConfluence(position(iid));
             pending = [];
         },
 
         conditional: function (iid, result) {
+            touch(iid);
             if (effectiveBranch(iid) === "Base") reportConfluence(position(iid));
             pending = [];
             return { result: result };
@@ -552,6 +621,7 @@
         // Parâmetros: o valor vem da chamada que está sendo executada, empilhada pelo chamador
         // na profundidade logo abaixo da atual (chamadas implícitas, como getters, não têm entrada).
         declare: function (iid, name, val, isArgument, argumentIndex, isCatchParam) {
+            touch(iid);
             var call = callStack[callStack.length - 1];
             if (isArgument && name !== 'arguments' && call && call.depth === functionDepth - 1) {
                 handleParameterBinding(variableTarget(name), call.line, stackBranch() || "Base");
@@ -563,6 +633,7 @@
         // 1. VARIÁVEIS LOCAIS / GLOBAIS: WRITE
         // ==============================================================
         write: function (iid, name, val, lhs, isGlobal, isScriptLocal) {
+            touch(iid);
             handleWrite(variableTarget(name), position(iid), effectiveBranch(iid, val), val);
             return { result: val };
         },
@@ -571,6 +642,7 @@
         // 2. VARIÁVEIS LOCAIS / GLOBAIS: READ
         // ==============================================================
         read: function (iid, name, val, isGlobal, isScriptLocal) {
+            touch(iid);
             handleRead(variableTarget(name), position(iid), effectiveBranch(iid));
             return { result: val };
         },
@@ -579,6 +651,7 @@
         // 3. PROPRIEDADES DE OBJETOS E ARRAYS: PUT FIELD (WRITE)
         // ==============================================================
         putFieldPre: function (iid, base, offset, val, isComputed, isOpAssign) {
+            touch(iid);
             if (!isInternal(base, offset)) {
                 handleWrite(fieldTarget(base, offset, false), position(iid), effectiveBranch(iid, val), val);
             }
@@ -589,35 +662,103 @@
         // 4. PROPRIEDADES DE OBJETOS E ARRAYS: GET FIELD (READ)
         // ==============================================================
         getField: function (iid, base, offset, val, isComputed, isOpAssign, isMethodCall) {
+            touch(iid);
             if (!isInternal(base, offset)) {
                 handleRead(fieldTarget(base, offset, true), position(iid), effectiveBranch(iid));
             }
             return { result: val };
         },
 
+        // ==============================================================
+        // 5. COBERTURA: NÓS QUE NÃO PASSAM PELOS CALLBACKS ACIMA
+        // ==============================================================
+        // Só marcam a linha como executada; devolvem undefined, o que mantém o valor original.
+        literal: function (iid) { touch(iid); },
+        binary: function (iid) { touch(iid); },
+        unary: function (iid) { touch(iid); },
+        _return: function (iid) { touch(iid); },
+        _throw: function (iid) { touch(iid); },
+        forinObject: function (iid) { touch(iid); },
+
         endExecution: function () {
-            // Um conflito transitivo só conta se o mesmo conflito não aparece também como direto
-            var onlyTransitive = function (transitive, direct) {
-                return transitive.filter(function (k) { return direct.indexOf(k) === -1; }).length;
-            };
-            var df = {
-                direct: detectedConflicts.dataFlowsDirect.length,
-                transitive: onlyTransitive(detectedConflicts.dataFlowsTransitive, detectedConflicts.dataFlowsDirect)
-            };
-            var cf = {
-                direct: detectedConflicts.confluencesDirect.length,
-                transitive: onlyTransitive(detectedConflicts.confluencesTransitive, detectedConflicts.confluencesDirect)
-            };
+            var report = buildReport();
+            var c = report.counts;
             console.log("\n==================================================");
             console.log("📊 RELATÓRIO FINAL DE ANÁLISE DINÂMICA DE MERGE");
-            console.log(`   - Conflitos de Overriding Assignment (OA): ${detectedConflicts.overridingAssignments.length}`);
-            console.log(`   - Conflitos de Data Flow (DF):             ${df.direct + df.transitive}`);
-            console.log(`   - Conflitos de Confluence Flow (CF):       ${cf.direct + cf.transitive}`);
+            console.log(`   - Conflitos de Overriding Assignment (OA): ${c.oa}`);
+            console.log(`   - Conflitos de Data Flow (DF):             ${c.df.total}`);
+            console.log(`   - Conflitos de Confluence Flow (CF):       ${c.cf.total}`);
+            reportLib.BRANCHES.forEach(function (b) {
+                var t = report.coverage.summary.total[b];
+                var semCodigo = t.withoutCode ? ` (${t.withoutCode} sem código executável)` : '';
+                console.log(`   - Linhas de ${b} executadas:                ${t.executed}/${t.mapped - t.withoutCode}${semCodigo}`);
+            });
             console.log("==================================================");
+            var env = (typeof process !== 'undefined' && process.env) ? process.env : {};
             // Os runners de teste comparam cada análise do Java com um recorte (direto ou direto + transitivo)
-            if (typeof process !== 'undefined' && process.env && process.env.ANALYSIS_DETAIL) {
-                console.log("DETALHE " + JSON.stringify({ dfDireto: df.direct, dfTransitivo: df.transitive, cfDireto: cf.direct, cfTransitivo: cf.transitive }));
+            if (env.ANALYSIS_DETAIL) {
+                console.log("DETALHE " + JSON.stringify({ dfDireto: c.df.direct, dfTransitivo: c.df.transitive, cfDireto: c.cf.direct, cfTransitivo: c.cf.transitive }));
+            }
+            if (env.ANALYSIS_REPORT) {
+                require('fs').writeFileSync(env.ANALYSIS_REPORT, JSON.stringify(report, null, 1) + '\n');
             }
         }
     };
+
+    // --- RELATÓRIO JSON (A4) ---
+    function values(obj) {
+        return Object.keys(obj).map(function (k) { return obj[k]; });
+    }
+
+    function sortedLines(set) {
+        return Object.keys(set || {}).map(Number).sort(function (a, b) { return a - b; });
+    }
+
+    // Linhas executáveis de cada arquivo mapeado: início de cada nó da tabela de iids do Jalangi
+    function executableLines() {
+        var result = {};
+        var smap = (typeof J$ !== 'undefined' && J$.smap) || {};
+        Object.keys(smap).forEach(function (sid) {
+            var script = smap[sid];
+            if (!script || script.evalSid !== undefined || !script.originalCodeFileName) return;
+            var info = fileInfo(normalizePath(script.originalCodeFileName));
+            if (!info.lines) return;
+            var set = result[info.name] || (result[info.name] = {});
+            Object.keys(script).forEach(function (k) {
+                if (/^\d+$/.test(k) && Array.isArray(script[k]) && info.lines[script[k][0]]) set[script[k][0]] = true;
+            });
+        });
+        return result;
+    }
+
+    // Cobertura de cada arquivo do mapa, restrita às linhas mapeadas (o bastante para unir execuções)
+    function coverageFiles() {
+        var executable = executableLines();
+        var entries = singleFileLines
+            ? [{ name: fileInfo(mainScript()).name, lines: singleFileLines }]
+            : fileEntries.map(function (e) { return { name: e.key, lines: e.lines }; });
+        return entries.map(function (e) {
+            var byBranch = {};
+            reportLib.BRANCHES.forEach(function (b) { byBranch[b] = []; });
+            sortedLines(e.lines).forEach(function (line) {
+                if (byBranch[e.lines[line]]) byBranch[e.lines[line]].push(line);
+            });
+            var exe = executable[e.name];
+            return {
+                file: e.name,
+                loaded: !!exe,
+                lines: byBranch,
+                executable: exe ? sortedLines(exe) : null,
+                executed: sortedLines(executedLines[e.name])
+            };
+        });
+    }
+
+    function buildReport() {
+        return reportLib.buildReport({
+            runs: [{ program: mainScript() || null, branchMap: singleFileLines ? 'single-file' : 'per-file' }],
+            conflicts: { oa: values(detectedConflicts.oa), df: values(detectedConflicts.df), cf: values(detectedConflicts.cf) },
+            coverageFiles: coverageFiles()
+        });
+    }
 }());

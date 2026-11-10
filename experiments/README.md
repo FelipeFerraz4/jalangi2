@@ -11,9 +11,12 @@ experiments/
 ├── analyses/
 │   └── analysis_dataflow.js   # OA + Data Flow + Confluence Flow (motor estendido)
 ├── toys/                      # 29 programas sintéticos (o 29 tem um módulo em toys/29_lib/), numerados na ordem em que run_all_toys.js os executa
-├── lib/analysis.js            # executa a análise sobre um arquivo (usado pelos runners)
+├── lib/analysis.js            # executa a análise sobre um arquivo (usado pelos runners); devolve o relatório JSON
+├── lib/report.js              # formato, contagens e cobertura do relatório JSON (motor e merge-reports)
 ├── tools/line-map.js          # gerador do mapa L/R de um merge a partir de base/left/right/merge
 ├── tools/test-line-map.js     # autoteste do gerador (cenários sintéticos)
+├── tools/merge-reports.js     # une os relatórios JSON de várias execuções do mesmo merge
+├── tools/test-reports.js      # autoteste do relatório JSON e da união
 ├── run_validation.js          # tudo junto: OA do SCAz.js + DF/CF dos testes do conflict-static-analysis
 ├── run_all_toys.js            # runner: instrumenta cada toy e imprime o relatório consolidado
 ├── run_oa_suite.js            # regressão de OA com os casos de teste do SCAz.js (Moraes et al.)
@@ -34,7 +37,7 @@ A análise não conhece nenhum arquivo; o mapa é sempre injetado de fora. Ordem
 |---|---|
 | `BRANCH_MAP` | JSON inline: `BRANCH_MAP='{"L":[4],"R":[6,7]}'` |
 | `BRANCH_MAP_FILE` | Caminho de um arquivo JSON (qualquer um dos dois formatos abaixo) |
-| `J$.analysis.setBranches(map)` | Configuração programática (reinicia o estado) |
+| `J$.mergeAnalysis.setBranches(map)` | Configuração programática (reinicia o estado). `J$.analysis` não serve para isso: no modo encadeado, ele devolve o `ChainedAnalyses` |
 
 Formatos aceitos para as linhas de um arquivo: `{"L":[4],"R":[6,7]}` ou o do SCAz.js, `{"4":"L","6":"R","7":"R"}`. Sem mapa, nenhuma linha pertence a `L` ou `R` e nada é detectado.
 
@@ -55,13 +58,50 @@ O `tools/line-map.js` gera esse formato para cada merge do dataset (veja abaixo)
 Uma operação pertence à branch da última linha mapeada que ela ocupa (uma atribuição que se estende por várias linhas conta todas elas).
 
 ### Relatório da análise
-A análise imprime ao final três números:
+A análise imprime ao final os três números de conflitos e a cobertura das linhas de cada branch:
 ```
 - Conflitos de Overriding Assignment (OA): n
 - Conflitos de Data Flow (DF):             n
 - Conflitos de Confluence Flow (CF):       n
+- Linhas de L executadas:                  e/x (s sem código executável)
+- Linhas de R executadas:                  e/x
 ```
 DF e CF já incluem os diretos e os transitivos. Por dentro, cada conflito é marcado como direto ou transitivo (aparece no log de cada detecção), e os runners de teste pedem esse detalhe com `ANALYSIS_DETAIL=1` para comparar com a análise do Java que cada teste representa.
+
+### Cobertura das linhas de L e R
+Como a análise é dinâmica, "0 conflitos" só diz alguma coisa sobre as linhas que executaram. Por isso o relatório diz quantas linhas mapeadas de cada branch executaram:
+* **Executável:** a linha tem algum nó instrumentado. A lista vem da tabela de iids do Jalangi2 (`J$.smap`), que registra todo nó de cada arquivo.
+* **Executada:** algum desses nós executou. É registrado em todos os callbacks, inclusive `literal`, `binary`, `unary`, `_return`, `_throw` e `forinObject`, que só servem à cobertura e não alteram nenhum valor.
+* **Sem código executável:** linha mapeada com só `}`, comentário ou espaço. Não entra na conta, porque nunca poderia executar.
+* Um arquivo do mapa que nunca carregou fica com `loaded: false`, e todas as linhas dele contam como não executadas.
+
+### Relatório JSON
+Com `ANALYSIS_REPORT=caminho.json`, a análise grava o relatório completo da execução (formato `merge-analysis-report/1`):
+```json
+{ "format": "merge-analysis-report/1",
+  "runs": [{ "program": "/abs/main.js", "branchMap": "per-file" }],
+  "counts": { "oa": 1, "df": {"direct": 1, "transitive": 0, "total": 1}, "cf": {...} },
+  "conflicts": {
+    "oa": [{ "key", "target", "branch", "position": {"file", "line"}, "value",
+             "previous": {"branch", "position", "value"}, "stack": [{"file", "line"}] }],
+    "df": [{ "kind": "direct", "key", "from": {"branch", "position"}, "to": {"branch", "position"},
+             "targets": ["taxa"], "stack": [...] }],
+    "cf": [{ "kind", "key", "left": {...}, "right": {...}, "base": {...}, "stack": [...] }] },
+  "coverage": {
+    "summary": { "total": { "L": {"mapped", "withoutCode", "executed", "notExecuted", "rate"}, "R": {...} },
+                 "files": [{ "file", "loaded", "L": {..., "notExecuted": [6]}, "R": {...} }] },
+    "files": [{ "file", "loaded", "lines": {"L": [...], "R": [...]}, "executable": [...], "executed": [...] }] } }
+```
+* `stack` lista os pontos de chamada em andamento no momento da detecção, do mais externo ao mais interno. Mostra, por exemplo, de qual chamada veio uma leitura feita dentro de uma função.
+* `value` é uma descrição do valor (`"2"`, `"[Object]"`, `"[function f]"`). O valor em si não é guardado.
+* A lista `conflicts` traz exatamente o que as contagens contam: um par (DF) ou trio (CF) transitivo que também aparece como direto fica só como direto.
+* Em `coverage.files`, as listas de linhas cobrem só as linhas mapeadas. É o que permite unir execuções.
+
+**Várias execuções do mesmo merge** (um processo por arquivo de teste, por exemplo): `tools/merge-reports.js` une os relatórios. Cada conflito conta uma vez, pela mesma chave usada na execução. Um DF ou CF transitivo deixa de contar se outra execução o viu como direto. Uma linha conta como executada se executou em qualquer execução.
+```bash
+node experiments/tools/merge-reports.js uniao.json teste1.json teste2.json ...
+node experiments/tools/test-reports.js    # autoteste do relatório e da união
+```
 
 ### Como executar a análise
 A análise precisa da memória sombra do Jalangi2, então deve ser encadeada com `ChainedAnalyses.js` e `SMemory.js`, nesta ordem (veja o exemplo em "Direto pelo Jalangi2"). Os runners já fazem isso.

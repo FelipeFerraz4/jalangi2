@@ -208,6 +208,10 @@ results.forEach(r => {
     const statusIcon = r.failed ? "✖ ERRO DE EXECUÇÃO" : "✔";
     console.log(`${statusIcon} ${r.t.name}`);
     console.log(`   • Conflitos Detectados: Overriding Assignment (OA): ${r.oa} | Data Flow (DF): ${r.dfTotal} | Confluence Flow (CF): ${r.cfTotal}`);
+    if (r.report) {
+        const t = r.report.coverage.summary.total;
+        console.log(`   • Linhas executadas: L ${t.L.executed}/${t.L.mapped - t.L.withoutCode} | R ${t.R.executed}/${t.R.mapped - t.R.withoutCode}`);
+    }
     console.log(`   • Descrição: ${r.t.description}\n`);
 
     if (selectedTests.length === 1) {
