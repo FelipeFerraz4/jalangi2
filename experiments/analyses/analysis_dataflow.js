@@ -264,8 +264,59 @@
         return callStack.map(function (c) { return where(c.line); });
     }
 
+    // --- EXPRESSÕES COM && E || ---
+    // O Jalangi chama `conditional` para o operando da esquerda de `a && b` e de `a || b`, antes de o
+    // da direita ser lido, e de novo, com o mesmo trecho de código, para o teste de um if ou while.
+    // Limpar as leituras já no primeiro chamado perderia `a` antes de `b` entrar. Por isso o
+    // `conditional` fica "aberto" e só é encerrado pelo primeiro evento que sai do trecho de código
+    // da expressão (posição por linha e coluna) ou pela segunda chamada para o mesmo trecho:
+    //   - evento dentro do trecho: ainda é a mesma expressão (o operando da direita);
+    //   - evento cujo trecho contém o da expressão (a atribuição, o return, a chamada): ela era uma
+    //     subexpressão, e quem a contém cuida das leituras;
+    //   - evento fora: era o teste de um if/while, que termina aqui.
+    var openCond = null;
+
+    function spanOf(iid) {
+        var script = (typeof J$ !== 'undefined' && J$.smap) ? J$.smap[J$.sid] : undefined;
+        var pos = script && script[iid];
+        return pos ? { sid: J$.sid, bl: pos[0], bc: pos[1], el: pos[2], ec: pos[3] } : null;
+    }
+
+    function notAfter(l1, c1, l2, c2) {
+        return l1 < l2 || (l1 === l2 && c1 <= c2);
+    }
+
+    // outer contém inner (os dois da mesma linha de código)
+    function contains(outer, inner) {
+        return notAfter(outer.bl, outer.bc, inner.bl, inner.bc) && notAfter(inner.el, inner.ec, outer.el, outer.ec);
+    }
+
+    function sameSpan(a, b) {
+        return a.sid === b.sid && a.bl === b.bl && a.bc === b.bc && a.el === b.el && a.ec === b.ec;
+    }
+
+    function finalizeConditional() {
+        var cond = openCond;
+        openCond = null;
+        if (cond.base) reportConfluence(cond.line);
+        pending = [];
+    }
+
+    // Chamado no início de cada evento instrumentado
+    function settleConditional(iid) {
+        if (!openCond) return;
+        if (functionDepth > openCond.depth) return;                        // dentro de uma chamada feita pela expressão
+        if (functionDepth < openCond.depth) { openCond = null; return; }   // a função da expressão terminou
+        var span = spanOf(iid);
+        if (!span || span.sid !== openCond.span.sid) return;
+        if (contains(openCond.span, span)) return;                         // ainda dentro da expressão
+        if (contains(span, openCond.span)) { openCond = null; return; }    // uma expressão maior a contém
+        finalizeConditional();
+    }
+
     // Marca como executada a linha onde começa o nó do iid, se ela estiver no mapa
     function touch(iid) {
+        settleConditional(iid);
         var loc = locate(iid);
         if (!loc.info.lines || !loc.info.lines[loc.start]) return;
         var set = executedLines[loc.info.name] || (executedLines[loc.info.name] = {});
@@ -539,6 +590,7 @@
             origins = {};
             pending = [];
             pendingStack = [];
+            openCond = null;
             entryTaint = [];
             callStack = [];
             functionDepth = 0;
@@ -596,6 +648,8 @@
                 && callStack[callStack.length - 1].depth === functionDepth - 1) {
                 callStack.pop();
             }
+            // Uma expressão com && ou || aberta nesta função termina com ela
+            if (openCond && openCond.depth >= functionDepth) openCond = null;
             functionDepth--;
             // O valor devolvido leva as origens lidas no return para a expressão do chamador.
             // De volta ao chamador, as origens voltam a valer no corpo dele
@@ -607,14 +661,25 @@
         // Fim de um comando: o que foi lido não alimenta mais nenhuma atribuição
         endExpression: function (iid) {
             touch(iid);
+            openCond = null;
             if (effectiveBranch(iid) === "Base") reportConfluence(position(iid));
             pending = [];
         },
 
         conditional: function (iid, result) {
             touch(iid);
-            if (effectiveBranch(iid) === "Base") reportConfluence(position(iid));
-            pending = [];
+            var span = spanOf(iid);
+            if (!span) {
+                // Sem a tabela de posições do Jalangi: encerra a expressão já
+                if (effectiveBranch(iid) === "Base") reportConfluence(position(iid));
+                pending = [];
+                return { result: result };
+            }
+            if (openCond && functionDepth === openCond.depth && sameSpan(openCond.span, span)) {
+                finalizeConditional();       // segunda chamada para a mesma expressão: é o teste do if/while
+                return { result: result };
+            }
+            openCond = { span: span, depth: functionDepth, line: position(iid), base: effectiveBranch(iid) === "Base" };
             return { result: result };
         },
 

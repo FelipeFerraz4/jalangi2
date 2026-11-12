@@ -150,10 +150,10 @@ const tests = [
         description: "Os valores de L e R passam por variáveis da Base antes de se encontrarem em z"
     },
     {
-        name: "25. Confluência em && (25_test_confluence_and.js)",
+        name: "25. Confluência em if com && (25_test_confluence_and.js)",
         file: "experiments/toys/25_test_confluence_and.js",
         branchMap: { "L": [3], "R": [4] },
-        description: "if (a && b) com a de L e b de R: o conditional do && separa as leituras e não há CF (limitação)"
+        description: "if (a && b) com a de L e b de R: o if da Base usa os dois valores, e há CF"
     },
     {
         name: "26. Argumentos contaminam todos os parâmetros (26_test_taint_param_split.js)",
@@ -178,6 +178,30 @@ const tests = [
         file: "experiments/toys/29_test_multifile.js",
         branchMap: { "files": { "experiments/toys/29_test_multifile.js": { "L": [3], "R": [5] } } },
         description: "Mapa por arquivo: as linhas 3 e 5 do módulo carregado continuam Base; só o DF de total"
+    },
+    {
+        name: "30. Confluência em || com o operando da direita avaliado (30_test_confluence_or.js)",
+        file: "experiments/toys/30_test_confluence_or.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "a é falso, então b é lido: o if da Base usa o valor de L e o de R"
+    },
+    {
+        name: "31. || em curto-circuito (31_test_confluence_or_short.js)",
+        file: "experiments/toys/31_test_confluence_or_short.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "a é verdadeiro, então b nunca é lido: sem confluência (a análise dinâmica só vê o que executa)"
+    },
+    {
+        name: "32. Confluência em atribuição com && (32_test_confluence_assign_and.js)",
+        file: "experiments/toys/32_test_confluence_assign_and.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "var c = a && b na Base junta o valor de L e o de R"
+    },
+    {
+        name: "33. Confluência em while com && encadeado (33_test_confluence_while_and.js)",
+        file: "experiments/toys/33_test_confluence_while_and.js",
+        branchMap: { "L": [4], "R": [5] },
+        description: "A condição do laço lê a e b a cada volta: um só conflito, apesar das repetições"
     }
 ];
 
