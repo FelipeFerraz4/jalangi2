@@ -33,6 +33,8 @@ function mergeReports(reports) {
                     conflicts[type].set(id, JSON.parse(JSON.stringify(c)));
                 } else if (type === 'df') {
                     seen.targets = [...new Set(seen.targets.concat(c.targets))];
+                    // Só fica marcado se todas as execuções o viram via parâmetro
+                    seen.viaParam = !!(seen.viaParam && c.viaParam);
                 }
             }
         }
@@ -66,6 +68,6 @@ if (require.main === module) {
     const merged = mergeReports(inputs.map(f => JSON.parse(fs.readFileSync(f, 'utf-8'))));
     fs.writeFileSync(out, JSON.stringify(merged, null, 1) + '\n');
     const c = merged.counts, t = merged.coverage.summary.total;
-    console.log(`${inputs.length} relatórios → OA ${c.oa} | DF ${c.df.total} (${c.df.direct} diretos) | CF ${c.cf.total} (${c.cf.direct} diretos)`);
+    console.log(`${inputs.length} relatórios → OA ${c.oa} | DF ${c.df.total} (${c.df.direct} diretos, ${c.df.viaParam} via parâmetro) | CF ${c.cf.total} (${c.cf.direct} diretos)`);
     console.log(`linhas executadas: L ${t.L.executed}/${t.L.mapped - t.L.withoutCode} | R ${t.R.executed}/${t.R.mapped - t.R.withoutCode}`);
 }

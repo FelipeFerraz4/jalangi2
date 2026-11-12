@@ -80,12 +80,12 @@ Com `ANALYSIS_REPORT=caminho.json`, a análise grava o relatório completo da ex
 ```json
 { "format": "merge-analysis-report/1",
   "runs": [{ "program": "/abs/main.js", "branchMap": "per-file" }],
-  "counts": { "oa": 1, "df": {"direct": 1, "transitive": 0, "total": 1}, "cf": {...} },
+  "counts": { "oa": 1, "df": {"direct": 1, "transitive": 0, "total": 1, "viaParam": 0}, "cf": {...} },
   "conflicts": {
     "oa": [{ "key", "target", "branch", "position": {"file", "line"}, "value",
              "previous": {"branch", "position", "value"}, "stack": [{"file", "line"}] }],
     "df": [{ "kind": "direct", "key", "from": {"branch", "position"}, "to": {"branch", "position"},
-             "targets": ["taxa"], "stack": [...] }],
+             "targets": ["taxa"], "viaParam": false, "stack": [...] }],
     "cf": [{ "kind", "key", "left": {...}, "right": {...}, "base": {...}, "stack": [...] }] },
   "coverage": {
     "summary": { "total": { "L": {"mapped", "withoutCode", "executed", "notExecuted", "rate"}, "R": {...} },
@@ -94,6 +94,7 @@ Com `ANALYSIS_REPORT=caminho.json`, a análise grava o relatório completo da ex
 ```
 * `stack` lista os pontos de chamada em andamento no momento da detecção, do mais externo ao mais interno. Mostra, por exemplo, de qual chamada veio uma leitura feita dentro de uma função.
 * `value` é uma descrição do valor (`"2"`, `"[Object]"`, `"[function f]"`). O valor em si não é guardado.
+* `viaParam: true` num DF avisa que ele só existe por origens que entraram numa função de forma transitiva (`counts.df.viaParam` conta quantos; já estão em `transitive`). As origens lidas em todos os argumentos de uma chamada vão para todos os parâmetros, então com mais de um argumento ele pode ser um falso positivo (toy 26). Serve para separar esses casos na inspeção manual. Numa união de execuções, só continua marcado se todas o viram assim.
 * A lista `conflicts` traz exatamente o que as contagens contam: um par (DF) ou trio (CF) transitivo que também aparece como direto fica só como direto.
 * Em `coverage.files`, as listas de linhas cobrem só as linhas mapeadas. É o que permite unir execuções.
 
@@ -278,7 +279,7 @@ O Jimple do Java separa essas expressões em desvios distintos, então a anális
 
 ### 26 a 28. Limites conhecidos
 Estes toys documentam o comportamento atual em pontos onde a análise se afasta do que se esperaria intuitivamente.
-* **26:** todas as origens lidas nos argumentos de uma chamada vão para todos os parâmetros. Em `segundo(a, b)`, só `p` recebe o valor de `L`, mas `R` lê `q` e é reportado um DF transitivo (falso positivo).
+* **26:** todas as origens lidas nos argumentos de uma chamada vão para todos os parâmetros. Em `segundo(a, b)`, só `p` recebe o valor de `L`, mas `R` lê `q` e é reportado um DF transitivo (falso positivo). Não dá para separar os argumentos porque o Jalangi não informa onde cada um termina. O conflito sai com `viaParam: true` no relatório JSON, para ser descontado na inspeção.
 * **27:** OA e DF deduplicam de jeitos diferentes. Duas escritas na mesma linha de `L` (`o.x`, `p.x`) sobrescritas na mesma linha de `R` contam **2 OA**, porque o OA conta por alvo. Duas leituras de alvos de `L` na mesma linha de `R` contam **1 DF**, porque o DF conta por par de linhas.
 * **28:** a branch de uma chamada é a da linha onde ela termina. `guardar(` … `1` … `)` com só a linha do argumento em `L` é uma chamada da Base, então a escrita de `g` dentro da função não é de `L` e `R` não tem DF ao ler `g`.
 

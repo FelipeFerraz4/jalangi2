@@ -557,19 +557,26 @@
                     // vários elementos de estado entre as mesmas duas linhas contam uma vez
                     var pair = origin.branch + '@' + origin.line + '->' + readingBranch + '@' + line;
                     var kind = origin.derived ? 'transitive' : 'direct';
+                    // Marca o conflito que depende de um valor que entrou numa função de forma transitiva: as
+                    // origens lidas em todos os argumentos de uma chamada vão para todos os parâmetros, então
+                    // com mais de um argumento ele pode ser um falso positivo
+                    var viaParam = !!(origin.derived && origin.viaParam);
                     var record = detectedConflicts.df[kind + '#' + pair];
                     if (record) {
-                        // Mesmo par: só acrescenta o elemento de estado ao registro
+                        // Mesmo par: acrescenta o elemento de estado ao registro. Só continua marcado se todas as
+                        // ocorrências passaram por parâmetro
                         if (record.targets.indexOf(label(target)) === -1) record.targets.push(label(target));
+                        if (!viaParam) record.viaParam = false;
                     } else {
                         detectedConflicts.df[kind + '#' + pair] = {
                             kind: kind, key: pair,
                             from: { branch: origin.branch, position: where(origin.line) },
                             to: { branch: readingBranch, position: where(line) },
                             targets: [label(target)],
+                            viaParam: viaParam,
                             stack: currentStack()
                         };
-                        console.log(`\n⚡ [CONFLITO DATA FLOW${origin.derived ? ' TRANSITIVO' : ''}] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${origin.branch}' (linha ${origin.line})!`);
+                        console.log(`\n⚡ [CONFLITO DATA FLOW${origin.derived ? ' TRANSITIVO' : ''}${viaParam ? ' VIA PARÂMETRO' : ''}] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${origin.branch}' (linha ${origin.line})!`);
                         console.log(`   └─> Risco Semântico: Branch '${readingBranch}' está consumindo estado mutado concorrentemente por '${origin.branch}'.\n`);
                     }
                 }

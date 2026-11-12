@@ -90,13 +90,42 @@ test('união: cobertura soma as linhas executadas em qualquer execução', () =>
 
 test('união: DF visto como transitivo numa execução e direto em outra conta só como direto', () => {
     const merged = mergeReports([fakeReport([dfRecord('transitive', 'x')], []), fakeReport([dfRecord('direct', 'y')], [])]);
-    assert.deepStrictEqual(merged.counts.df, { direct: 1, transitive: 0, total: 1 });
+    assert.deepStrictEqual(merged.counts.df, { direct: 1, transitive: 0, total: 1, viaParam: 0 });
 });
 
 test('união: o mesmo DF em duas execuções conta uma vez e junta os alvos', () => {
     const merged = mergeReports([fakeReport([dfRecord('direct', 'x')], []), fakeReport([dfRecord('direct', 'y')], [])]);
     assert.strictEqual(merged.counts.df.total, 1);
     assert.deepStrictEqual(merged.conflicts.df[0].targets, ['x', 'y']);
+});
+
+test('DF via parâmetro: o conflito transitivo que depende dos argumentos de uma chamada é marcado', () => {
+    // segundo(a, b): só p recebe o valor de L, mas todas as origens lidas nos argumentos vão para todos os parâmetros
+    const r = run('26_test_taint_param_split.js', { L: [6], R: [2] });
+    assert.strictEqual(r.counts.df.total, 1);
+    assert.strictEqual(r.conflicts.df[0].kind, 'transitive');
+    assert.strictEqual(r.conflicts.df[0].viaParam, true);
+    assert.strictEqual(r.counts.df.viaParam, 1);
+});
+
+test('DF via parâmetro: fluxo direto pelo argumento e fluxo transitivo fora de funções não são marcados', () => {
+    const direct = run('16_test_dataflow_param.js', { L: [6], R: [2] });   // L passa o argumento, R lê o parâmetro
+    assert.ok(direct.counts.df.total >= 1);
+    assert.ok(direct.conflicts.df.every(c => !c.viaParam));
+    const transitive = run('19_test_taint_transitive.js', { L: [2], R: [4] });
+    assert.strictEqual(transitive.conflicts.df[0].kind, 'transitive');
+    assert.ok(!transitive.conflicts.df[0].viaParam);
+    assert.strictEqual(transitive.counts.df.viaParam, 0);
+});
+
+test('união: o conflito só fica marcado se todas as execuções o viram via parâmetro', () => {
+    const marked = run('26_test_taint_param_split.js', { L: [6], R: [2] });
+    const unmarked = JSON.parse(JSON.stringify(marked));
+    unmarked.conflicts.df[0].viaParam = false;
+    assert.strictEqual(mergeReports([marked, marked]).conflicts.df[0].viaParam, true);
+    assert.strictEqual(mergeReports([marked, unmarked]).conflicts.df[0].viaParam, false);
+    assert.strictEqual(mergeReports([unmarked, marked]).conflicts.df[0].viaParam, false);
+    assert.strictEqual(mergeReports([marked, unmarked]).counts.df.viaParam, 0);
 });
 
 let failed = 0;

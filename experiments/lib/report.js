@@ -73,6 +73,8 @@ function countConflicts(conflicts) {
     var df = { direct: count(conflicts.df, 'direct'), transitive: count(conflicts.df, 'transitive') };
     var cf = { direct: count(conflicts.cf, 'direct'), transitive: count(conflicts.cf, 'transitive') };
     df.total = df.direct + df.transitive;
+    // Informativo, já está em df.transitive: conflitos que só existem por origens que entraram por parâmetro
+    df.viaParam = conflicts.df.filter(function (c) { return c.viaParam; }).length;
     cf.total = cf.direct + cf.transitive;
     return { oa: conflicts.oa.length, df: df, cf: cf };
 }
