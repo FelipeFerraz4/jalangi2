@@ -18,7 +18,7 @@ Os dados e os clones ficam **fora do repositório e fora do vault**, em `~/Docum
 |---|---|---|
 | 0 | Insumos: mapas por merge, manifesto, teste de instrumentabilidade, correções da análise | **concluída** |
 | 1 | Clonagem em `repos/` e conferência de cada arquivo contra o `merge.js` do pacote | **concluída** |
-| 2 | Execução isolada de um arquivo em contêiner | |
+| 2 | Execução isolada de um arquivo em contêiner | **piloto feito** (3 projetos) |
 | 3 | Execução em lote, retomável | |
 | 4 | Agregação (funil) e inspeção manual das detecções | |
 
@@ -69,3 +69,31 @@ node experiments/wild/clone-repos.js --dataset <Newminerjs> --manifest ~/Documen
 | Projetos clonados | 38 de 38 (2,4 GB em `repos/`) |
 | Arquivos conferidos | 976 |
 | Idênticos ao `merge.js` do pacote (`ok`) | **976 (100%)** |
+
+## Fase 2: execução isolada (piloto)
+
+```bash
+sh experiments/wild/pilot.sh [nome]     # reconstrói a imagem e roda o piloto: fetch, commander e async (74 amostras, ~6 min)
+# qualquer outro recorte:
+node experiments/wild/run-wild.js --run <nome> --manifest ~/Documentos/wild/dados/manifesto.csv --maps ~/Documentos/wild/dados/maps \
+    --repos ~/Documentos/wild/repos --out ~/Documentos/wild/execucoes --project <projeto>... [--limit-merges N] [--timeout 60] [--force]
+```
+
+**Como roda.** Por merge: `git archive` do commit (sem checkout) → `npm install --ignore-scripts` em contêiner **com rede** → cada arquivo alterado roda em outro contêiner **sem rede** (`--network none`), com a pasta do projeto **somente leitura**, usuário comum, `--cap-drop ALL`, `no-new-privileges`, 1 GB, 1 CPU, 256 processos e 60 s. O ponto de entrada é o próprio arquivo alterado, como na Amanda. O lançador (`lib/launcher.js`) instrumenta só esse arquivo, não grava nada em disco e, no timeout, ainda deixa a análise gravar o relatório parcial.
+
+**Saída** em `execucoes/<nome>/`: `resultados.csv` (uma linha por amostra) e `conflitos.csv` (uma linha por conflito, com as linhas de L, R e base), ambos com `;` e BOM para abrir no Excel. Por amostra, em `amostras/<id>/`: `meta.json`, `report.json` e `saida.txt`. É retomável: amostra com `meta.json` é pulada (`--force` refaz).
+
+Estados de `execucao`: `ok`, `erro_execucao`, `timeout`, `erro_instrumentacao`, `morto_memoria_ou_tempo`, `sem_relatorio`, `sem_mapa`, `sem_checkout`, `nao_instrumentavel`. Um `erro_execucao` ainda traz o relatório do que rodou até o erro.
+
+### Resultado do piloto
+
+| Projeto | Amostras | Execução | OA / DF / CF |
+|---|---:|---|---|
+| tj/commander.js | 24 | 24 ok | 0 / 1 / 0 |
+| caolan/async | 43 | 43 ok (instalação falhou em 13 merges, e rodou assim mesmo) | 0 / 0 / 0 |
+| JakeChampion/fetch | 7 | 7 erro: código de navegador (`self`, `window`) | 0 / 0 / 0 |
+
+- **Cobertura é o gargalo.** Rodar só o arquivo alterado executa pouco: a mediana de linhas de R executadas é 0%, e a de L, 5%. Uma biblioteca carregada sozinha só executa o código de topo, as funções ficam sem chamada. Poucos conflitos aparecem por isso, não porque faltem conflitos. Para subir a cobertura é preciso um ponto de entrada que exercite o código (os testes do projeto, a Fase 5 prevista).
+- **Código de navegador** falha logo no início (`self`/`window`/DOM). Precisa de shim ou fica de fora.
+- **Instalação:** média 4,5 s por merge, máximo 24 s. 13 merges do `async` falharam (`enoent`), sem efeito aqui porque o arquivo roda sem dependências.
+- Nenhuma execução passou de 8 s, e nenhum contêiner ficou para trás.

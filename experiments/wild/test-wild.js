@@ -63,6 +63,60 @@ function withGitRepo(fn) {
     return Promise.resolve(fn({ dir, src, commit })).finally(() => fs.rmSync(dir, { recursive: true, force: true }));
 }
 
+// --- Fase 2: classificação e tabulação ---
+const { classifyRun, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows } = require('./lib/results');
+
+test('execução: classificação pelo código de saída e pelo relatório', () => {
+    assert.strictEqual(classifyRun({ exitCode: 0, output: '', hasReport: true }), 'ok');
+    assert.strictEqual(classifyRun({ exitCode: 1, output: 'ReferenceError: x', hasReport: true }), 'erro_execucao');
+    assert.strictEqual(classifyRun({ exitCode: 124, output: '', hasReport: true }), 'timeout');
+    assert.strictEqual(classifyRun({ exitCode: 3, output: 'ERRO_INSTRUMENTACAO: x', hasReport: false }), 'erro_instrumentacao');
+    assert.strictEqual(classifyRun({ exitCode: 137, output: '', hasReport: false }), 'morto_memoria_ou_tempo');
+    assert.strictEqual(classifyRun({ exitCode: 0, output: '', hasReport: false }), 'sem_relatorio');
+});
+
+test('execução: primeira linha de erro e cobertura sem linhas sem código', () => {
+    assert.strictEqual(firstError('ok\nReferenceError: self is not defined\n  at x'), 'ReferenceError: self is not defined');
+    assert.strictEqual(firstError('tudo certo'), '');
+    const cov = coverageNumbers({ coverage: { summary: { total: { L: { mapped: 12, withoutCode: 2, executed: 5 }, R: { mapped: 0, withoutCode: 0, executed: 0 } } } } });
+    assert.deepStrictEqual(cov.L, { executed: 5, total: 10, rate: 50 });
+    assert.strictEqual(cov.R.rate, '');
+});
+
+test('resultados: a linha tem uma célula por coluna e os conflitos saem com L, R e base', () => {
+    const sample = { sample_id: 'abc', project: 'p', merge_commit: 'm', file_path: 'a.js', left_lines: '1', right_lines: '2' };
+    const report = {
+        counts: { oa: 1, df: { total: 1, viaParam: 1 }, cf: { total: 1 } },
+        coverage: { summary: { total: { L: { mapped: 1, withoutCode: 0, executed: 1 }, R: { mapped: 1, withoutCode: 0, executed: 0 } } } },
+        conflicts: {
+            oa: [{ key: 'x|a.js:3|a.js:1', target: 'x', branch: 'R', position: { line: 3 }, previous: { branch: 'L', position: { line: 1 } } }],
+            df: [{ kind: 'transitive', key: 'k', from: { branch: 'R', position: { line: 7 } }, to: { branch: 'L', position: { line: 9 } }, targets: ['y'], viaParam: true }],
+            cf: [{ kind: 'direct', key: 'c', left: { line: 4 }, right: { line: 5 }, base: { line: 6 } }]
+        }
+    };
+    const row = resultRow({ sample, install: { status: 'ok', seconds: 2 }, run: { status: 'ok', exitCode: 0, seconds: 1, error: '' }, report, outputDir: 'amostras/abc' });
+    assert.strictEqual(row.length, COLUMNS.length);
+    assert.deepStrictEqual(row.slice(12, 16), [1, 1, 1, 1]);
+    const rows = conflictRows(sample, report);
+    assert.ok(rows.every(r => r.length === CONFLICT_COLUMNS.length));
+    assert.deepStrictEqual(rows.map(r => r.slice(3, 9)), [
+        ['OA', '', '', 1, 3, ''],
+        ['DF', 'transitivo', 'sim', 9, 7, ''],
+        ['CF', 'direto', '', 4, 5, 6]]);
+});
+
+test('resultados: amostra sem relatório gera linha com células vazias, sem lançar exceção', () => {
+    const sample = { sample_id: 'abc', project: 'p', merge_commit: 'm', file_path: 'a.js', left_lines: '1', right_lines: '2' };
+    const row = resultRow({ sample, install: null, run: { status: 'nao_instrumentavel', error: 'x' }, report: null });
+    assert.strictEqual(row.length, COLUMNS.length);
+    assert.deepStrictEqual(conflictRows(sample, null), []);
+});
+
+test('csv: separador ponto e vírgula só cita o campo que o contém', () => {
+    assert.strictEqual(formatCsv([['a,b', 'c;d']], ';'), 'a,b;"c;d"\n');
+    assert.deepStrictEqual(parseCsv(formatCsv([['a,b', 'c;d']], ';'), ';'), [['a,b', 'c;d']]);
+});
+
 const asyncTests = [];
 const atest = (name, fn) => asyncTests.push([name, fn]);
 

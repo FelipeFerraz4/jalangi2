@@ -37,9 +37,9 @@ function readCsv(file, separator = ',') {
     });
 }
 
-function formatCsv(rows) {
-    const cell = c => /[",\n\r]/.test(String(c)) ? '"' + String(c).replace(/"/g, '""') + '"' : String(c);
-    return rows.map(r => r.map(cell).join(',')).join('\n') + '\n';
+function formatCsv(rows, separator = ',') {
+    const cell = c => (String(c).includes(separator) || /["\n\r]/.test(String(c))) ? '"' + String(c).replace(/"/g, '""') + '"' : String(c);
+    return rows.map(r => r.map(cell).join(separator)).join('\n') + '\n';
 }
 
 module.exports = { parseCsv, readCsv, formatCsv };
