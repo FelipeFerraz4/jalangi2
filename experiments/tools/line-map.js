@@ -187,7 +187,14 @@ function batch(zips, outDir) {
         const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'linemap-'));
         try {
             // Os arquivos do ZIP são dados de terceiros: só são lidos, nunca executados
-            execFileSync('unzip', ['-q', '-o', zip, '-d', tmp, '*/base.js', '*/left.js', '*/right.js', '*/merge.js', '*/metadados.json']);
+            try {
+                execFileSync('unzip', ['-q', '-o', zip, '-d', tmp, '*/base.js', '*/left.js', '*/right.js', '*/merge.js', '*/metadados.json'], { stdio: ['ignore', 'ignore', 'pipe'] });
+            } catch (e) {
+                // Código 11 do unzip: nenhum arquivo casou. É um pacote de projeto sem amostras; qualquer outro erro continua sendo erro
+                if (e.status !== 11) throw e;
+                console.error(`${path.basename(zip)}: sem amostras`);
+                continue;
+            }
             for (const id of fs.readdirSync(tmp)) {
                 const dir = path.join(tmp, id);
                 if (!fs.existsSync(path.join(dir, 'merge.js'))) continue;
