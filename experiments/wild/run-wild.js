@@ -25,6 +25,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { readCsv, formatCsv } = require('./lib/csv');
 const { testCommand } = require('./lib/test-command');
+const { acquireLock } = require('./lib/lock');
 const { classifyRun, classifyTestRun, parseTestLine, chooseHybrid, firstError, errorCategory, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows, SUMMARY_COLUMNS, summaryRows } = require('./lib/results');
 
 const args = process.argv.slice(2);
@@ -149,6 +150,12 @@ function main() {
     if (limitMerges) merges = merges.slice(0, limitMerges);
     fs.mkdirSync(path.join(RUN_DIR, 'amostras'), { recursive: true });
     if (flag('--consolidate-only')) return consolidate(samples);
+    // Uma trava por projeto: duas execuções na mesma pasta não podem processar o mesmo projeto ao mesmo tempo
+    // (extrairiam para a mesma pasta de trabalho e disputariam os nomes dos contêineres)
+    for (const project of new Set(samples.map(s => s.project))) {
+        const owner = acquireLock(path.join(RUN_DIR, `.trava-${project}`));
+        if (owner) { console.error(`o projeto ${project} já está sendo processado nesta execução (PID ${owner}); saindo.`); process.exit(3); }
+    }
 
     let done = 0;
     for (const group of merges) {

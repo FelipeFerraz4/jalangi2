@@ -255,6 +255,21 @@ atest('modo testes: hook em cada processo e relatórios unidos (L num processo, 
 });
 
 
+test('trava: segunda tentativa recebe o PID do dono; trava de processo morto é retomada', () => {
+    const { acquireLock } = require('./lib/lock');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wild-lock-'));
+    try {
+        const file = path.join(dir, 'x.lock');
+        assert.strictEqual(acquireLock(file), 0);
+        assert.strictEqual(acquireLock(file), process.pid);
+        fs.writeFileSync(file, '999999999');
+        assert.strictEqual(acquireLock(file), 0);
+        assert.strictEqual(fs.readFileSync(file, 'utf-8'), String(process.pid));
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 test('lote: projetos repartidos entre as frentes pelo número de amostras', () => {
     const { shards } = require('./run-batch');
     const mk = (p, n) => Array.from({ length: n }, () => ({ project: p }));

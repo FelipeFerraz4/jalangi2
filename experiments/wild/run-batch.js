@@ -11,6 +11,7 @@ const os = require('os');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { readCsv } = require('./lib/csv');
+const { acquireLock } = require('./lib/lock');
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i === -1 ? def : args[i + 1]; };
@@ -40,6 +41,12 @@ function shards(samples, jobs, only) {
 }
 
 function main() {
+    fs.mkdirSync(path.join(W, 'execucoes'), { recursive: true });
+    const owner = acquireLock(path.join(W, 'execucoes', `${RUN}.lote.lock`));
+    if (owner) {
+        console.error(`já existe um lote "${RUN}" rodando (PID ${owner}); nada foi iniciado.`);
+        process.exit(3);
+    }
     const samples = readCsv(manifest);
     const only = optAll('--project');
     const plan = shards(samples, JOBS, only);
