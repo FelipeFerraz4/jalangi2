@@ -73,17 +73,28 @@ node experiments/wild/clone-repos.js --dataset <Newminerjs> --manifest ~/Documen
 ## Fase 2: execução isolada (piloto)
 
 ```bash
-sh experiments/wild/pilot.sh [nome]     # reconstrói a imagem e roda o piloto: fetch, commander e async (74 amostras, ~6 min)
+sh experiments/wild/pilot.sh [nome]     # reconstrói a imagem e roda o piloto de 15 projetos (404 amostras)
 # qualquer outro recorte:
 node experiments/wild/run-wild.js --run <nome> --manifest ~/Documentos/wild/dados/manifesto.csv --maps ~/Documentos/wild/dados/maps \
     --repos ~/Documentos/wild/repos --out ~/Documentos/wild/execucoes --project <projeto>... [--limit-merges N] [--timeout 60] [--force]
+# só regravar os CSVs a partir de amostras/ (sem executar nada): acrescente --consolidate-only
 ```
 
 **Como roda.** Por merge: `git archive` do commit (sem checkout) → `npm install --ignore-scripts` em contêiner **com rede** → cada arquivo alterado roda em outro contêiner **sem rede** (`--network none`), com a pasta do projeto **somente leitura**, usuário comum, `--cap-drop ALL`, `no-new-privileges`, 1 GB, 1 CPU, 256 processos e 60 s. O ponto de entrada é o próprio arquivo alterado, como na Amanda. O lançador (`lib/launcher.js`) instrumenta só esse arquivo, não grava nada em disco e, no timeout, ainda deixa a análise gravar o relatório parcial.
 
-**Saída** em `execucoes/<nome>/`: `resultados.csv` (uma linha por amostra) e `conflitos.csv` (uma linha por conflito, com as linhas de L, R e base), ambos com `;` e BOM para abrir no Excel. Por amostra, em `amostras/<id>/`: `meta.json`, `report.json` e `saida.txt`. É retomável: amostra com `meta.json` é pulada (`--force` refaz).
+**Saída** em `execucoes/<nome>/`: `resultados.csv` (uma linha por amostra), `conflitos.csv` (uma linha por conflito, com as linhas de L, R e base) e `resumo_projetos.csv` (uma linha por projeto e um TOTAL: estados, falhas por origem, conflitos e cobertura mediana), todos com `;` e BOM para abrir no Excel. Por amostra, em `amostras/<id>/`: `meta.json`, `report.json` e `saida.txt`. É retomável: amostra com `meta.json` é pulada (`--force` refaz).
 
 Estados de `execucao`: `ok`, `erro_execucao`, `timeout`, `erro_instrumentacao`, `morto_memoria_ou_tempo`, `sem_relatorio`, `sem_mapa`, `sem_checkout`, `nao_instrumentavel`. Um `erro_execucao` ainda traz o relatório do que rodou até o erro.
+
+Toda amostra que não terminou `ok` ganha `categoria_erro` e `origem_erro`, calculadas do `saida.txt` (`errorCategory` em `lib/results.js`):
+
+| Origem | Categorias |
+|---|---|
+| `ambiente` | `dependencia_ausente`, `modulo_nativo` (binário não compilado por causa do `--ignore-scripts`), `api_navegador` (`window`, `self`, `Audio`...), `global_ausente` (espera um global de `<script>`, como `_`), `somente_leitura`, `node_incompativel`, `tempo_esgotado`, `memoria_ou_tempo`, `sem_mapa`, `sem_checkout` |
+| `projeto` | `codigo_invalido` (sintaxe ou `package.json` inválidos no commit do merge), `erro_do_programa` (exceção lançada no código do projeto) |
+| `ferramenta` | `instrumentacao` (o Jalangi2 não aceita a sintaxe), `possivel_jalangi` (a exceção nasce no código do Jalangi2 ou da análise), `sem_relatorio` |
+
+Para atribuir uma exceção, vale o primeiro quadro da pilha fora de `src/js/runtime/analysis.js`: as funções dali (`G`, `M`, `callFun`...) só executam operações do próprio programa. Por isso "Function.prototype.apply was called on undefined" em `callFun` é o "x is not a function" do programa (no nodemon, `util.error`, removido do Node 12).
 
 ### Resultado do piloto
 

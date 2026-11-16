@@ -4,19 +4,20 @@
 // mas SEM scripts (npm --ignore-scripts) e depois roda cada arquivo alterado em um contêiner SEM rede,
 // com a pasta do projeto somente leitura, usuário comum, sem capabilities e com limites de memória, CPU,
 // processos e tempo. Grava, por amostra, meta.json + report.json + saida.txt e, no fim, resultados.csv
-// e conflitos.csv (separador ';' e BOM: abrem direto no Excel em português).
+// conflitos.csv e resumo_projetos.csv (separador ';' e BOM: abrem direto no Excel em português).
 //
 // Uso:
 //   node experiments/wild/run-wild.js --run <nome> --manifest <manifesto.csv> --maps <pasta dos mapas: contém por-merge/> --repos <pasta>
 //        --out <pasta execucoes> [--project <nome>]... [--limit-merges N] [--timeout 60] [--install-timeout 300]
-//        [--force] [--keep-work] [--image jalangi2-wild]
+//        [--force] [--keep-work] [--image jalangi2-wild] [--consolidate-only]
+// --consolidate-only: não executa nada, só regrava os CSVs a partir do que já está em amostras/.
 // Retomável: amostra que já tem meta.json é pulada (use --force para refazer).
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { readCsv, formatCsv } = require('./lib/csv');
-const { classifyRun, firstError, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows } = require('./lib/results');
+const { classifyRun, firstError, errorCategory, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows, SUMMARY_COLUMNS, summaryRows } = require('./lib/results');
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i === -1 ? def : args[i + 1]; };
@@ -101,6 +102,7 @@ function main() {
     let merges = [...byMerge.values()];
     if (limitMerges) merges = merges.slice(0, limitMerges);
     fs.mkdirSync(path.join(RUN_DIR, 'amostras'), { recursive: true });
+    if (flag('--consolidate-only')) return consolidate(samples);
 
     let done = 0;
     for (const group of merges) {
@@ -136,7 +138,8 @@ function writeMeta(sample, meta) {
     fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(rest, null, 1) + '\n');
 }
 
-// Junta o que existe em amostras/ (de todas as execuções desta pasta, não só a atual) nos dois CSVs
+// Junta o que existe em amostras/ (de todas as execuções desta pasta, não só a atual) nos CSVs.
+// A categoria do erro é recalculada aqui, a partir do saida.txt, para valer também para amostras já executadas.
 function consolidate(samples) {
     const rows = [COLUMNS], conflicts = [CONFLICT_COLUMNS], counts = {};
     for (const s of samples) {
@@ -146,6 +149,9 @@ function consolidate(samples) {
         let report = null;
         try { report = JSON.parse(fs.readFileSync(path.join(dir, 'report.json'), 'utf-8')); } catch (e) { }
         meta.report = report;
+        let output = meta.run.error || '';
+        try { output = fs.readFileSync(path.join(dir, 'saida.txt'), 'utf-8'); } catch (e) { }
+        meta.category = errorCategory(meta.run.status, output);
         rows.push(resultRow(meta));
         conflicts.push(...conflictRows(s, report));
         counts[meta.run.status] = (counts[meta.run.status] || 0) + 1;
@@ -153,6 +159,7 @@ function consolidate(samples) {
     const BOM = '﻿';
     fs.writeFileSync(path.join(RUN_DIR, 'resultados.csv'), BOM + formatCsv(rows, ';'));
     fs.writeFileSync(path.join(RUN_DIR, 'conflitos.csv'), BOM + formatCsv(conflicts, ';'));
+    fs.writeFileSync(path.join(RUN_DIR, 'resumo_projetos.csv'), BOM + formatCsv([SUMMARY_COLUMNS, ...summaryRows(rows.slice(1))], ';'));
     fs.writeFileSync(path.join(RUN_DIR, 'resumo.json'), JSON.stringify({ amostras: rows.length - 1, conflitos: conflicts.length - 1, execucao: counts }, null, 1) + '\n');
     console.log(JSON.stringify({ amostras: rows.length - 1, conflitos: conflicts.length - 1, execucao: counts }, null, 1));
     console.log('→ ' + path.join(RUN_DIR, 'resultados.csv'));

@@ -64,7 +64,7 @@ function withGitRepo(fn) {
 }
 
 // --- Fase 2: classificação e tabulação ---
-const { classifyRun, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows } = require('./lib/results');
+const { summaryRows, errorCategory, classifyRun, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows } = require('./lib/results');
 
 test('execução: classificação pelo código de saída e pelo relatório', () => {
     assert.strictEqual(classifyRun({ exitCode: 0, output: '', hasReport: true }), 'ok');
@@ -96,7 +96,7 @@ test('resultados: a linha tem uma célula por coluna e os conflitos saem com L, 
     };
     const row = resultRow({ sample, install: { status: 'ok', seconds: 2 }, run: { status: 'ok', exitCode: 0, seconds: 1, error: '' }, report, outputDir: 'amostras/abc' });
     assert.strictEqual(row.length, COLUMNS.length);
-    assert.deepStrictEqual(row.slice(12, 16), [1, 1, 1, 1]);
+    assert.deepStrictEqual(['OA', 'DF', 'CF', 'DF_via_parametro'].map(c => row[COLUMNS.indexOf(c)]), [1, 1, 1, 1]);
     const rows = conflictRows(sample, report);
     assert.ok(rows.every(r => r.length === CONFLICT_COLUMNS.length));
     assert.deepStrictEqual(rows.map(r => r.slice(3, 9)), [
@@ -115,6 +115,47 @@ test('resultados: amostra sem relatório gera linha com células vazias, sem lan
 test('csv: separador ponto e vírgula só cita o campo que o contém', () => {
     assert.strictEqual(formatCsv([['a,b', 'c;d']], ';'), 'a,b;"c;d"\n');
     assert.deepStrictEqual(parseCsv(formatCsv([['a,b', 'c;d']], ';'), ';'), [['a,b', 'c;d']]);
+});
+
+test('resumo: uma linha por projeto, com contagens, medianas e TOTAL no fim', () => {
+    const mk = (project, status, oa, df, cf, lcov, rexec, rcov, install = 'ok', categoria = '', origem = '') => {
+        const row = new Array(COLUMNS.length).fill('');
+        const set = (c, v) => { row[COLUMNS.indexOf(c)] = v; };
+        set('projeto', project); set('execucao', status); set('OA', oa); set('DF', df); set('CF', cf);
+        set('L_cobertura_pct', lcov); set('R_executadas', rexec); set('R_cobertura_pct', rcov); set('instalacao', install);
+        set('categoria_erro', categoria); set('origem_erro', origem);
+        return row;
+    };
+    const out = summaryRows([mk('a', 'ok', 0, 1, 0, 10, 1, 50), mk('a', 'ok', 0, 0, 0, 30, 0, 0, 'falhou'), mk('a', 'erro_execucao', 0, 0, 0, '', '', '', 'ok', 'api_navegador', 'ambiente'),
+        mk('b', 'nao_instrumentavel', '', '', '', '', '', '', '', 'instrumentacao', 'ferramenta')]);
+    assert.strictEqual(out.length, 3);
+    assert.deepStrictEqual(out[0], ['a', 3, 0, 2, 1, 0, 0, 1, 1, 0, 0, 'api_navegador (1)', 1, 0, 1, 0, 1, 20, 25]);
+    assert.deepStrictEqual(out[1].slice(8, 12), [0, 0, 1, 'instrumentacao (1)']);
+    assert.strictEqual(out[1][0], 'b');
+    assert.deepStrictEqual(out[2].slice(0, 4), ['TOTAL', 4, 1, 2]);
+});
+
+test('categoria do erro: separa ambiente, projeto e ferramenta (casos do piloto)', () => {
+    const cat = (status, out) => { const c = errorCategory(status, out); return c.categoria + '/' + c.origem; };
+    assert.strictEqual(cat('ok', 'Error: qualquer'), '/');
+    assert.strictEqual(cat('nao_instrumentavel', 'Unexpected token (140:52)'), 'instrumentacao/ferramenta');
+    assert.strictEqual(cat('timeout', ''), 'tempo_esgotado/ambiente');
+    assert.strictEqual(cat('erro_execucao', "Error: Cannot find module '../build/Release/canvas'"), 'modulo_nativo/ambiente');
+    assert.strictEqual(cat('erro_execucao', 'Error: Error loading shared library /work/node_modules/bson/build/Release/bson.node: Exec format error'), 'modulo_nativo/ambiente');
+    assert.strictEqual(cat('erro_execucao', "Error: Cannot find module 'qs'\nRequire stack:"), 'dependencia_ausente/ambiente');
+    assert.strictEqual(cat('erro_execucao', 'ReferenceError: window is not defined'), 'api_navegador/ambiente');
+    assert.strictEqual(cat('erro_execucao', 'ReferenceError: self is not defined'), 'api_navegador/ambiente');
+    assert.strictEqual(cat('erro_execucao', 'ReferenceError: Audio is not defined'), 'api_navegador/ambiente');
+    assert.strictEqual(cat('erro_execucao', 'ReferenceError: _ is not defined'), 'global_ausente/ambiente');
+    assert.strictEqual(cat('erro_execucao', 'ReferenceError: primordials is not defined'), 'node_incompativel/ambiente');
+    assert.strictEqual(cat('erro_execucao', "Error: EROFS: read-only file system, mkdir '/work/coverage'"), 'somente_leitura/ambiente');
+    assert.strictEqual(cat('erro_execucao', 'SyntaxError: Illegal continue statement: no surrounding iteration statement'), 'codigo_invalido/projeto');
+    assert.strictEqual(cat('erro_execucao', "TypeError: Cannot read properties of undefined (reading 'set')\n    at Object.<anonymous> (/work/lib/types/document.js:36:33)"), 'erro_do_programa/projeto');
+    // nodemon chamando util.error (removido do Node): o callFun do Jalangi2 só repassa a chamada do programa
+    assert.strictEqual(cat('sem_relatorio', 'TypeError: Function.prototype.apply was called on undefined\n    at callFun (/app/src/js/runtime/analysis.js:193:51)\n    at invokeFun (/app/src/js/runtime/analysis.js:214:22)\n    at process.<anonymous> (/work/nodemon.js:932:92)'), 'erro_do_programa/projeto');
+    assert.strictEqual(cat('erro_execucao', "TypeError: Cannot read properties of undefined (reading 'ajax')\n    at Object.G (/app/src/js/runtime/analysis.js:327:23)\n    at Object.<anonymous> (/work/backbone.js:2658:103)"), 'erro_do_programa/projeto');
+    assert.strictEqual(cat('erro_execucao', "TypeError: x is undefined\n    at Object.endExecution (/app/experiments/analyses/analysis_dataflow.js:700:3)"), 'possivel_jalangi/ferramenta');
+    assert.strictEqual(cat('sem_relatorio', 'nada reconhecível'), 'sem_relatorio/ferramenta');
 });
 
 const asyncTests = [];
