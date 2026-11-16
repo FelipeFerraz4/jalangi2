@@ -96,6 +96,19 @@ Toda amostra que não terminou `ok` ganha `categoria_erro` e `origem_erro`, calc
 
 Para atribuir uma exceção, vale o primeiro quadro da pilha fora de `src/js/runtime/analysis.js`: as funções dali (`G`, `M`, `callFun`...) só executam operações do próprio programa. Por isso "Function.prototype.apply was called on undefined" em `callFun` é o "x is not a function" do programa (no nodemon, `util.error`, removido do Node 12).
 
+### Modo testes (`--mode testes`)
+
+Para subir a cobertura, o ponto de entrada passa a ser a suíte de testes do projeto (`sh experiments/wild/pilot.sh piloto-testes testes`).
+
+- **Comando** (`lib/test-command.js`): o `scripts.test` do `package.json`, quebrado nos `&&`, sem os passos de lint/estilo (`lint`, `standard`, `jshint`...) e de navegador (`karma`, `phantomjs`, `zuul`...), com o resto unido por `;` para um passo com teste falhando não impedir os seguintes. Sem nada utilizável, a amostra fica `sem_testes`.
+- **Qualquer runner** (make, npm, mocha, nodeunit, tape, vows, scripts próprios): `lib/run-tests.js` roda o comando com `NODE_OPTIONS=--require lib/hook.js`, então **todo processo Node** que a suíte cria carrega o Jalangi2 e instrumenta só o alvo. Cada processo que carregou o alvo grava o próprio relatório, e no fim eles são unidos (`experiments/tools/merge-reports.js`). Conflitos entre processos diferentes não são vistos.
+- **Saída silenciosa**: `ANALYSIS_QUIET=1` cala as mensagens da análise, porque suítes leem o stdout de processos filhos (TAP, asserções sobre a saída). O relatório JSON continua.
+- **Timeout** (300 s por padrão): TERM ao grupo de processos inteiro, e cada processo grava o relatório parcial.
+- **Contêiner**: ainda sem rede, usuário comum e sem capabilities, mas a pasta do projeto fica **gravável** (os testes escrevem nela; é uma cópia descartável), com 2 GB, 2 CPUs e 512 processos.
+- **Estados**: testes falhando não são falha nossa. `ok` quando algum processo carregou o alvo (o código da suíte vai em `testes_codigo_saida` e o número de processos em `processos_com_alvo`); `alvo_nao_carregado` quando a suíte rodou sem passar pelo arquivo (categoria `testes_nao_carregam_alvo`, ou a falha de ambiente que a explica); `sem_testes`.
+
+Primeiro teste (3 amostras do commander): a de `index.js` com 180 linhas de L foi de 19 para 98 linhas de L executadas, e de 1 para 7 conflitos. A falha de testes nessa amostra é do próprio projeto: a suíte falha igual sem o hook.
+
 ### Resultado do piloto
 
 | Projeto | Amostras | Execução | OA / DF / CF |

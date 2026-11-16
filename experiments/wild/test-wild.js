@@ -64,7 +64,7 @@ function withGitRepo(fn) {
 }
 
 // --- Fase 2: classificação e tabulação ---
-const { summaryRows, errorCategory, classifyRun, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows } = require('./lib/results');
+const { summaryRows, errorCategory, classifyRun, classifyTestRun, parseTestLine, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows } = require('./lib/results');
 
 test('execução: classificação pelo código de saída e pelo relatório', () => {
     assert.strictEqual(classifyRun({ exitCode: 0, output: '', hasReport: true }), 'ok');
@@ -160,6 +160,80 @@ test('categoria do erro: separa ambiente, projeto e ferramenta (casos do piloto)
 
 const asyncTests = [];
 const atest = (name, fn) => asyncTests.push([name, fn]);
+
+// --- Modo testes ---
+const { testCommand } = require('./lib/test-command');
+
+test('comando de testes: tira lint e navegador, une o resto com ;', () => {
+    const t = script => testCommand({ scripts: { test: script } });
+    assert.deepStrictEqual(t('make test'), { command: 'make test', dropped: [] });
+    assert.strictEqual(t('npm run-script lint && nodeunit test/test-async.js').command, 'nodeunit test/test-async.js');
+    assert.strictEqual(t('npm run lint && node node_modules/.bin/taper tests/test-*.js && npm run test-browser').command, 'node node_modules/.bin/taper tests/test-*.js');
+    assert.strictEqual(t('standard && node ./bin/test.js').command, 'node ./bin/test.js');
+    assert.strictEqual(t('./node_modules/karma/bin/karma start && coffee test/model.coffee').command, 'coffee test/model.coffee');
+    assert.strictEqual(t('node ./bin/cmd.js && tape test/*.js').command, 'node ./bin/cmd.js ; tape test/*.js');
+    assert.strictEqual(t('phantomjs test/vendor/runner.js test/index.html').command, null);
+    assert.strictEqual(t('echo "Error: no test specified" && exit 1').command, null);
+    assert.strictEqual(testCommand({}).command, null);
+    assert.strictEqual(testCommand(null).command, null);
+});
+
+test('modo testes: classificação e linha TESTES', () => {
+    const info = parseTestLine('saída dos testes\nTESTES {"processos_com_alvo":2,"codigo_testes":1,"timeout":false}\n');
+    assert.deepStrictEqual(info, { processos_com_alvo: 2, codigo_testes: 1, timeout: false });
+    assert.strictEqual(parseTestLine('nada'), null);
+    // testes falhando (código 1) com relatório: ok
+    assert.strictEqual(classifyTestRun({ exitCode: 1, output: '', hasReport: true, info }), 'ok');
+    assert.strictEqual(classifyTestRun({ exitCode: 0, output: '', hasReport: false, info: { ...info, processos_com_alvo: 0 } }), 'alvo_nao_carregado');
+    assert.strictEqual(classifyTestRun({ exitCode: 124, output: '', hasReport: true, info: { ...info, timeout: true } }), 'timeout');
+    assert.strictEqual(classifyTestRun({ exitCode: 3, output: 'ERRO_INSTRUMENTACAO: x', hasReport: false, info }), 'erro_instrumentacao');
+    assert.strictEqual(classifyTestRun({ exitCode: 137, output: '', hasReport: false, info: null }), 'morto_memoria_ou_tempo');
+    // alvo não carregado: só falha de ambiente explica; erro de teste qualquer não vira erro do programa
+    const cat = out => errorCategory('alvo_nao_carregado', out).categoria;
+    assert.strictEqual(cat("Error: Cannot find module 'should'"), 'dependencia_ausente');
+    assert.strictEqual(cat('AssertionError: expected 1 to equal 2\n    at Context.<anonymous> (/work/test/a.js:3:9)'), 'testes_nao_carregam_alvo');
+    assert.strictEqual(errorCategory('sem_testes', '').origem, 'projeto');
+});
+
+// Ponta a ponta, sem Docker: a suíte de um projeto de brinquedo carrega o alvo em dois processos
+// (um direto, outro por um processo neto) e os relatórios saem unidos num só.
+atest('modo testes: hook em cada processo e relatórios unidos (L num processo, R no outro)', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wild-tests-'));
+    try {
+        fs.mkdirSync(path.join(dir, 'test'));
+        fs.writeFileSync(path.join(dir, 'lib.js'), [
+            'exports.a = function () {',
+            '    var x = 1;',          // 2: L
+            '    return x;',
+            '};',
+            'exports.b = function () {',
+            '    var y = 2;',          // 6: R
+            '    return y;',
+            '};'].join('\n') + '\n');
+        fs.writeFileSync(path.join(dir, 'test', 'a.js'), "require('../lib').a();\n");
+        fs.writeFileSync(path.join(dir, 'test', 'b.js'),
+            "var r = require('child_process').spawnSync(process.execPath, ['-e', \"require('./lib').b()\"], { stdio: 'inherit' });\nprocess.exit(r.status);\n");
+        fs.writeFileSync(path.join(dir, 'test', 'outro.js'), "console.log('não carrega o alvo'); process.exit(1);\n");
+        const map = path.join(dir, 'map.json');
+        fs.writeFileSync(map, JSON.stringify({ files: { 'lib.js': { L: [2], R: [6] } } }));
+        const out = path.join(dir, 'report.json');
+        const r = require('child_process').spawnSync(process.execPath,
+            [path.join(__dirname, 'lib', 'run-tests.js'), path.join(dir, 'lib.js'), '60', out, 'node test/a.js ; node test/outro.js ; node test/b.js'],
+            { cwd: dir, encoding: 'utf-8', env: { ...process.env, BRANCH_MAP_FILE: map, BRANCH_MAP_ROOT: dir } });
+        const info = parseTestLine(r.stdout);
+        assert.ok(info, 'sem linha TESTES:\n' + r.stdout + r.stderr);
+        assert.strictEqual(info.processos_com_alvo, 2);
+        assert.strictEqual(info.timeout, false);
+        assert.ok(!/ESCRITA|RELATÓRIO FINAL/.test(r.stdout), 'ANALYSIS_QUIET deveria calar a análise');
+        const report = JSON.parse(fs.readFileSync(out, 'utf-8'));
+        const cov = coverageNumbers(report);
+        assert.strictEqual(cov.L.executed, 1);
+        assert.strictEqual(cov.R.executed, 1);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 
 atest('git-sync: clona sem checkout e confere o arquivo (ok)', () => withGitRepo(async ({ dir, src, commit }) => {
     const dest = path.join(dir, 'clone');

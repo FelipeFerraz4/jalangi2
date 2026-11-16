@@ -6,39 +6,19 @@
 //   - ao receber SIGTERM (timeout) encerra com código 124 pelo caminho normal, para a análise ainda gravar
 //     o relatório parcial (o que foi executado até ali).
 // Uso: node launcher.js <arquivo-alvo.js>     (variáveis BRANCH_MAP_FILE, BRANCH_MAP_ROOT, ANALYSIS_REPORT...)
-const fs = require('fs');
 const path = require('path');
 const Module = require('module');
+const { setup } = require('./jalangi-setup');
 
-const root = path.resolve(__dirname, '..', '..', '..');
 const target = path.resolve(process.argv[2] || '');
 if (!process.argv[2]) { console.error('uso: launcher.js <arquivo-alvo.js>'); process.exit(2); }
 
-global.J$ = global.J$ || {};
-global.acorn = require('acorn');
-global.esotope = require('esotope');
-require(path.join(root, 'src/js/headers')).headerSources.forEach(h => require(path.join(root, h)));
-J$.initParams = {};
-['src/js/sample_analyses/ChainedAnalyses.js', 'src/js/runtime/SMemory.js', 'experiments/analyses/analysis_dataflow.js']
-    .forEach(a => require(path.join(root, a)));
-
-const originalLoader = Module._extensions['.js'];
-Module._extensions['.js'] = function (module, filename) {
-    if (path.resolve(filename) !== target) return originalLoader(module, filename);
-    const code = fs.readFileSync(filename, 'utf8');
-    let inst;
-    try {
-        inst = J$.instrumentCode({
-            code, isEval: false, origCodeFileName: filename,
-            instCodeFileName: filename.replace(/\.js$/, '_jalangi_.js'),
-            inlineSourceMap: true, inlineSource: true
-        });
-    } catch (e) {
-        console.error('ERRO_INSTRUMENTACAO: ' + String(e && e.message || e).split('\n')[0]);
+setup(target, {
+    onError: msg => {
+        console.error('ERRO_INSTRUMENTACAO: ' + msg);
         process.exit(3);
     }
-    module._compile(inst.code, filename);
-};
+});
 
 process.on('SIGTERM', () => process.exit(124));
 process.on('exit', () => { J$.endExecution(); });

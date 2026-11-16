@@ -11,6 +11,25 @@ function classifyRun({ exitCode, output, hasReport }) {
     return exitCode === 0 ? 'ok' : 'erro_execucao';
 }
 
+// Modo testes: a linha "TESTES {json}" que run-tests.js imprime no fim (a última, se houver mais de uma)
+function parseTestLine(output) {
+    const lines = String(output).split('\n').filter(l => l.startsWith('TESTES {'));
+    if (!lines.length) return null;
+    try { return JSON.parse(lines[lines.length - 1].slice(7)); } catch (e) { return null; }
+}
+
+// Modo testes: testes falhando não são falha nossa. Vale se algum processo carregou o alvo e gravou relatório.
+//   ok: a suíte terminou e há relatório (o código dos testes fica em testes_codigo_saida);
+//   timeout: estourou o tempo (pode haver relatório parcial); alvo_nao_carregado: a suíte rodou e nenhum processo
+//   carregou o arquivo alvo (os testes não o usam, ou caíram antes por falta de dependência).
+function classifyTestRun({ exitCode, output, hasReport, info }) {
+    if (exitCode === 124 || (info && info.timeout)) return 'timeout';
+    if (exitCode === 3 || (!hasReport && /ERRO_INSTRUMENTACAO/.test(output))) return 'erro_instrumentacao';
+    if (exitCode === 137 && !info) return 'morto_memoria_ou_tempo';
+    if (!info) return 'sem_relatorio';
+    return hasReport ? 'ok' : 'alvo_nao_carregado';
+}
+
 // Primeira linha que parece erro, para o analista ver por que a execução parou
 function firstError(output) {
     const line = String(output).split('\n').find(l => /ERRO_INSTRUMENTACAO|\b\w*Error\b|Cannot find module|EROFS|ENOENT/.test(l));
@@ -32,14 +51,15 @@ function coverageNumbers(report) {
 // Devolve { categoria, origem } (vazios quando a execução foi ok). origem: ambiente | projeto | ferramenta.
 //   ambiente:   dependencia_ausente, modulo_nativo, api_navegador, global_ausente, somente_leitura, node_incompativel,
 //               tempo_esgotado, memoria_ou_tempo, sem_mapa, sem_checkout
-//   projeto:    codigo_invalido (sintaxe ou package.json inválidos no commit), erro_do_programa (exceção lançada no código do projeto)
+//   projeto:    codigo_invalido (sintaxe ou package.json inválidos no commit), erro_do_programa (exceção lançada no código do projeto),
+//               sem_testes (modo testes: sem scripts.test utilizável), testes_nao_carregam_alvo (a suíte rodou sem carregar o arquivo)
 //   ferramenta: instrumentacao (o Jalangi2 não aceita a sintaxe), possivel_jalangi (a exceção nasce no código do Jalangi2/análise, fora dos repasses de operações do programa),
 //               sem_relatorio (terminou sem gravar relatório e sem erro reconhecível)
 const BROWSER_GLOBALS = /\b(window|self|document|navigator|location|localStorage|sessionStorage|XMLHttpRequest|Audio|AudioContext|HTMLElement|Element|Image|requestAnimationFrame)\b is not defined/;
 const ORIGIN = {
     dependencia_ausente: 'ambiente', modulo_nativo: 'ambiente', api_navegador: 'ambiente', global_ausente: 'ambiente', somente_leitura: 'ambiente',
     node_incompativel: 'ambiente', tempo_esgotado: 'ambiente', memoria_ou_tempo: 'ambiente', sem_mapa: 'ambiente', sem_checkout: 'ambiente',
-    codigo_invalido: 'projeto', erro_do_programa: 'projeto',
+    codigo_invalido: 'projeto', erro_do_programa: 'projeto', sem_testes: 'projeto', testes_nao_carregam_alvo: 'projeto',
     instrumentacao: 'ferramenta', possivel_jalangi: 'ferramenta', sem_relatorio: 'ferramenta'
 };
 
@@ -49,8 +69,14 @@ function errorCategory(status, output) {
     if (status === 'nao_instrumentavel' || status === 'erro_instrumentacao') return pick('instrumentacao');
     if (status === 'timeout') return pick('tempo_esgotado');
     if (status === 'morto_memoria_ou_tempo') return pick('memoria_ou_tempo');
-    if (status === 'sem_mapa' || status === 'sem_checkout') return pick(status);
+    if (status === 'sem_mapa' || status === 'sem_checkout' || status === 'sem_testes') return pick(status);
     const text = String(output || '');
+    // Modo testes, alvo não carregado: a saída é a da suíte inteira. Só uma falha de ambiente reconhecível explica;
+    // fora isso, os testes simplesmente não passam pelo arquivo (erros de teste não contam como erro do programa).
+    if (status === 'alvo_nao_carregado') {
+        const env = errorCategory('erro_execucao', text.split('\n').filter(l => !/^\s+at /.test(l)).join('\n'));
+        return env.origem === 'ambiente' ? env : pick('testes_nao_carregam_alvo');
+    }
     if (/build\/Release\/|\.node\b.*(Exec format error|invalid ELF)|Could not locate the bindings file|was compiled against a different Node\.js version/.test(text)) return pick('modulo_nativo');
     if (/Cannot find module/.test(text)) return pick('dependencia_ausente');
     if (/primordials is not defined/.test(text)) return pick('node_incompativel');
@@ -73,7 +99,7 @@ function errorCategory(status, output) {
 }
 
 const COLUMNS = ['sample_id', 'projeto', 'merge_commit', 'arquivo', 'linhas_L', 'linhas_R', 'instalacao', 'instalacao_s', 'execucao', 'codigo_saida',
-    'execucao_s', 'erro', 'categoria_erro', 'origem_erro', 'OA', 'DF', 'CF', 'DF_via_parametro', 'L_executadas', 'L_total', 'L_cobertura_pct', 'R_executadas', 'R_total', 'R_cobertura_pct', 'saida'];
+    'execucao_s', 'erro', 'categoria_erro', 'origem_erro', 'modo', 'comando_testes', 'testes_codigo_saida', 'processos_com_alvo', 'OA', 'DF', 'CF', 'DF_via_parametro', 'L_executadas', 'L_total', 'L_cobertura_pct', 'R_executadas', 'R_total', 'R_cobertura_pct', 'saida'];
 
 // meta: { sample, install: {status, seconds}, run: {status, exitCode, seconds, error}, report, outputDir, category: {categoria, origem} }
 function resultRow(meta) {
@@ -84,6 +110,8 @@ function resultRow(meta) {
         meta.install ? meta.install.status : '', meta.install ? meta.install.seconds : '',
         meta.run.status, meta.run.exitCode === undefined ? '' : meta.run.exitCode, meta.run.seconds === undefined ? '' : meta.run.seconds, meta.run.error || '',
         cat.categoria, cat.origem,
+        meta.run.mode || 'arquivo', meta.run.testCommand || '', meta.run.testExit === undefined ? '' : meta.run.testExit,
+        meta.run.processes === undefined ? '' : meta.run.processes,
         counts ? counts.oa : '', counts ? counts.df.total : '', counts ? counts.cf.total : '', counts ? counts.df.viaParam : '',
         cov.L.executed, cov.L.total, cov.L.rate, cov.R.executed, cov.R.total, cov.R.rate, meta.outputDir || ''];
 }
@@ -161,4 +189,4 @@ function summaryRows(rows) {
     return out;
 }
 
-module.exports = { SUMMARY_COLUMNS, summaryRows, errorCategory, classifyRun, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows };
+module.exports = { SUMMARY_COLUMNS, summaryRows, errorCategory, classifyRun, classifyTestRun, parseTestLine, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows };

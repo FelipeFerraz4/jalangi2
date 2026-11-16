@@ -105,6 +105,12 @@
         return info;
     }
 
+    // ANALYSIS_QUIET=1 cala todas as mensagens (eventos, conflitos e o resumo final); o relatório JSON
+    // (ANALYSIS_REPORT) continua sendo gravado. Serve para rodar dentro da suíte de testes de um projeto,
+    // em que o stdout de processos filhos costuma ser lido por quem os criou (TAP, asserções sobre a saída).
+    var log = (typeof process !== 'undefined' && process.env && process.env.ANALYSIS_QUIET)
+        ? function () { } : function () { console.log.apply(console, arguments); };
+
     // Suporte a carregamento dinâmico via variável de ambiente ou arquivo JSON
     if (typeof process !== 'undefined' && process.env) {
         if (process.env.BRANCH_MAP) {
@@ -479,7 +485,7 @@
                         left: where(source.line), right: where(sink.line), base: where(line),
                         stack: currentStack()
                     };
-                    console.log(`\n🔀 [CONFLITO CONFLUENCE${direct ? '' : ' TRANSITIVO'}] Os valores produzidos por 'L' (linha ${source.line}) e por 'R' (linha ${sink.line}) confluem no comando da Base na linha ${line}!\n`);
+                    log(`\n🔀 [CONFLITO CONFLUENCE${direct ? '' : ' TRANSITIVO'}] Os valores produzidos por 'L' (linha ${source.line}) e por 'R' (linha ${sink.line}) confluem no comando da Base na linha ${line}!\n`);
                 }
             });
         });
@@ -507,7 +513,7 @@
                         previous: { branch: otherBranch, position: where(previous.line), value: describe(previous.val) },
                         stack: currentStack()
                     };
-                    console.log(`🚨 [CONFLITO OA] Estado '${label(target)}' (atribuído por '${branch}' na linha ${line}) sobrescreveu a atribuição anterior de '${otherBranch}' (linha ${previous.line})!`);
+                    log(`🚨 [CONFLITO OA] Estado '${label(target)}' (atribuído por '${branch}' na linha ${line}) sobrescreveu a atribuição anterior de '${otherBranch}' (linha ${previous.line})!`);
                 }
             }
             // A atribuição da outra branch deixa de valer (Algoritmo 1, linha 7)
@@ -517,7 +523,7 @@
             // [REGRA DATA FLOW: Registro de Escrita do Produtor]
             // A escrita produz o valor diretamente; o que foi lido para calculá-lo chega de forma transitiva
             origins[target] = mergeOrigins([{ branch: branch, line: line, derived: false }], asDerived(pending));
-            console.log(`[ESCRITA] '${label(target)}' modificado pela branch '${branch}' na linha ${line}`);
+            log(`[ESCRITA] '${label(target)}' modificado pela branch '${branch}' na linha ${line}`);
         } else {
             // [OPERAÇÃO DE KILL PELA BASE]
             // A Base sobrescreve o estado: não sobra origem direta, só a dos valores lidos para calculá-lo
@@ -538,7 +544,7 @@
             return { branch: o.branch, line: o.line, derived: o.derived, viaParam: true };
         });
         if (branch !== "Base") {
-            console.log(`[PARÂMETRO] '${label(target)}' recebe valor da branch '${branch}' (chamada na linha ${line})`);
+            log(`[PARÂMETRO] '${label(target)}' recebe valor da branch '${branch}' (chamada na linha ${line})`);
         }
     }
 
@@ -576,8 +582,8 @@
                             viaParam: viaParam,
                             stack: currentStack()
                         };
-                        console.log(`\n⚡ [CONFLITO DATA FLOW${origin.derived ? ' TRANSITIVO' : ''}${viaParam ? ' VIA PARÂMETRO' : ''}] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${origin.branch}' (linha ${origin.line})!`);
-                        console.log(`   └─> Risco Semântico: Branch '${readingBranch}' está consumindo estado mutado concorrentemente por '${origin.branch}'.\n`);
+                        log(`\n⚡ [CONFLITO DATA FLOW${origin.derived ? ' TRANSITIVO' : ''}${viaParam ? ' VIA PARÂMETRO' : ''}] Estado '${label(target)}' lido pela branch '${readingBranch}' (linha ${line}), mas foi produzido pela branch '${origin.branch}' (linha ${origin.line})!`);
+                        log(`   └─> Risco Semântico: Branch '${readingBranch}' está consumindo estado mutado concorrentemente por '${origin.branch}'.\n`);
                     }
                 }
             });
@@ -755,21 +761,21 @@
         endExecution: function () {
             var report = buildReport();
             var c = report.counts;
-            console.log("\n==================================================");
-            console.log("📊 RELATÓRIO FINAL DE ANÁLISE DINÂMICA DE MERGE");
-            console.log(`   - Conflitos de Overriding Assignment (OA): ${c.oa}`);
-            console.log(`   - Conflitos de Data Flow (DF):             ${c.df.total}`);
-            console.log(`   - Conflitos de Confluence Flow (CF):       ${c.cf.total}`);
+            log("\n==================================================");
+            log("📊 RELATÓRIO FINAL DE ANÁLISE DINÂMICA DE MERGE");
+            log(`   - Conflitos de Overriding Assignment (OA): ${c.oa}`);
+            log(`   - Conflitos de Data Flow (DF):             ${c.df.total}`);
+            log(`   - Conflitos de Confluence Flow (CF):       ${c.cf.total}`);
             reportLib.BRANCHES.forEach(function (b) {
                 var t = report.coverage.summary.total[b];
                 var semCodigo = t.withoutCode ? ` (${t.withoutCode} sem código executável)` : '';
-                console.log(`   - Linhas de ${b} executadas:                ${t.executed}/${t.mapped - t.withoutCode}${semCodigo}`);
+                log(`   - Linhas de ${b} executadas:                ${t.executed}/${t.mapped - t.withoutCode}${semCodigo}`);
             });
-            console.log("==================================================");
+            log("==================================================");
             var env = (typeof process !== 'undefined' && process.env) ? process.env : {};
             // Os runners de teste comparam cada análise do Java com um recorte (direto ou direto + transitivo)
             if (env.ANALYSIS_DETAIL) {
-                console.log("DETALHE " + JSON.stringify({ dfDireto: c.df.direct, dfTransitivo: c.df.transitive, cfDireto: c.cf.direct, cfTransitivo: c.cf.transitive }));
+                log("DETALHE " + JSON.stringify({ dfDireto: c.df.direct, dfTransitivo: c.df.transitive, cfDireto: c.cf.direct, cfTransitivo: c.cf.transitive }));
             }
             if (env.ANALYSIS_REPORT) {
                 require('fs').writeFileSync(env.ANALYSIS_REPORT, JSON.stringify(report, null, 1) + '\n');
