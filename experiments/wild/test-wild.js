@@ -64,7 +64,7 @@ function withGitRepo(fn) {
 }
 
 // --- Fase 2: classificação e tabulação ---
-const { summaryRows, errorCategory, classifyRun, classifyTestRun, parseTestLine, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows } = require('./lib/results');
+const { summaryRows, errorCategory, chooseHybrid, classifyRun, classifyTestRun, parseTestLine, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows } = require('./lib/results');
 
 test('execução: classificação pelo código de saída e pelo relatório', () => {
     assert.strictEqual(classifyRun({ exitCode: 0, output: '', hasReport: true }), 'ok');
@@ -176,6 +176,26 @@ test('comando de testes: tira lint e navegador, une o resto com ;', () => {
     assert.strictEqual(t('echo "Error: no test specified" && exit 1').command, null);
     assert.strictEqual(testCommand({}).command, null);
     assert.strictEqual(testCommand(null).command, null);
+    // mocha → _mocha (o bin/mocha 1.x perde a saída no Node atual); _mocha e "mocha-test" ficam como estão
+    assert.strictEqual(t('set X=1 && mocha --async-only test/*.test.js').command, 'set X=1 ; _mocha --async-only test/*.test.js');
+    assert.strictEqual(t('./node_modules/.bin/mocha -R spec').command, './node_modules/.bin/_mocha -R spec');
+    assert.strictEqual(t('node_modules/mocha/bin/_mocha --timeout 20000').command, 'node_modules/mocha/bin/_mocha --timeout 20000');
+    assert.strictEqual(t('npm run mocha-test').command, 'npm run mocha-test');
+});
+
+test('modo híbrido: testes quando carregaram o alvo, senão o arquivo', () => {
+    assert.strictEqual(chooseHybrid('ok', 'ok', true), 'testes');
+    assert.strictEqual(chooseHybrid('ok', 'timeout', true), 'testes');
+    assert.strictEqual(chooseHybrid('ok', 'timeout', false), 'arquivo');
+    assert.strictEqual(chooseHybrid('ok', 'sem_testes', false), 'arquivo');
+    assert.strictEqual(chooseHybrid('erro_execucao', 'alvo_nao_carregado', false), 'arquivo');
+});
+
+test('categoria do erro: API removida do Node e serviço externo', () => {
+    const cat = out => errorCategory('erro_execucao', out).categoria;
+    assert.strictEqual(cat("TypeError: Cannot read properties of undefined (reading 'unshift')\n    require.paths.unshift(arg);"), 'node_incompativel');
+    assert.strictEqual(cat('Error: connect ECONNREFUSED 127.0.0.1:27017'), 'servico_externo');
+    assert.strictEqual(errorCategory('alvo_nao_carregado', 'MongoNetworkError: failed to connect to server').categoria, 'servico_externo');
 });
 
 test('modo testes: classificação e linha TESTES', () => {

@@ -30,6 +30,13 @@ function classifyTestRun({ exitCode, output, hasReport, info }) {
     return hasReport ? 'ok' : 'alvo_nao_carregado';
 }
 
+// Modo híbrido: qual resultado fica. Os testes, se carregaram o alvo (ok, ou timeout com relatório parcial);
+// senão o modo arquivo.
+function chooseHybrid(fileStatus, testStatus, testHasReport) {
+    if (testStatus === 'ok' || (testStatus === 'timeout' && testHasReport)) return 'testes';
+    return 'arquivo';
+}
+
 // Primeira linha que parece erro, para o analista ver por que a execução parou
 function firstError(output) {
     const line = String(output).split('\n').find(l => /ERRO_INSTRUMENTACAO|\b\w*Error\b|Cannot find module|EROFS|ENOENT/.test(l));
@@ -49,7 +56,8 @@ function coverageNumbers(report) {
 
 // Por que a amostra não rodou até o fim, para separar limitação do ambiente de erro do projeto e de falha da ferramenta.
 // Devolve { categoria, origem } (vazios quando a execução foi ok). origem: ambiente | projeto | ferramenta.
-//   ambiente:   dependencia_ausente, modulo_nativo, api_navegador, global_ausente, somente_leitura, node_incompativel,
+//   ambiente:   dependencia_ausente, modulo_nativo, api_navegador, global_ausente, somente_leitura, node_incompativel
+//               (API removida do Node: require.paths, util.puts...), servico_externo (banco ou rede: ECONNREFUSED...),
 //               tempo_esgotado, memoria_ou_tempo, sem_mapa, sem_checkout
 //   projeto:    codigo_invalido (sintaxe ou package.json inválidos no commit), erro_do_programa (exceção lançada no código do projeto),
 //               sem_testes (modo testes: sem scripts.test utilizável), testes_nao_carregam_alvo (a suíte rodou sem carregar o arquivo)
@@ -58,7 +66,7 @@ function coverageNumbers(report) {
 const BROWSER_GLOBALS = /\b(window|self|document|navigator|location|localStorage|sessionStorage|XMLHttpRequest|Audio|AudioContext|HTMLElement|Element|Image|requestAnimationFrame)\b is not defined/;
 const ORIGIN = {
     dependencia_ausente: 'ambiente', modulo_nativo: 'ambiente', api_navegador: 'ambiente', global_ausente: 'ambiente', somente_leitura: 'ambiente',
-    node_incompativel: 'ambiente', tempo_esgotado: 'ambiente', memoria_ou_tempo: 'ambiente', sem_mapa: 'ambiente', sem_checkout: 'ambiente',
+    node_incompativel: 'ambiente', servico_externo: 'ambiente', tempo_esgotado: 'ambiente', memoria_ou_tempo: 'ambiente', sem_mapa: 'ambiente', sem_checkout: 'ambiente',
     codigo_invalido: 'projeto', erro_do_programa: 'projeto', sem_testes: 'projeto', testes_nao_carregam_alvo: 'projeto',
     instrumentacao: 'ferramenta', possivel_jalangi: 'ferramenta', sem_relatorio: 'ferramenta'
 };
@@ -79,7 +87,8 @@ function errorCategory(status, output) {
     }
     if (/build\/Release\/|\.node\b.*(Exec format error|invalid ELF)|Could not locate the bindings file|was compiled against a different Node\.js version/.test(text)) return pick('modulo_nativo');
     if (/Cannot find module/.test(text)) return pick('dependencia_ausente');
-    if (/primordials is not defined/.test(text)) return pick('node_incompativel');
+    if (/primordials is not defined|require\.paths|\b(util|sys)\.(puts|print|error|debug)\b.*(not a function|undefined)|customFds/.test(text)) return pick('node_incompativel');
+    if (/ECONNREFUSED|ENOTFOUND|EAI_AGAIN|getaddrinfo|MongoNetworkError|failed to connect to server/.test(text)) return pick('servico_externo');
     if (BROWSER_GLOBALS.test(text)) return pick('api_navegador');
     if (/ReferenceError: [\w$]+ is not defined/.test(text)) return pick('global_ausente');
     if (/EROFS|EACCES/.test(text)) return pick('somente_leitura');
@@ -99,7 +108,7 @@ function errorCategory(status, output) {
 }
 
 const COLUMNS = ['sample_id', 'projeto', 'merge_commit', 'arquivo', 'linhas_L', 'linhas_R', 'instalacao', 'instalacao_s', 'execucao', 'codigo_saida',
-    'execucao_s', 'erro', 'categoria_erro', 'origem_erro', 'modo', 'comando_testes', 'testes_codigo_saida', 'processos_com_alvo', 'OA', 'DF', 'CF', 'DF_via_parametro', 'L_executadas', 'L_total', 'L_cobertura_pct', 'R_executadas', 'R_total', 'R_cobertura_pct', 'saida'];
+    'execucao_s', 'erro', 'categoria_erro', 'origem_erro', 'modo', 'estado_arquivo', 'estado_testes', 'comando_testes', 'testes_codigo_saida', 'processos_com_alvo', 'OA', 'DF', 'CF', 'DF_via_parametro', 'L_executadas', 'L_total', 'L_cobertura_pct', 'R_executadas', 'R_total', 'R_cobertura_pct', 'saida'];
 
 // meta: { sample, install: {status, seconds}, run: {status, exitCode, seconds, error}, report, outputDir, category: {categoria, origem} }
 function resultRow(meta) {
@@ -110,7 +119,9 @@ function resultRow(meta) {
         meta.install ? meta.install.status : '', meta.install ? meta.install.seconds : '',
         meta.run.status, meta.run.exitCode === undefined ? '' : meta.run.exitCode, meta.run.seconds === undefined ? '' : meta.run.seconds, meta.run.error || '',
         cat.categoria, cat.origem,
-        meta.run.mode || 'arquivo', meta.run.testCommand || '', meta.run.testExit === undefined ? '' : meta.run.testExit,
+        meta.run.mode || 'arquivo',
+        meta.run.fileStatus || (meta.run.mode === 'testes' ? '' : meta.run.status), meta.run.testStatus || (meta.run.mode === 'testes' ? meta.run.status : ''),
+        meta.run.testCommand || '', meta.run.testExit === undefined ? '' : meta.run.testExit,
         meta.run.processes === undefined ? '' : meta.run.processes,
         counts ? counts.oa : '', counts ? counts.df.total : '', counts ? counts.cf.total : '', counts ? counts.df.viaParam : '',
         cov.L.executed, cov.L.total, cov.L.rate, cov.R.executed, cov.R.total, cov.R.rate, meta.outputDir || ''];
@@ -189,4 +200,4 @@ function summaryRows(rows) {
     return out;
 }
 
-module.exports = { SUMMARY_COLUMNS, summaryRows, errorCategory, classifyRun, classifyTestRun, parseTestLine, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows };
+module.exports = { SUMMARY_COLUMNS, summaryRows, errorCategory, chooseHybrid, classifyRun, classifyTestRun, parseTestLine, firstError, coverageNumbers, COLUMNS, resultRow, CONFLICT_COLUMNS, conflictRows };
