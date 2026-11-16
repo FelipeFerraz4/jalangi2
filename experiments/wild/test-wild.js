@@ -255,6 +255,38 @@ atest('modo testes: hook em cada processo e relatórios unidos (L num processo, 
 });
 
 
+test('lote: projetos repartidos entre as frentes pelo número de amostras', () => {
+    const { shards } = require('./run-batch');
+    const mk = (p, n) => Array.from({ length: n }, () => ({ project: p }));
+    const out = shards([...mk('a', 10), ...mk('b', 6), ...mk('c', 5), ...mk('d', 1)], 2, []);
+    assert.deepStrictEqual(out.map(s => [s.projects, s.samples]), [[['a', 'd'], 11], [['b', 'c'], 11]]);
+    assert.deepStrictEqual(shards(mk('a', 3), 4, []).length, 1);
+    assert.deepStrictEqual(shards([...mk('a', 3), ...mk('b', 2)], 2, ['b']).map(s => s.projects), [['b']]);
+});
+
+// Regressão (achado na inspeção do piloto, winston): a escrita da variável do for...in tinha a posição do laço
+// inteiro, e herdava a branch de uma linha do corpo. Aqui a linha 3 é Base: o único DF é o de `v` (R -> L).
+atest('jalangi2: escrita da variável do for...in fica na linha do laço, não no corpo', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wild-forin-'));
+    try {
+        fs.writeFileSync(path.join(dir, 'p.js'), [
+            'var obj = { a: 1, b: 2 };',
+            'var copy = {};',
+            'for (var i in obj) {',
+            '  var v = obj[i];',      // 4: R
+            '  copy[i] = v;',         // 5: L
+            '}'].join('\n') + '\n');
+        fs.writeFileSync(path.join(dir, 'map.json'), JSON.stringify({ files: { 'p.js': { R: [4], L: [5] } } }));
+        const out = path.join(dir, 'report.json');
+        require('child_process').spawnSync(process.execPath, [path.join(__dirname, 'lib', 'launcher.js'), path.join(dir, 'p.js')],
+            { cwd: dir, encoding: 'utf-8', env: { ...process.env, BRANCH_MAP_FILE: path.join(dir, 'map.json'), BRANCH_MAP_ROOT: dir, ANALYSIS_REPORT: out, ANALYSIS_QUIET: '1' } });
+        const report = JSON.parse(fs.readFileSync(out, 'utf-8'));
+        assert.deepStrictEqual(report.conflicts.df.map(c => c.targets.join(',') + ' ' + c.from.branch + '->' + c.to.branch), ['v R->L']);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 atest('git-sync: clona sem checkout e confere o arquivo (ok)', () => withGitRepo(async ({ dir, src, commit }) => {
     const dest = path.join(dir, 'clone');
     const r = await ensureClone(src, dest);

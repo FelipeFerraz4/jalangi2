@@ -109,6 +109,33 @@ Para subir a cobertura, o ponto de entrada passa a ser a suíte de testes do pro
 
 Primeiro teste (3 amostras do commander): a de `index.js` com 180 linhas de L foi de 19 para 98 linhas de L executadas, e de 1 para 7 conflitos. A falha de testes nessa amostra é do próprio projeto: a suíte falha igual sem o hook.
 
+### Modo híbrido (`--mode hibrido`) e lote completo
+
+O piloto em modo testes mostrou que os testes sobem muito a cobertura onde o projeto tem suíte em Node (request: de 4 para 30 amostras com L e R executados; commander: de 6 para 19; nodemon: de 5 para 15), mas 121 das 404 amostras não têm testes utilizáveis e 125 rodaram a suíte sem carregar o arquivo. Nesses casos, só carregar o arquivo ainda executa alguma coisa. O modo híbrido junta os dois:
+
+- por merge, primeiro o **modo arquivo** em todas as amostras (pasta intacta, somente leitura), depois a **suíte de testes**;
+- fica o relatório dos testes quando eles carregaram o alvo (`ok`, ou `timeout` com relatório parcial), senão o do arquivo (`chooseHybrid`);
+- os dois relatórios ficam na pasta da amostra (`report_arquivo.json`, `report_testes.json`, `saida_*.txt`), e o `resultados.csv` traz `modo` (o escolhido), `estado_arquivo` e `estado_testes`.
+
+Estimativa a partir dos dois pilotos: 121 amostras com L e R executados, contra 50 só com o arquivo e 95 só com os testes.
+
+**Lote completo** (976 amostras, 38 projetos), em frentes paralelas que repartem os projetos pelo número de amostras:
+
+```bash
+node experiments/wild/run-batch.js --run lote --jobs 2      # híbrido, testes com 180 s por amostra; retomável
+```
+
+Logs em `execucoes/<run>.frente-<k>.log`; no fim, os CSVs de `execucoes/<run>/` juntam todas as frentes. Ctrl+C encerra as frentes e os contêineres; rodar de novo retoma.
+
+### Inspeção dos conflitos do piloto em modo testes
+
+Os 386 conflitos do piloto em modo testes vieram de 23 amostras, e 5 delas tinham 314. Lendo os diffs dessas 5:
+
+- **Bug do Jalangi2 no `for...in` (corrigido; respondia por 50 dos 386 conflitos, e por todos os 40 de uma amostra do winston em que nenhuma linha de L executava).** A escrita da variável do laço (`for (var i in obj)`) recebia a posição do laço inteiro, corpo incluído, e herdava a branch de uma linha do corpo. Toda leitura de `i` no corpo por uma linha da outra branch virava DF falso. Corrigido em `src/js/instrument/esnstrument.js` (`wrapForIn`: a posição é a do lado esquerdo), com teste de regressão em `test-wild.js`.
+- **Mudanças que preservam o valor.** Refatorações como `this` → `var self = this` (request `main.js`) ou `optional('https')` → `require('https')` (request `request.js`) fazem a linha pertencer à branch, mas não mudam o valor. Pela definição, toda leitura desse valor pela outra branch é DF ou CF; na prática não são interferência. A análise não distingue esse caso.
+- **Interação plausível.** commander `lib/commander.js`: as duas branches implementaram o tratamento de opções desconhecidas, e o `unknown` que a L passa a repassar é lido pelo `unknown = unknown || []` da R. winston `common.js` (`d5e6297f`): a L muda o que entra em `meta` (erros deixam de ser clonados, `decycle`) e a R muda como `meta` é impresso (`prettyPrint` como função).
+- **Contagem inflada.** Um mesmo par de alterações gera dezenas de registros, um por par de linhas e por caminho transitivo, repetidos ao longo da suíte. Para comparar amostras, vale mais "a amostra tem conflito" e o número de linhas L e R distintas do que o total de registros.
+
 ### Resultado do piloto
 
 | Projeto | Amostras | Execução | OA / DF / CF |

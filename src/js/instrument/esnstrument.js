@@ -893,7 +893,10 @@ if (typeof J$ === 'undefined') {
     var labelCounter = 0;
 
     function wrapForIn(node, left, right, body) {
-        printIidToLoc(node);
+        // O iid reservado aqui é o da escrita da variável do laço (o wrapWrite abaixo o usa): a posição
+        // é a do lado esquerdo (`var i`). Com a do ForInStatement, o iid cobria também o corpo do laço,
+        // e uma análise que olha as linhas da operação atribuía a escrita a linhas do corpo.
+        printIidToLoc(left);
         var tmp, extra, isDeclaration = (left.type === 'VariableDeclaration');
         if (isDeclaration) {
             var name = node.left.declarations[0].id.name;
@@ -901,7 +904,7 @@ if (typeof J$ === 'undefined') {
         } else {
             tmp = replaceInExpr(RP + "1 = " + logTmpVarName, left);
         }
-        transferLoc(tmp, node);
+        transferLoc(tmp, left);   // idem para a escrita em propriedade (for (o.p in x))
         extra = instrumentStore(tmp, isDeclaration);
 
         var ret;
