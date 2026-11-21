@@ -1,0 +1,23 @@
+diff --git a/main.js b/main.js
+index 0c84fca..c2b5fd9 100644
+--- a/main.js
++++ b/main.js
+@@ -336,13 +336,15 @@ Request.prototype.init = function (options) {
+       self.end()
+     } else if (self.requestBodyStream) {
+       console.warn("options.requestBodyStream is deprecated, please pass the request object to stream.pipe.")
+       self.requestBodyStream.pipe(self)
+     } else if (!self.src) {
+-      self.headers['content-length'] = 0
+-      self.end()
+-    }
++        if (self.method !== 'GET' && typeof self.method !== 'undefined') {
++           self.headers['content-length'] = 0;
++        }
++        self.end();
++     }
+     self.ntick = true
+   })
+ }
+ 
+ Request.prototype.getAgent = function () {

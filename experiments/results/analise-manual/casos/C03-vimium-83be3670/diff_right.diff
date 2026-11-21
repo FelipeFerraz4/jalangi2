@@ -1,0 +1,35 @@
+diff --git a/linkHints.js b/linkHints.js
+index 16d6fcbf..58d6e979 100644
+--- a/linkHints.js
++++ b/linkHints.js
+@@ -22,15 +22,15 @@ var linkHintsCssAdded = false;
+ /* 
+  * Generate an XPath describing what a clickable element is.
+  * The final expression will be something like "//button | //xhtml:button | ..."
+  */
+ var clickableElementsXPath = (function() {
+-  var clickableElements = ["a", "textarea", "button", "select", "input[not(@type='hidden')]"];
++  var clickableElements = ["a", "textarea", "button", "select", "input[not(@type='hidden')]",
++                           "*[@onclick or @tabindex or @role='link' or @role='button']"];
+   var xpath = [];
+   for (var i in clickableElements)
+     xpath.push("//" + clickableElements[i], "//xhtml:" + clickableElements[i]);
+-  xpath.push("//*[@onclick]");
+   return xpath.join(" | ")
+ })();
+ 
+ // We need this as a top-level function because our command system doesn't yet support arguments.
+ function activateLinkHintsModeToOpenInNewTab() { activateLinkHintsMode(true, false); }
+@@ -81,11 +81,11 @@ function buildLinkHints() {
+   // Also note that adding these nodes to document.body all at once is significantly faster than one-by-one.
+   hintMarkerContainingDiv = document.createElement("div");
+   hintMarkerContainingDiv.className = "internalVimiumHintMarker";
+   for (var i = 0; i < hintMarkers.length; i++)
+     hintMarkerContainingDiv.appendChild(hintMarkers[i]);
+-  document.body.appendChild(hintMarkerContainingDiv);
++  document.documentElement.appendChild(hintMarkerContainingDiv);
+ }
+ 
+ function logXOfBase(x, base) { return Math.log(x) / Math.log(base); }
+ 
+ /*

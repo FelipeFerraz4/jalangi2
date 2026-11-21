@@ -1,0 +1,93 @@
+diff --git a/lib/eslint.js b/lib/eslint.js
+index 6bf68bd7b..3266ad464 100755
+--- a/lib/eslint.js
++++ b/lib/eslint.js
+@@ -6,12 +6,11 @@
+ 
+ //------------------------------------------------------------------------------
+ // Requirements
+ //------------------------------------------------------------------------------
+ 
+-var espree = require("espree"),
+-    estraverse = require("estraverse-fb"),
++var estraverse = require("estraverse-fb"),
+     escope = require("escope"),
+     environments = require("../conf/environments"),
+     assign = require("object-assign"),
+     rules = require("./rules"),
+     util = require("./util"),
+@@ -338,10 +337,11 @@ function prepareConfig(config) {
+         });
+     }
+ 
+     return {
+         rules: copiedRules,
++        parser: config.parser || "espree",
+         globals: util.mergeConfigs({}, config.globals),
+         env: util.mergeConfigs({}, config.env || {}),
+         settings: util.mergeConfigs({}, config.settings || {}),
+         ecmaFeatures: util.mergeConfigs({}, config.ecmaFeatures || {})
+     };
+@@ -382,18 +382,34 @@ module.exports = (function() {
+      * @returns {ASTNode} The AST if successful or null if not.
+      * @private
+      */
+     function parse(text, config) {
+ 
++        var parser;
++
++        try {
++            parser = require(config.parser);
++        } catch (ex) {
++            messages.push({
++                fatal: true,
++                severity: 2,
++                message: ex.message,
++                line: 0,
++                column: 0
++            });
++
++            return null;
++        }
++
+         /*
+          * Check for parsing errors first. If there's a parsing error, nothing
+          * else can happen. However, a parsing error does not throw an error
+          * from this method - it's just considered a fatal error message, a
+          * problem that ESLint identified just like any other.
+          */
+         try {
+-            return espree.parse(text, {
++            return parser.parse(text, {
+                 loc: true,
+                 range: true,
+                 raw: true,
+                 tokens: true,
+                 comment: true,
+@@ -536,23 +552,23 @@ module.exports = (function() {
+         if (text.trim().length === 0) {
+             currentText = text;
+             return messages;
+         }
+ 
++        // process initial config to make it safe to extend
++        config = prepareConfig(config || {});
++
+         ast = parse(text.replace(/^#!([^\r\n]+)/, function(match, captured) {
+             shebang = captured;
+             return "//" + captured;
+         }), config);
+ 
+         // if espree failed to parse the file, there's no sense in setting up rules
+         if (ast) {
+ 
+             currentAST = ast;
+ 
+-            // process initial config to make it safe to extend
+-            config = prepareConfig(config);
+-
+             // parse global comments and modify config
+             modifyConfigsFromComments(ast, config, reportingConfig);
+ 
+             // enable appropriate rules
+             Object.keys(config.rules).filter(function(key) {

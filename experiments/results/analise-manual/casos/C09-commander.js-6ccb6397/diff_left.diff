@@ -1,0 +1,176 @@
+diff --git a/lib/commander.js b/lib/commander.js
+index d6d9adf..60894ab 100644
+--- a/lib/commander.js
++++ b/lib/commander.js
+@@ -197,16 +197,31 @@ Command.prototype.parseExpectedArgs = function(args){
+  * @api public
+  */
+ 
+ Command.prototype.action = function(fn){
+   var self = this;
+-  this.parent.on(this.name, function(args){
++  this.parent.on(this.name, function(args, unknown){    
++    // Parse any so-far unknown options
++    var parsed = self.parseOptions(unknown);
++    
++    // If there are still any unknown options, then we simply 
++    // die.
++    if (parsed.unknown.length > 0) {
++      self.unknownOption(parsed.unknown[0]);
++    }
++    
+     self.args.forEach(function(arg, i){
+       if (arg.required && null == args[i]) {
+         self.missingArgument(arg.name);
+       }
+     });
++    
++    // Always append ourselves to the end of the arguments,
++    // to make sure we match the number of arguments the user
++    // expects
++    args[self.args.length] = self;
++    
+     fn.apply(this, args);
+   });
+   return this;
+ };
+ 
+@@ -318,12 +333,13 @@ Command.prototype.parse = function(argv){
+ 
+   // guess name
+   if (!this.name) this.name = basename(argv[1]);
+ 
+   // process argv
+-  this.args = this.parseOptions(this.normalize(argv));
+-  return this.parseArgs(this.args);
++  var parsed = this.parseOptions(this.normalize(argv.slice(2)));
++  this.args = parsed.args;
++  return this.parseArgs(this.args, parsed.unknown);
+ };
+ 
+ /**
+  * Normalize `args`, splitting joined short flags. For example
+  * the arg "-abc" is equivalent to "-a -b -c".
+@@ -361,23 +377,30 @@ Command.prototype.normalize = function(args){
+  * @param {Array} args
+  * @return {Command} for chaining
+  * @api private
+  */
+ 
+-Command.prototype.parseArgs = function(args){
++Command.prototype.parseArgs = function(args, unknown){
+   var cmds = this.commands
+     , len = cmds.length
+     , name;
+ 
+   if (args.length) {
+     name = args[0];
+     if (this.listeners(name).length) {
+-      this.emit(args.shift(), args);
+-    } else {
++      this.emit(args.shift(), args, unknown);
++    } else {      
+       this.emit('*', args);
+     }
+   }
++  else {
++    // If there were no args and we have unknown options,
++    // then they are extraneous and we need to error.
++    if (unknown.length > 0) {
++      this.unknownOption(unknown[0]);
++    }
++  }
+ 
+   return this;
+ };
+ 
+ /**
+@@ -405,16 +428,17 @@ Command.prototype.optionFor = function(arg){
+  * @api public
+  */
+ 
+ Command.prototype.parseOptions = function(argv){
+   var args = []
+-    , argv = argv.slice(2)
+     , len = argv.length
+     , literal
+     , option
+     , arg;
+ 
++  var unknownOptions = [];
++
+   // parse options
+   for (var i = 0; i < len; ++i) {
+     arg = argv[i];
+ 
+     // literal args after --
+@@ -455,18 +479,26 @@ Command.prototype.parseOptions = function(argv){
+       continue;
+     }
+     
+     // looks like an option
+     if (arg.length > 1 && '-' == arg[0]) {
+-      this.unknownOption(arg);
++      unknownOptions.push(arg);
++      
++      // If the next argument looks like it might be
++      // an argument for this option, we pass it on.
++      // If it isn't, then it'll simply be ignored
++      if (argv[i+1] && !(argv[i+1][0] === '-')) {
++        unknownOptions.push(argv[++i]);
++      }
++      continue;
+     }
+     
+     // arg
+     args.push(arg);
+   }
+-
+-  return args;
++  
++  return {args: args, unknown: unknownOptions};
+ };
+ 
+ /**
+  * Argument `name` is missing.
+  *
+@@ -668,13 +700,14 @@ Command.prototype.promptForNumber = function(str, fn){
+  * @param {Function} fn
+  * @api private
+  */
+ 
+ Command.prototype.promptForDate = function(str, fn){
++  var self = this;
+   this.promptSingleLine(str, function(val){
+     val = new Date(val);
+-    if (isNaN(val.getTime())) return program.promptForDate(str + '(must be a date) ', fn);
++    if (isNaN(val.getTime())) return self.promptForDate(str + '(must be a date) ', fn);
+     fn(val);
+   });
+ };
+ 
+ /**
+@@ -691,11 +724,11 @@ Command.prototype.promptSingleLine = function(str, fn){
+   }
+ 
+   process.stdout.write(str);
+   process.stdin.setEncoding('utf8');
+   process.stdin.once('data', function(val){
+-    fn(val);
++    fn(val.trim());
+   }).resume();
+ };
+ 
+ /**
+  * Multi-line prompt.
+@@ -915,9 +948,9 @@ function pad(str, width) {
+  * Default -h, --help option.
+  */
+ 
+ exports.option('-h, --help', 'output usage information');
+ exports.on('help', function(){
+-  exports.emit('--help');
+   process.stdout.write(this.helpInformation());
++  exports.emit('--help');
+   process.exit(0);
+ });

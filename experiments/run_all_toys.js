@@ -205,6 +205,10 @@ const tests = [
     }
 ];
 
+module.exports = { tests };
+if (require.main === module) main();
+
+function main() {
 // Filtro opcional: node run_all_toys.js [número ou parte do nome]
 // Um número seleciona só o toy daquela posição; qualquer outro texto filtra por nome ou arquivo.
 const filterArg = process.argv[2];
@@ -251,4 +255,5 @@ console.log("===================================================================
 
 if (executionErrors > 0) {
     process.exit(1);
+}
 }

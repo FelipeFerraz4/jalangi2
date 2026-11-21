@@ -1,0 +1,439 @@
+diff --git a/index.js b/index.js
+index 790a751..af9fb58 100644
+--- a/index.js
++++ b/index.js
+@@ -3,21 +3,19 @@
+  * Module dependencies.
+  */
+ 
+ var EventEmitter = require('events').EventEmitter;
+ var spawn = require('child_process').spawn;
+-var fs = require('fs');
+-var exists = fs.existsSync;
+ var path = require('path');
+ var dirname = path.dirname;
+ var basename = path.basename;
+ 
+ /**
+  * Expose the root command.
+  */
+ 
+-exports = module.exports = new Command;
++exports = module.exports = new Command();
+ 
+ /**
+  * Expose `Command`.
+  */
+ 
+@@ -68,12 +66,11 @@ Option.prototype.name = function(){
+  * @return {Boolean}
+  * @api private
+  */
+ 
+ Option.prototype.is = function(arg){
+-  return arg == this.short
+-    || arg == this.long;
++  return arg == this.short || arg == this.long;
+ };
+ 
+ /**
+  * Initialize a new `Command`.
+  *
+@@ -112,41 +109,41 @@ Command.prototype.__proto__ = EventEmitter.prototype;
+  *      program
+  *        .version('0.0.1')
+  *        .option('-C, --chdir <path>', 'change the working directory')
+  *        .option('-c, --config <path>', 'set config path. defaults to ./deploy.conf')
+  *        .option('-T, --no-tests', 'ignore test hook')
+- *     
++ *
+  *      program
+  *        .command('setup')
+  *        .description('run remote setup commands')
+  *        .action(function(){
+  *          console.log('setup');
+  *        });
+- *     
++ *
+  *      program
+  *        .command('exec <cmd>')
+  *        .description('run the given remote command')
+  *        .action(function(cmd){
+  *          console.log('exec "%s"', cmd);
+  *        });
+- *     
++ *
+  *      program
+  *        .command('*')
+  *        .description('deploy the given env')
+  *        .action(function(env){
+  *          console.log('deploying "%s"', env);
+  *        });
+- *     
++ *
+  *      program.parse(process.argv);
+   *
+  * @param {String} name
+  * @param {String} [desc]
+  * @return {Command} the new command
+  * @api public
+  */
+ 
+-Command.prototype.command = function(name, desc){
++Command.prototype.command = function(name, desc) {
+   var args = name.split(/ +/);
+   var cmd = new Command(args.shift());
+   if (desc) cmd.description(desc);
+   if (desc) this.executables = true;
+   if (desc) this._execs[cmd._name] = true;
+@@ -211,51 +208,55 @@ Command.prototype.parseExpectedArgs = function(args){
+  * @api public
+  */
+ 
+ Command.prototype.action = function(fn){
+   var self = this;
+-  this.parent.on(this._name, function(args, unknown){    
++  var listener = function(args, unknown){
+     // Parse any so-far unknown options
++    args = args || [];
+     unknown = unknown || [];
++
+     var parsed = self.parseOptions(unknown);
+-    
++
+     // Output help if necessary
+     outputHelpIfNecessary(self, parsed.unknown);
+-    
+-    // If there are still any unknown options, then we simply 
++
++    // If there are still any unknown options, then we simply
+     // die, unless someone asked for help, in which case we give it
+     // to them, and then we die.
+-    if (parsed.unknown.length > 0) {      
++    if (parsed.unknown.length > 0) {
+       self.unknownOption(parsed.unknown[0]);
+     }
+-    
++
+     // Leftover arguments need to be pushed back. Fixes issue #56
+     if (parsed.args.length) args = parsed.args.concat(args);
+-    
++
+     self._args.forEach(function(arg, i){
+       if (arg.required && null == args[i]) {
+         self.missingArgument(arg.name);
+       }
+     });
+-    
++
+     // Always append ourselves to the end of the arguments,
+     // to make sure we match the number of arguments the user
+     // expects
+     if (self._args.length) {
+       args[self._args.length] = self;
+     } else {
+       args.push(self);
+     }
+-    
++
+     fn.apply(this, args);
+-  });
++  };
++  this.parent.on(this._name, listener);
++  if (this._alias) this.parent.on(this._alias, listener);
+   return this;
+ };
+ 
+ /**
+  * Define option with `flags`, `description` and optional
+- * coercion `fn`. 
++ * coercion `fn`.
+  *
+  * The `flags` string should contain both the short and long flags,
+  * separated by comma, a pipe or space. The following are all valid
+  * all will output this way when `--help` is used.
+  *
+@@ -270,19 +271,19 @@ Command.prototype.action = function(fn){
+  *
+  *     --pepper
+  *     program.pepper
+  *     // => Boolean
+  *
+- *     // simple boolean defaulting to false
++ *     // simple boolean defaulting to true
+  *     program.option('-C, --no-cheese', 'remove cheese');
+  *
+  *     program.cheese
+  *     // => true
+  *
+  *     --no-cheese
+  *     program.cheese
+- *     // => true
++ *     // => false
+  *
+  *     // required argument
+  *     program.option('-C, --chdir <path>', 'change the working directory');
+  *
+  *     --chdir /tmp
+@@ -305,11 +306,14 @@ Command.prototype.option = function(flags, description, fn, defaultValue){
+     , option = new Option(flags, description)
+     , oname = option.name()
+     , name = camelcase(oname);
+ 
+   // default as 3rd arg
+-  if ('function' != typeof fn) defaultValue = fn, fn = null;
++  if (typeof fn != 'function') {
++    defaultValue = fn;
++    fn = null;
++  }
+ 
+   // preassign default value only for --no-*, [optional], or <required>
+   if (false == option.bool || option.optional || option.required) {
+     // when --no-* we make sure default is true
+     if (false == option.bool) defaultValue = true;
+@@ -322,11 +326,13 @@ Command.prototype.option = function(flags, description, fn, defaultValue){
+ 
+   // when it's passed assign the value
+   // and conditionally invoke the callback
+   this.on(oname, function(val){
+     // coercion
+-    if (null != val && fn) val = fn(val);
++    if (null !== val && fn) val = fn(val, undefined === self[name]
++      ? defaultValue
++      : self[name]);
+ 
+     // unassigned or bool
+     if ('boolean' == typeof self[name] || 'undefined' == typeof self[name]) {
+       // if no value, bool true, and we have a default, then use it!
+       if (null == val) {
+@@ -359,16 +365,16 @@ Command.prototype.parse = function(argv){
+ 
+   // store raw args
+   this.rawArgs = argv;
+ 
+   // guess name
+-  this._name = this._name || basename(argv[1]);
++  this._name = this._name || basename(argv[1], '.js');
+ 
+   // process argv
+   var parsed = this.parseOptions(this.normalize(argv.slice(2)));
+   var args = this.args = parsed.args;
+- 
++
+   var result = this.parseArgs(this.args, parsed.unknown);
+ 
+   // executable sub-commands
+   var name = result.args[0];
+   if (this._execs[name]) return this.executeSubCommand(argv, args, parsed.unknown);
+@@ -397,18 +403,19 @@ Command.prototype.executeSubCommand = function(argv, args, unknown) {
+     args[1] = '--help';
+   }
+ 
+   // executable
+   var dir = dirname(argv[1]);
+-  var bin = basename(argv[1]) + '-' + args[0];
++  var bin = basename(argv[1], '.js') + '-' + args[0];
+ 
+   // check for ./<bin> first
+   var local = path.join(dir, bin);
+ 
+   // run it
+   args = args.slice(1);
+-  var proc = spawn(local, args, { stdio: 'inherit', customFds: [0, 1, 2] });
++  args.unshift(local);
++  var proc = spawn('node', args, { stdio: 'inherit', customFds: [0, 1, 2] });
+   proc.on('error', function(err){
+     if (err.code == "ENOENT") {
+       console.error('\n  %s(1) does not exist, try --help\n', bin);
+     } else if (err.code == "EACCES") {
+       console.error('\n  %s(1) not executable. try chmod or run with root\n', bin);
+@@ -434,13 +441,19 @@ Command.prototype.normalize = function(args){
+     , lastOpt
+     , index;
+ 
+   for (var i = 0, len = args.length; i < len; ++i) {
+     arg = args[i];
+-    i > 0 && (lastOpt = this.optionFor(args[i-1]));
+-    
+-    if (lastOpt && lastOpt.required) {
++    if (i > 0) {
++      lastOpt = this.optionFor(args[i-1]);
++    }
++
++    if (arg === '--') {
++      // Honor option terminator
++    	ret = ret.concat(args.slice(i));
++    	break;
++    } else if (lastOpt && lastOpt.required) {
+      	ret.push(arg);
+     } else if (arg.length > 1 && '-' == arg[0] && '-' != arg[1]) {
+       arg.slice(1).split('').forEach(function(c){
+         ret.push('-' + c);
+       });
+@@ -478,14 +491,14 @@ Command.prototype.parseArgs = function(args, unknown){
+     } else {
+       this.emit('*', args);
+     }
+   } else {
+     outputHelpIfNecessary(this, unknown);
+-    
++
+     // If there were no args and we have unknown options,
+     // then they are extraneous and we need to error.
+-    if (unknown.length > 0) {      
++    if (unknown.length > 0) {
+       this.unknownOption(unknown[0]);
+     }
+   }
+ 
+   return this;
+@@ -563,28 +576,28 @@ Command.prototype.parseOptions = function(argv){
+       } else {
+         this.emit(option.name());
+       }
+       continue;
+     }
+-    
++
+     // looks like an option
+     if (arg.length > 1 && '-' == arg[0]) {
+       unknownOptions.push(arg);
+-      
++
+       // If the next argument looks like it might be
+       // an argument for this option, we pass it on.
+       // If it isn't, then it'll simply be ignored
+       if (argv[i+1] && '-' != argv[i+1][0]) {
+         unknownOptions.push(argv[++i]);
+       }
+       continue;
+     }
+-    
++
+     // arg
+     args.push(arg);
+   }
+-  
++
+   return { args: args, unknown: unknownOptions };
+ };
+ 
+ /**
+  * Argument `name` is missing.
+@@ -670,10 +683,24 @@ Command.prototype.description = function(str){
+   if (0 == arguments.length) return this._description;
+   this._description = str;
+   return this;
+ };
+ 
++/**
++ * Set an alias for the command
++ *
++ * @param {String} alias
++ * @return {String|Command}
++ * @api public
++ */
++
++Command.prototype.alias = function(alias){
++  if (0 == arguments.length) return this._alias;
++  this._alias = alias;
++  return this;
++};
++
+ /**
+  * Set / get the command usage `str`.
+  *
+  * @param {String} str
+  * @return {String|Command}
+@@ -718,16 +745,15 @@ Command.prototype.largestOptionLength = function(){
+  * @api private
+  */
+ 
+ Command.prototype.optionHelp = function(){
+   var width = this.largestOptionLength();
+-  
++
+   // Prepend the help information
+   return [pad('-h, --help', width) + '  ' + 'output usage information']
+     .concat(this.options.map(function(option){
+-      return pad(option.flags, width)
+-        + '  ' + option.description;
++      return pad(option.flags, width) + '  ' + option.description;
+       }))
+     .join('\n');
+ };
+ 
+ /**
+@@ -737,28 +763,41 @@ Command.prototype.optionHelp = function(){
+  * @api private
+  */
+ 
+ Command.prototype.commandHelp = function(){
+   if (!this.commands.length) return '';
++
++  var commands = this.commands.map(function(cmd) {
++    var args = cmd._args.map(function(arg){
++      return arg.required
++        ? '<' + arg.name + '>'
++        : '[' + arg.name + ']';
++    }).join(' ');
++
++    return [
++      cmd._name
++        + (cmd._alias
++          ? '|' + cmd._alias
++          : '')
++        + (cmd.options.length
++          ? ' [options]'
++          : '')
++        + ' ' + args
++    , cmd.description()
++    ];
++  });
++
++  var width = commands.reduce(function(max, command){
++    return Math.max(max, command[0].length);
++  }, 0);
++
+   return [
+       ''
+     , '  Commands:'
+     , ''
+-    , this.commands.map(function(cmd){
+-      var args = cmd._args.map(function(arg){
+-        return arg.required
+-          ? '<' + arg.name + '>'
+-          : '[' + arg.name + ']';
+-      }).join(' ');
+-
+-      return pad(cmd._name
+-        + (cmd.options.length 
+-          ? ' [options]'
+-          : '') + ' ' + args, 22)
+-        + (cmd.description()
+-          ? ' ' + cmd.description()
+-          : '');
++    , commands.map(function(cmd){
++      return pad(cmd[0], width) + '  ' + cmd[1];
+     }).join('\n').replace(/^/gm, '    ')
+     , ''
+   ].join('\n');
+ };
+ 
+@@ -770,11 +809,15 @@ Command.prototype.commandHelp = function(){
+  */
+ 
+ Command.prototype.helpInformation = function(){
+   return [
+       ''
+-    , '  Usage: ' + this._name + ' ' + this.usage()
++    , '  Usage: ' + this._name
++        + (this._alias
++          ? '|' + this._alias
++          : '')
++        + ' ' + this.usage()
+     , '' + this.commandHelp()
+     , '  Options:'
+     , ''
+     , '' + this.optionHelp().replace(/^/gm, '    ')
+     , ''

@@ -1,0 +1,1918 @@
+{
+ "gerado_em": "2026-11-21T18:18:28.758Z",
+ "commit": "13890a7",
+ "oa": [
+  {
+   "caso": "additionToArrayConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "arrayAliasingConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "arrayConstantSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "arrayDiferentIndexNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "arraySameIndexConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "arraysClassFieldConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "arraysClassFieldNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "error",
+   "obs": ""
+  },
+  {
+   "caso": "baseConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 1,
+   "CF": 1,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "baseNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "bothMarkingConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "callGraphSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "chainedMethodCallsConflictSample",
+   "esperado": "",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "error",
+   "obs": ""
+  },
+  {
+   "caso": "changeInstanceAttributeConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 2,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "changeObjectPropagatinsFieldSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "changeObjectPropagatinsFieldSample2",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "changeObjectPropagatinsFieldSample3",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "changeObjectPropagatinsFieldSample4",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "changeObjectPropagatinsFieldSample5",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "changeObjectPropagatinsFieldSample6",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "changePublicAttributesConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "classFieldConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "classFieldConflictSample2",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "classFieldNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "classFieldNotConflictSample2",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "classFieldWithParameterNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 2,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "concatMethodsConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "containmentSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "containsInvokeExpConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "defaultConstructorConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "differentAttributeOnIdenticalClassNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "differentClassWithSameAttributeNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "differentMethodOnIdenticalClassConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "example",
+   "esperado": "",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "noexpected",
+   "obs": ""
+  },
+  {
+   "caso": "fieldRefTestConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "hashmapConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "ifBranchConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "ifWithInvokeConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "initArrayConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "innerClassRecursiveNotConflictSample",
+   "esperado": "",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "error",
+   "obs": ""
+  },
+  {
+   "caso": "localArrayNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "localArrayRecursiveNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "localVariablesNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "localVariablesNotConflictSample2",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "localVariablesWithParameterNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "objectFieldConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "objectFieldNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "objectThreeFieldsOneConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToDifferentObjectFromParametersWithMainSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToDifferentObjectSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToOnlyOneObjectFromParametersWithMainSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToSameArrayDifferentIndexSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "pointsToSameArrayIndexSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToSameArraySample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToSameObjectFromParametersSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToSameObjectFromParametersSample2",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToSameObjectFromParametersSample3",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToSameObjectFromParametersSample4",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToSameObjectFromParametersWithMainSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "pointsToSameObjectSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "recursiveCallConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 3,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "recursiveMockupConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 1,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "recursiveMockupNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "sameAttributeOnIdenticalClassConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "sequenceConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 2,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "sequenceConflictSample2",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "stacktraceConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 2,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "staticClassFieldConflictSample",
+   "esperado": "conflito",
+   "detectou": "conflito",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "staticClassFieldNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "stringArraySample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": "marcado \"divergent\" no SCAz.js"
+  },
+  {
+   "caso": "subclassConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "subclassWithConditionalNotConflictSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "caso": "twoSameObjectSample",
+   "esperado": "sem conflito",
+   "detectou": "sem conflito",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "estado": "ok",
+   "obs": ""
+  }
+ ],
+ "dfcf": [
+  {
+   "teste": "ReachDefinitionAnalysisOneConflictTest",
+   "sample": "IntraproceduralDataFlow",
+   "analise": "ReachDefinition",
+   "metrica": "DF",
+   "esperado": 1,
+   "detectado": 1,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "ReachDefinitionAnalysisTransitiveSourceNoConflictTest",
+   "sample": "IntraproceduralIndirectSource",
+   "analise": "ReachDefinition",
+   "metrica": "DF",
+   "esperado": 0,
+   "detectado": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "ReachDefinitionAnalysisZeroConflictTest",
+   "sample": "IntraproceduralDataFlow",
+   "analise": "ReachDefinition",
+   "metrica": "DF",
+   "esperado": 0,
+   "detectado": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "TaintedAnalysisOneConflictTest",
+   "sample": "IntraproceduralIndirectSource",
+   "analise": "Tainted",
+   "metrica": "DF",
+   "esperado": 1,
+   "detectado": 1,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "ArrayTaintedAnalysisOneConflictTest",
+   "sample": "ArrayDataFlowSample",
+   "analise": "Tainted",
+   "metrica": "DF",
+   "esperado": 2,
+   "detectado": 2,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "ArrayTaintedAnalysisOneConflictIndirectTest",
+   "sample": "ArrayIndirectDataFlowSample",
+   "analise": "Tainted",
+   "metrica": "DF",
+   "esperado": 2,
+   "detectado": 0,
+   "estado": "wrong",
+   "obs": "Divergência intencional: o Tainted trata o array como um todo (arr[4] contamina arr[3]); a análise trata cada índice como estado independente, como no OA, para evitar falsos positivos."
+  },
+  {
+   "teste": "ConfluenceWithTransitivityTest",
+   "sample": "ConfluenceWithTransitivitySample",
+   "analise": "ConfluentTainted",
+   "metrica": "CF",
+   "esperado": 1,
+   "detectado": 1,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "SourceSinkConfluenceAnalysisMethodCallTest",
+   "sample": "SourceSinkMethodCallSample",
+   "analise": "Confluent",
+   "metrica": "CF",
+   "esperado": 1,
+   "detectado": 1,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "SourceSinkConfluenceAnalysisOneConflictTest",
+   "sample": "DoubleSourceSample",
+   "analise": "Confluent",
+   "metrica": "CF",
+   "esperado": 1,
+   "detectado": 1,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "SourceSinkConfluenceAnalysisVariableAttributionTest",
+   "sample": "SourceSinkVariableAttributionSample",
+   "analise": "Confluent",
+   "metrica": "CF",
+   "esperado": 1,
+   "detectado": 1,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "SourceSinkVariableAttributionWithAutoIncrementConfluentTest",
+   "sample": "SourceSinkVariableAttributionWithAutoIncrement",
+   "analise": "Confluent",
+   "metrica": "CF",
+   "esperado": 0,
+   "detectado": 0,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "SourceSinkVariableAttributionWithAutoIncrementTaintedConfluentTest",
+   "sample": "SourceSinkVariableAttributionWithAutoIncrement",
+   "analise": "ConfluentTainted",
+   "metrica": "CF",
+   "esperado": 1,
+   "detectado": 1,
+   "estado": "ok",
+   "obs": ""
+  },
+  {
+   "teste": "ContainmentConflictTest",
+   "sample": "ioa.ContainmentSample",
+   "analise": "DFPInterProcedural",
+   "metrica": "DF",
+   "esperado": 1,
+   "detectado": 1,
+   "estado": "ok",
+   "obs": ""
+  }
+ ],
+ "traducoes": [
+  {
+   "conjunto": "df",
+   "teste": "ReachDefinitionAnalysisOneConflictTest",
+   "analise": "ReachDefinition",
+   "metrica": "DF",
+   "sample": "IntraproceduralDataFlow",
+   "esperado": 1,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "14",
+    "R": "17"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "16",
+    "R": "19"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "16",
+    "R": "19"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "26",
+    "R": "31"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "ReachDefinitionAnalysisTransitiveSourceNoConflictTest",
+   "analise": "ReachDefinition",
+   "metrica": "DF",
+   "sample": "IntraproceduralIndirectSource",
+   "esperado": 0,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "15",
+    "R": "18"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "17",
+    "R": "20"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "17",
+    "R": "20"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "23",
+    "R": "26"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "ReachDefinitionAnalysisZeroConflictTest",
+   "analise": "ReachDefinition",
+   "metrica": "DF",
+   "sample": "IntraproceduralDataFlow",
+   "esperado": 0,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "23",
+    "R": "27"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "25",
+    "R": "29"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "25",
+    "R": "29"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "14",
+    "R": "21"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "TaintedAnalysisOneConflictTest",
+   "analise": "Tainted",
+   "metrica": "DF",
+   "sample": "IntraproceduralIndirectSource",
+   "esperado": 1,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "15",
+    "R": "18"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "17",
+    "R": "20"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "17",
+    "R": "20"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "23",
+    "R": "26"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "ArrayTaintedAnalysisOneConflictTest",
+   "analise": "Tainted",
+   "metrica": "DF",
+   "sample": "ArrayDataFlowSample",
+   "esperado": 2,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 2,
+    "L": "16",
+    "R": "17 20"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 2,
+    "L": "18",
+    "R": "19 22"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 2,
+    "L": "18",
+    "R": "19 22"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 2,
+    "L": "30",
+    "R": "33 37"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "ArrayTaintedAnalysisOneConflictIndirectTest",
+   "analise": "Tainted",
+   "metrica": "DF",
+   "sample": "ArrayIndirectDataFlowSample",
+   "esperado": 2,
+   "obs": "divergência intencional: cada índice do array é um estado independente",
+   "atual": {
+    "estado": "diverge",
+    "detectado": 0,
+    "L": "15",
+    "R": "16 17"
+   },
+   "A-jsweet": {
+    "estado": "diverge",
+    "detectado": 0,
+    "L": "17",
+    "R": "18 19"
+   },
+   "B-jsweet-ia": {
+    "estado": "diverge",
+    "detectado": 0,
+    "L": "17",
+    "R": "18 19"
+   },
+   "C-ia": {
+    "estado": "diverge",
+    "detectado": 0,
+    "L": "8",
+    "R": "11 14"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "ConfluenceWithTransitivityTest",
+   "analise": "ConfluentTainted",
+   "metrica": "CF",
+   "sample": "ConfluenceWithTransitivitySample",
+   "esperado": 1,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "17",
+    "R": "19"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "19",
+    "R": "21"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "19",
+    "R": "21"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "12",
+    "R": "16"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "SourceSinkConfluenceAnalysisMethodCallTest",
+   "analise": "Confluent",
+   "metrica": "CF",
+   "sample": "SourceSinkMethodCallSample",
+   "esperado": 1,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "16",
+    "R": "17"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "18",
+    "R": "19"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "18",
+    "R": "19"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "13",
+    "R": "16"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "SourceSinkConfluenceAnalysisOneConflictTest",
+   "analise": "Confluent",
+   "metrica": "CF",
+   "sample": "DoubleSourceSample",
+   "esperado": 1,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "16",
+    "R": "18"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "18",
+    "R": "20"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "18",
+    "R": "20"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "16",
+    "R": "24"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "SourceSinkConfluenceAnalysisVariableAttributionTest",
+   "analise": "Confluent",
+   "metrica": "CF",
+   "sample": "SourceSinkVariableAttributionSample",
+   "esperado": 1,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "27",
+    "R": "28"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "29",
+    "R": "30"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "29",
+    "R": "30"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "13",
+    "R": "15"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "SourceSinkVariableAttributionWithAutoIncrementConfluentTest",
+   "analise": "Confluent",
+   "metrica": "CF",
+   "sample": "SourceSinkVariableAttributionWithAutoIncrement",
+   "esperado": 0,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "17",
+    "R": "19"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "19",
+    "R": "21"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "19",
+    "R": "21"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 0,
+    "L": "13",
+    "R": "15"
+   }
+  },
+  {
+   "conjunto": "df",
+   "teste": "SourceSinkVariableAttributionWithAutoIncrementTaintedConfluentTest",
+   "analise": "ConfluentTainted",
+   "metrica": "CF",
+   "sample": "SourceSinkVariableAttributionWithAutoIncrement",
+   "esperado": 1,
+   "obs": "",
+   "atual": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "17",
+    "R": "19"
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "19",
+    "R": "21"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "19",
+    "R": "21"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "13",
+    "R": "15"
+   }
+  },
+  {
+   "conjunto": "cf",
+   "teste": "DFPConfluenceAnalysisTest",
+   "analise": "DFPConfluence",
+   "metrica": "CF",
+   "sample": "DoubleSourceSample",
+   "esperado": 2,
+   "obs": "",
+   "atual": {
+    "estado": "n/a",
+    "detectado": "",
+    "L": "",
+    "R": ""
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "18",
+    "R": "20"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "18",
+    "R": "20"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "14",
+    "R": "22"
+   }
+  },
+  {
+   "conjunto": "cf",
+   "teste": "DFPConfluenceWithTransitivityAnalysisTest",
+   "analise": "DFPConfluence",
+   "metrica": "CF",
+   "sample": "ConfluenceWithTransitivitySample",
+   "esperado": 2,
+   "obs": "",
+   "atual": {
+    "estado": "n/a",
+    "detectado": "",
+    "L": "",
+    "R": ""
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "19",
+    "R": "21"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "19",
+    "R": "21"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "13",
+    "R": "17"
+   }
+  },
+  {
+   "conjunto": "cf",
+   "teste": "DFPConfluenceAnalysisBaseTest",
+   "analise": "DFPConfluence",
+   "metrica": "CF",
+   "sample": "ConfluenceBaseSample",
+   "esperado": 2,
+   "obs": "interprocedural: as escritas (this.spaces, this.words) estão nos métodos chamados, em linhas da Base",
+   "atual": {
+    "estado": "n/a",
+    "detectado": "",
+    "L": "",
+    "R": ""
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "26",
+    "R": "28"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "26",
+    "R": "28"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "11",
+    "R": "13"
+   }
+  },
+  {
+   "conjunto": "cf",
+   "teste": "DFPConfluenceAnalysisBaseTest2",
+   "analise": "DFPConfluence",
+   "metrica": "CF",
+   "sample": "ConfluenceBaseSample2",
+   "esperado": 1,
+   "obs": "",
+   "atual": {
+    "estado": "n/a",
+    "detectado": "",
+    "L": "",
+    "R": ""
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "16",
+    "R": "18"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "16",
+    "R": "18"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 1,
+    "L": "9",
+    "R": "11"
+   }
+  },
+  {
+   "conjunto": "cf",
+   "teste": "DFPConfluenceAnalysisWithMultipleConfluences",
+   "analise": "DFPConfluence",
+   "metrica": "CF",
+   "sample": "MultipleConfluenceSample",
+   "esperado": 2,
+   "obs": "",
+   "atual": {
+    "estado": "n/a",
+    "detectado": "",
+    "L": "",
+    "R": ""
+   },
+   "A-jsweet": {
+    "estado": "ok",
+    "detectado": 2,
+    "L": "19 20",
+    "R": "21"
+   },
+   "B-jsweet-ia": {
+    "estado": "ok",
+    "detectado": 2,
+    "L": "19 20",
+    "R": "21"
+   },
+   "C-ia": {
+    "estado": "ok",
+    "detectado": 2,
+    "L": "9 10",
+    "R": "11"
+   }
+  },
+  {
+   "conjunto": "cf",
+   "teste": "DFPConfluenceAnalysisWithInterproceduralConfluenceTest",
+   "analise": "DFPConfluence",
+   "metrica": "CF",
+   "sample": "InterproceduralConfluenceSample",
+   "esperado": 1,
+   "obs": "@Ignore no Java desde 2021, sem motivo registrado; aqui o CF ignora origens vindas por parâmetro (veja DECISOES_PENDENTES.md)",
+   "atual": {
+    "estado": "n/a",
+    "detectado": "",
+    "L": "",
+    "R": ""
+   },
+   "A-jsweet": {
+    "estado": "diverge",
+    "detectado": 0,
+    "L": "19",
+    "R": "20"
+   },
+   "B-jsweet-ia": {
+    "estado": "diverge",
+    "detectado": 0,
+    "L": "19",
+    "R": "20"
+   },
+   "C-ia": {
+    "estado": "diverge",
+    "detectado": 0,
+    "L": "11",
+    "R": "12"
+   }
+  }
+ ],
+ "toys": [
+  {
+   "n": 1,
+   "nome": "Exemplo Original da Amanda",
+   "arquivo": "01_example.js",
+   "descricao": "Cenário original de Overriding Assignment (Amanda Moraes, SBLP 2024)",
+   "L": "5",
+   "R": "1",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 2,
+   "nome": "Data Flow Direto",
+   "arquivo": "02_test_dataflow_direct.js",
+   "descricao": "Branch L escreve em taxa, Branch R lê taxa no cálculo",
+   "L": "4",
+   "R": "6 7",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "2/2",
+   "estado": "ok"
+  },
+  {
+   "n": 3,
+   "nome": "Execução Segura e Kill da Base",
+   "arquivo": "03_test_dataflow_safe.js",
+   "descricao": "Variáveis disjuntas e Base sobrescreve antes do consumo",
+   "L": "4 5 6",
+   "R": "10 11 12",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "3/3",
+   "R_exec": "3/3",
+   "estado": "ok"
+  },
+  {
+   "n": 4,
+   "nome": "Data Flow em Propriedade de Objeto",
+   "arquivo": "04_test_dataflow_object.js",
+   "descricao": "Interceptação via putFieldPre e getField (pedido.taxa)",
+   "L": "6",
+   "R": "8 9",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "2/2",
+   "estado": "ok"
+  },
+  {
+   "n": 5,
+   "nome": "Data Flow Interprocedural",
+   "arquivo": "05_test_dataflow_interproc.js",
+   "descricao": "Fluxo através de funções: setTaxa() -> calcularTotal()",
+   "L": "4",
+   "R": "8",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 6,
+   "nome": "OA com Leitura Entre as Escritas",
+   "arquivo": "06_test_oa_read_between.js",
+   "descricao": "Leitura pela Base entre as escritas de L e R não elimina o OA",
+   "L": "3",
+   "R": "6",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 7,
+   "nome": "Data Flow dentro de if",
+   "arquivo": "07_test_if_dataflow.js",
+   "descricao": "Branch L escreve taxa num if, Branch R lê taxa em outro if",
+   "L": "6",
+   "R": "11",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 8,
+   "nome": "OA com if",
+   "arquivo": "08_test_if_oa.js",
+   "descricao": "Branch L atribui dentro do if e Branch R sobrescreve depois dele",
+   "L": "5",
+   "R": "8",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 9,
+   "nome": "if não executado",
+   "arquivo": "09_test_if_not_taken.js",
+   "descricao": "Escrita de L está num caminho não percorrido: limitação da análise dinâmica",
+   "L": "6",
+   "R": "9",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "0/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 10,
+   "nome": "Data Flow em laço",
+   "arquivo": "10_test_loop_dataflow.js",
+   "descricao": "Branch L escreve desconto a cada iteração, Branch R lê depois do laço",
+   "L": "7",
+   "R": "10",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 11,
+   "nome": "OA em laço",
+   "arquivo": "11_test_loop_oa.js",
+   "descricao": "Branch L atribui no laço; Branch R sobrescreve duas vezes depois",
+   "L": "6",
+   "R": "9 10",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "2/2",
+   "estado": "ok"
+  },
+  {
+   "n": 12,
+   "nome": "Data Flow de propriedade em laço",
+   "arquivo": "12_test_loop_object.js",
+   "descricao": "L escreve conta.juros e R o lê a cada iteração",
+   "L": "4",
+   "R": "5",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 13,
+   "nome": "Pilha de chamadas com exceção",
+   "arquivo": "13_test_exception_stack.js",
+   "descricao": "Chamada de L termina por exceção; o código seguinte da Base não pode ser atribuído a L",
+   "L": "8",
+   "R": "14",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 14,
+   "nome": "OA com métodos de array in-place",
+   "arquivo": "14_test_array_inplace_oa.js",
+   "descricao": "fill de L e splice de R alteram a mesma posição do array",
+   "L": "3",
+   "R": "4",
+   "OA": 1,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 15,
+   "nome": "Métodos de array in-place em posições distintas",
+   "arquivo": "15_test_array_inplace_safe.js",
+   "descricao": "push de L (posição 3) e fill de R (posições 0 e 1) não se sobrepõem",
+   "L": "3",
+   "R": "4",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 16,
+   "nome": "Data Flow por parâmetro",
+   "arquivo": "16_test_dataflow_param.js",
+   "descricao": "L passa o argumento na chamada e R lê o parâmetro dentro da função",
+   "L": "6",
+   "R": "2",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 17,
+   "nome": "Parâmetro passado pela Base",
+   "arquivo": "17_test_dataflow_param_safe.js",
+   "descricao": "A chamada é da Base: R lê o parâmetro sem consumir valor de L",
+   "L": "",
+   "R": "2",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "0/0",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 18,
+   "nome": "Parâmetro reatribuído",
+   "arquivo": "18_test_dataflow_param_reassign.js",
+   "descricao": "R lê e reatribui o parâmetro de L (DF), e o return, executado a mando de L, lê o valor de R (DF); sem OA",
+   "L": "6",
+   "R": "2",
+   "OA": 0,
+   "DF": 2,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 19,
+   "nome": "Fluxo transitivo",
+   "arquivo": "19_test_taint_transitive.js",
+   "descricao": "L define origem, a Base deriva derivado dela e R lê derivado: x -> y -> uso",
+   "L": "2",
+   "R": "4",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 20,
+   "nome": "Transitivo por função",
+   "arquivo": "20_test_taint_function.js",
+   "descricao": "O valor de L passa por parâmetro e retorno antes de R lê-lo",
+   "L": "5",
+   "R": "7",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 21,
+   "nome": "Base interrompe a contaminação",
+   "arquivo": "21_test_taint_kill.js",
+   "descricao": "A Base reatribui derivado com uma constante antes de R ler: sem conflito",
+   "L": "1",
+   "R": "4",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 22,
+   "nome": "Confluence Flow direto",
+   "arquivo": "22_test_confluence_direct.js",
+   "descricao": "Um comando da Base usa o valor de L e o de R ao mesmo tempo",
+   "L": "3",
+   "R": "4",
+   "OA": 0,
+   "DF": 0,
+   "CF": 1,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 23,
+   "nome": "Valores usados em comandos separados",
+   "arquivo": "23_test_confluence_separate.js",
+   "descricao": "A Base usa o valor de L num comando e o de R em outro: não há confluência",
+   "L": "3",
+   "R": "4",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 24,
+   "nome": "Confluence Flow transitivo",
+   "arquivo": "24_test_confluence_transitive.js",
+   "descricao": "Os valores de L e R passam por variáveis da Base antes de se encontrarem em z",
+   "L": "3",
+   "R": "4",
+   "OA": 0,
+   "DF": 0,
+   "CF": 1,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 25,
+   "nome": "Confluência em if com &&",
+   "arquivo": "25_test_confluence_and.js",
+   "descricao": "if (a && b) com a de L e b de R: o if da Base usa os dois valores, e há CF",
+   "L": "3",
+   "R": "4",
+   "OA": 0,
+   "DF": 0,
+   "CF": 1,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 26,
+   "nome": "Argumentos contaminam todos os parâmetros",
+   "arquivo": "26_test_taint_param_split.js",
+   "descricao": "Só p recebe o valor de L, mas R lê q e é reportado DF transitivo (falso positivo)",
+   "L": "6",
+   "R": "2",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 27,
+   "nome": "OA por alvo, DF por par de linhas",
+   "arquivo": "27_test_oa_two_targets.js",
+   "descricao": "Dois alvos entre as mesmas linhas: OA conta 2, DF conta 1",
+   "L": "3 5",
+   "R": "4 6",
+   "OA": 2,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "2/2",
+   "R_exec": "2/2",
+   "estado": "ok"
+  },
+  {
+   "n": 28,
+   "nome": "Chamada em várias linhas",
+   "arquivo": "28_test_call_multiline.js",
+   "descricao": "L altera o argumento no meio da chamada, que termina numa linha da Base: a chamada não é de L e não há DF",
+   "L": "6",
+   "R": "8",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 29,
+   "nome": "Vários arquivos",
+   "arquivo": "29_test_multifile.js",
+   "descricao": "Mapa por arquivo: as linhas 3 e 5 do módulo carregado continuam Base; só o DF de total",
+   "L": "",
+   "R": "",
+   "OA": 0,
+   "DF": 1,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 30,
+   "nome": "Confluência em || com o operando da direita avaliado",
+   "arquivo": "30_test_confluence_or.js",
+   "descricao": "a é falso, então b é lido: o if da Base usa o valor de L e o de R",
+   "L": "3",
+   "R": "4",
+   "OA": 0,
+   "DF": 0,
+   "CF": 1,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 31,
+   "nome": "|| em curto-circuito",
+   "arquivo": "31_test_confluence_or_short.js",
+   "descricao": "a é verdadeiro, então b nunca é lido: sem confluência (a análise dinâmica só vê o que executa)",
+   "L": "3",
+   "R": "4",
+   "OA": 0,
+   "DF": 0,
+   "CF": 0,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 32,
+   "nome": "Confluência em atribuição com &&",
+   "arquivo": "32_test_confluence_assign_and.js",
+   "descricao": "var c = a && b na Base junta o valor de L e o de R",
+   "L": "3",
+   "R": "4",
+   "OA": 0,
+   "DF": 0,
+   "CF": 1,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  },
+  {
+   "n": 33,
+   "nome": "Confluência em while com && encadeado",
+   "arquivo": "33_test_confluence_while_and.js",
+   "descricao": "A condição do laço lê a e b a cada volta: um só conflito, apesar das repetições",
+   "L": "4",
+   "R": "5",
+   "OA": 0,
+   "DF": 0,
+   "CF": 1,
+   "L_exec": "1/1",
+   "R_exec": "1/1",
+   "estado": "ok"
+  }
+ ]
+}

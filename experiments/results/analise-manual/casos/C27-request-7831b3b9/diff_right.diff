@@ -1,0 +1,47 @@
+diff --git a/request.js b/request.js
+index 40e1cd5..2d22f66 100644
+--- a/request.js
++++ b/request.js
+@@ -1,5 +1,7 @@
++'use strict';
++
+ var optional = require('./lib/optional')
+   , http = require('http')
+   , https = optional('https')
+   , tls = optional('tls')
+   , url = require('url')
+@@ -580,11 +582,11 @@ Request.prototype.init = function (options) {
+     var lookup = full_path.split('/');
+     var error_connecting = true;
+ 
+     var lookup_table = {};
+     do { lookup_table[lookup.join('/')]={} } while(lookup.pop())
+-    for (r in lookup_table){
++    for (var r in lookup_table){
+       try_next(r);
+     }
+ 
+     function try_next(table_row){
+       var client = net.connect( table_row );
+@@ -594,11 +596,11 @@ Request.prototype.init = function (options) {
+       table_row.client = client;
+     }
+ 
+     wait_for_socket_response();
+ 
+-    response_counter = 0;
++    var response_counter = 0;
+ 
+     function wait_for_socket_response(){
+       var detach;
+       if('undefined' == typeof setImmediate ) detach = process.nextTick
+       else detach = setImmediate;
+@@ -1511,6 +1513,6 @@ Request.prototype.toJSON = requestToJSON
+ 
+ Request.defaultProxyHeaderWhiteList =
+   defaultProxyHeaderWhiteList.slice()
+ 
+ 
+-module.exports = Request
++module.exports = Request
+\ No newline at end of file

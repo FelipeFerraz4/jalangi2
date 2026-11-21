@@ -182,5 +182,5 @@ function main() {
     process.exit(rows.some(r => VERSIONS.some(v => r.res[v].status === 'erro' || r.res[v].status === 'ausente')) ? 1 : 0);
 }
 
-module.exports = { cases, locate, methodStart };
+module.exports = { cases, locate, methodStart, runCase, VERSIONS, METRICS };
 if (require.main === module) main();

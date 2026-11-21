@@ -1,0 +1,192 @@
+diff --git a/request.js b/request.js
+index 40e1cd5..bdf1f3d 100644
+--- a/request.js
++++ b/request.js
+@@ -134,11 +134,11 @@ util.inherits(Request, stream.Stream)
+ 
+ 
+ // Set up the tunneling agent if necessary
+ Request.prototype.setupTunnel = function () {
+   var self = this
+-  if (typeof self.proxy == 'string') self.proxy = url.parse(self.proxy)
++  if (typeof self.proxy === 'string') self.proxy = url.parse(self.proxy)
+ 
+   if (!self.proxy) return false
+ 
+   // Don't need to use a tunneling proxy
+   if (!self.tunnel && self.uri.protocol !== 'https:')
+@@ -248,22 +248,22 @@ Request.prototype.init = function (options) {
+ 
+   if (!self.uri) {
+     // this will throw if unhandled but is handleable when in a redirect
+     return self.emit('error', new Error("options.uri is a required argument"))
+   } else {
+-    if (typeof self.uri == "string") self.uri = url.parse(self.uri)
++    if (typeof self.uri === "string") self.uri = url.parse(self.uri)
+   }
+ 
+   if (self.strictSSL === false) {
+     self.rejectUnauthorized = false
+   }
+ 
+   if(!self.hasOwnProperty('proxy')) {
+     // check for HTTP(S)_PROXY environment variables
+-    if(self.uri.protocol == "http:") {
++    if(self.uri.protocol === "http:") {
+         self.proxy = process.env.HTTP_PROXY || process.env.http_proxy || null;
+-    } else if(self.uri.protocol == "https:") {
++    } else if(self.uri.protocol === "https:") {
+         self.proxy = process.env.HTTPS_PROXY || process.env.https_proxy ||
+                      process.env.HTTP_PROXY || process.env.http_proxy || null;
+     }
+   }
+ 
+@@ -273,11 +273,11 @@ Request.prototype.init = function (options) {
+     self.setupTunnel()
+   }
+ 
+   if (!self.uri.pathname) {self.uri.pathname = '/'}
+ 
+-  if (!self.uri.host && !self.protocol=='unix:') {
++  if (!self.uri.host && !self.protocol === 'unix:') {
+     // Invalid URI: it may generate lot of bad errors, like "TypeError: Cannot call method 'indexOf' of undefined" in CookieJar
+     // Detect and reject it as soon as possible
+     var faultyUri = url.format(self.uri)
+     var message = 'Invalid URI "' + faultyUri + '"'
+     if (Object.keys(options).length === 0) {
+@@ -312,12 +312,12 @@ Request.prototype.init = function (options) {
+   }
+ 
+   self.jar(self._jar || options.jar)
+ 
+   if (!self.uri.port) {
+-    if (self.uri.protocol == 'http:') {self.uri.port = 80}
+-    else if (self.uri.protocol == 'https:') {self.uri.port = 443}
++    if (self.uri.protocol === 'http:') {self.uri.port = 80}
++    else if (self.uri.protocol === 'https:') {self.uri.port = 443}
+   }
+ 
+   if (self.proxy && !self.tunnel) {
+     self.port = self.proxy.port
+     self.host = self.proxy.hostname
+@@ -598,18 +598,18 @@ Request.prototype.init = function (options) {
+ 
+     response_counter = 0;
+ 
+     function wait_for_socket_response(){
+       var detach;
+-      if('undefined' == typeof setImmediate ) detach = process.nextTick
++      if(typeof setImmediate === 'undefined') detach = process.nextTick
+       else detach = setImmediate;
+       detach(function(){
+         // counter to prevent infinite blocking waiting for an open socket to be found.
+         response_counter++;
+         var trying = false;
+         for (r in lookup_table){
+-          if('undefined' == typeof lookup_table[r].error_connecting)
++          if(typeof lookup_table[r].error_connecting === 'undefined')
+             trying = true;
+         }
+         if(trying && response_counter<1000)
+           wait_for_socket_response()
+         else
+@@ -862,12 +862,12 @@ Request.prototype.onResponse = function (response) {
+     debug('aborted', self.uri.href)
+     response.resume()
+     return
+   }
+   if (self._paused) response.pause()
+-  // Check that response.resume is defined. Workaround for browserify.
+-  else response.resume && response.resume()
++  // response.resume should be defined, but check anyway before calling. Workaround for browserify.
++  else if (response.resume) response.resume()
+ 
+   self.response = response
+   response.request = self
+   response.toJSON = responseToJSON
+ 
+@@ -923,11 +923,11 @@ Request.prototype.onResponse = function (response) {
+         default:
+           redirectTo = location
+           break
+       }
+     }
+-  } else if (response.statusCode == 401 && self._hasAuth && !self._sentAuth) {
++  } else if (response.statusCode === 401 && self._hasAuth && !self._sentAuth) {
+     var authHeader = response.caseless.get('www-authenticate')
+     var authVerb = authHeader && authHeader.split(' ')[0].toLowerCase()
+     debug('reauth', authVerb)
+ 
+     switch (authVerb) {
+@@ -1028,17 +1028,17 @@ Request.prototype.onResponse = function (response) {
+     self.redirects.push(
+       { statusCode : response.statusCode
+       , redirectUri: redirectTo
+       }
+     )
+-    if (self.followAllRedirects && response.statusCode != 401 && response.statusCode != 307) self.method = 'GET'
++    if (self.followAllRedirects && response.statusCode !== 401 && response.statusCode !== 307) self.method = 'GET'
+     // self.method = 'GET' // Force all redirects to use GET || commented out fixes #215
+     delete self.src
+     delete self.req
+     delete self.agent
+     delete self._started
+-    if (response.statusCode != 401 && response.statusCode != 307) {
++    if (response.statusCode !== 401 && response.statusCode !== 307) {
+       // Remove parameters from the previous response, unless this is the second request
+       // for a server that requires digest authentication.
+       delete self.body
+       delete self._form
+       if (self.headers) {
+@@ -1152,11 +1152,11 @@ Request.prototype.onResponse = function (response) {
+           try {
+             response.body = JSON.parse(response.body)
+           } catch (e) {}
+         }
+         debug('emitting complete', self.uri.href)
+-        if(response.body == undefined && !self._json) {
++        if(typeof response.body === 'undefined' && !self._json) {
+           response.body = "";
+         }
+         self.emit('complete', response, response.body)
+       })
+     }
+@@ -1262,11 +1262,11 @@ Request.prototype.multipart = function (multipart) {
+     self.body.push(new Buffer('\r\n'))
+   }
+ 
+   multipart.forEach(function (part) {
+     var body = part.body
+-    if(body == null) throw Error('Body attribute missing in multipart.')
++    if(typeof body === 'undefined') throw Error('Body attribute missing in multipart.')
+     delete part.body
+     var preamble = '--' + self.boundary + '\r\n'
+     Object.keys(part).forEach(function (key) {
+       preamble += key + ': ' + part[key] + '\r\n'
+     })
+@@ -1318,11 +1318,11 @@ var getHeader = Request.prototype.getHeader
+ 
+ Request.prototype.auth = function (user, pass, sendImmediately, bearer) {
+   if (bearer !== undefined) {
+     this._bearer = bearer
+     this._hasAuth = true
+-    if (sendImmediately || typeof sendImmediately == 'undefined') {
++    if (sendImmediately || typeof sendImmediately === 'undefined') {
+       if (typeof bearer === 'function') {
+         bearer = bearer()
+       }
+       this.setHeader('authorization', 'Bearer ' + bearer)
+       this._sentAuth = true
+@@ -1334,11 +1334,11 @@ Request.prototype.auth = function (user, pass, sendImmediately, bearer) {
+   }
+   this._user = user
+   this._pass = pass
+   this._hasAuth = true
+   var header = typeof pass !== 'undefined' ? user + ':' + pass : user
+-  if (sendImmediately || typeof sendImmediately == 'undefined') {
++  if (sendImmediately || typeof sendImmediately === 'undefined') {
+     this.setHeader('authorization', 'Basic ' + toBase64(header))
+     this._sentAuth = true
+   }
+   return this
+ }

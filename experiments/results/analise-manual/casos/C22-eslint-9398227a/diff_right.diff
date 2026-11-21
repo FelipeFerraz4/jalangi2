@@ -1,0 +1,21 @@
+diff --git a/lib/eslint.js b/lib/eslint.js
+index 6bf68bd7b..b7d19a855 100755
+--- a/lib/eslint.js
++++ b/lib/eslint.js
+@@ -821,14 +821,15 @@ module.exports = (function() {
+ 
+         switch (node.type) {
+             case "FunctionDeclaration":
+                 return findJSDocComment(node.leadingComments);
+ 
++            case "ArrowFunctionExpression":
+             case "FunctionExpression":
+ 
+                 if (parent.type !== "CallExpression" || parent.callee !== node) {
+-                    while (parent && !parent.leadingComments && parent.type !== "FunctionExpression" && parent.type !== "FunctionDeclaration") {
++                    while (parent && !parent.leadingComments && !/Function/.test(parent.type)) {
+                         parent = parent.parent;
+                     }
+ 
+                     return parent && (parent.type !== "FunctionDeclaration") ? findJSDocComment(parent.leadingComments) : null;
+                 }

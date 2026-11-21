@@ -1,0 +1,179 @@
+diff --git a/lib/winston/common.js b/lib/winston/common.js
+index c754942..5d14f2f 100644
+--- a/lib/winston/common.js
++++ b/lib/winston/common.js
+@@ -7,10 +7,11 @@
+  */
+ 
+ var util = require('util'),
+     crypto = require('crypto'),
+     cycle = require('cycle'),
++    fs = require('fs'),
+     config = require('./config');
+ 
+ //
+ // ### function setLevels (target, past, current)
+ // #### @target {Object} Object on which to set levels.
+@@ -19,10 +20,11 @@ var util = require('util'),
+ // Create functions on the target objects for each level
+ // in current.levels. If past is defined, remove functions
+ // for each of those levels.
+ //
+ exports.setLevels = function (target, past, current, isDefault) {
++  var self = this;
+   if (past) {
+     Object.keys(past).forEach(function (level) {
+       delete target[level];
+     });
+   }
+@@ -35,10 +37,17 @@ exports.setLevels = function (target, past, current, isDefault) {
+   //
+   //  Define prototype methods for each log level
+   //  e.g. target.log('info', msg) <=> target.info(msg)
+   //
+   Object.keys(target.levels).forEach(function (level) {
++
++    // TODO Refactor logging methods into a different object to avoid name clashes
++    if (level === 'log') {
++      console.warn('Log level named "log" will clash with the method "log". Consider using a different name.');
++      return;
++    }
++
+     target[level] = function (msg) {
+       // build argument list (level, msg, ... [string interpolate], [{metadata}], [callback])
+       var args = [level].concat(Array.prototype.slice.call(arguments));
+       target.log.apply(target, args);
+     };
+@@ -64,12 +73,17 @@ exports.longestElement = function (xs) {
+ // #### @obj {Object} Object to clone.
+ // Helper method for deep cloning pure JSON objects
+ // i.e. JSON objects that are either literals or objects (no Arrays, etc)
+ //
+ exports.clone = function (obj) {
+-  // we only need to clone refrence types (Object)
+-  if (!(obj instanceof Object)) {
++  //
++  // We only need to clone refrence types (Object)
++  //
++  if (obj instanceof Error) {
++    return obj;
++  }
++  else if (!(obj instanceof Object)) {
+     return obj;
+   }
+   else if (obj instanceof Date) {
+     return obj;
+   }
+@@ -108,14 +122,16 @@ exports.clone = function (obj) {
+ //      label:     'label to prepend the message'
+ //    }
+ //
+ exports.log = function (options) {
+   var timestampFn = typeof options.timestamp === 'function'
+-                  ? options.timestamp
+-                  : exports.timestamp,
++        ? options.timestamp
++        : exports.timestamp,
+       timestamp   = options.timestamp ? timestampFn() : null,
+-      meta        = options.meta !== undefined || options.meta !== null ? exports.clone(cycle.decycle(options.meta)) : null,
++      meta        = options.meta !== null && options.meta !== undefined && !(options.meta instanceof Error)
++        ? exports.clone(cycle.decycle(options.meta))
++        : options.meta || null,
+       output;
+ 
+   //
+   // raw mode is intended for outputing winston as streaming JSON to STDOUT
+   //
+@@ -130,23 +146,25 @@ exports.log = function (options) {
+   }
+ 
+   //
+   // json mode is intended for pretty printing multi-line json to the terminal
+   //
+-  if (options.json) {
++  if (options.json || true === options.logstash) {
+     if (typeof meta !== 'object' && meta != null) {
+       meta = { meta: meta };
+     }
+ 
+     output         = exports.clone(meta) || {};
+     output.level   = options.level;
+     output.message = options.message;
+-
++    if (options.label) {
++      output.label = options.label;
++    }
+     if (timestamp) {
+       output.timestamp = timestamp;
+     }
+-    
++
+     if (options.logstash === true) {
+       // use logstash format
+       var logstashOutput = {};
+       if (output.message !== undefined) {
+         logstashOutput['@message'] = output.message;
+@@ -284,5 +302,63 @@ exports.serialize = function (obj, key) {
+     }
+   }
+ 
+   return msg;
+ };
++
++
++//
++// ### function tailFile (options, callback)
++// #### @options {Object} Options for tail.
++// #### @callback {function} Callback to execute on every line.
++// `tail -f` a file. Options must include file.
++//
++exports.tailFile = function tail(options, callback) {
++  var stream = fs.createReadStream(options.file, { encoding: 'utf8' }),
++      buff = '',
++      destroy,
++      row = 0;
++
++  destroy = stream.destroy.bind(stream);
++  stream.destroy = function () {};
++
++  if (options.start === -1) {
++    delete options.start;
++  }
++
++  stream.on('data', function (data) {
++    var data = (buff + data).split(/\n+/),
++        l = data.length - 1,
++        i = 0;
++
++    for (; i < l; i++) {
++      if (options.start == null || row > options.start) {
++        callback(null, data[i]);
++      }
++      row++;
++    }
++
++    buff = data[l];
++  });
++
++  stream.on('error', function (err) {
++    callback(err);
++    destroy();
++  });
++
++  stream.on('end', function () {
++    if (buff) {
++      stream.emit('line', buff);
++      buff = '';
++    }
++
++    resume();
++  });
++
++  function resume() {
++    setTimeout(function () {
++      stream.resume();
++    }, 1000);
++  }
++
++  return destroy;
++};

@@ -1,0 +1,24 @@
+diff --git a/lib/commander.js b/lib/commander.js
+index 5ba87eb..e70e148 100644
+--- a/lib/commander.js
++++ b/lib/commander.js
+@@ -1,6 +1,5 @@
+-
+ /*!
+  * commander
+  * Copyright(c) 2011 TJ Holowaychuk <tj@vision-media.ca>
+  * MIT Licensed
+  */
+@@ -46,11 +45,11 @@ function Option(flags, description) {
+   this.optional = ~flags.indexOf('[');
+   this.bool = !~flags.indexOf('-no-');
+   flags = flags.split(/[ ,|]+/);
+   if (flags.length > 1 && !/^[[<]/.test(flags[1])) this.short = flags.shift();
+   this.long = flags.shift();
+-  this.description = description;
++  this.description = description || '';
+ }
+ 
+ /**
+  * Return option name.
+  *

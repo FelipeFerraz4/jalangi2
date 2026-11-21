@@ -1,0 +1,323 @@
+diff --git a/lib/torrent.js b/lib/torrent.js
+index acb4c3e..d99fbd2 100644
+--- a/lib/torrent.js
++++ b/lib/torrent.js
+@@ -3,12 +3,10 @@ module.exports = Torrent
+ var addrToIPPort = require('addr-to-ip-port') // browser exclude
+ var createTorrent = require('create-torrent')
+ var debug = require('debug')('webtorrent:torrent')
+ var Discovery = require('torrent-discovery')
+ var EventEmitter = require('events').EventEmitter
+-var fs = require('fs') // browser exclude
+-var get = require('simple-get') // browser exclude
+ var inherits = require('inherits')
+ var parallel = require('run-parallel')
+ var parseTorrent = require('parse-torrent')
+ var reemit = require('re-emitter')
+ var Swarm = require('bittorrent-swarm') // `webtorrent-swarm` in browser
+@@ -75,95 +73,11 @@ function Torrent (torrentId, opts) {
+   self._selections = []
+   self._critical = []
+   self._storageImpl = opts.storage || Storage
+   this._torrentFileURL = null
+ 
+-  var parsedTorrent
+-  try {
+-    parsedTorrent = (torrentId && torrentId.parsedTorrent) || parseTorrent(torrentId)
+-  } catch (err) {
+-    // If torrent fails to parse, it could be an http/https URL or filesystem path, so
+-    // don't consider it an error yet.
+-  }
+-
+-  if (parsedTorrent && parsedTorrent.infoHash) {
+-    onTorrentId(parsedTorrent)
+-  } else if (typeof get === 'function' && /^https?:/.test(torrentId)) {
+-    // http or https url to torrent file
+-    get.concat({
+-      url: torrentId,
+-      headers: { 'user-agent': 'WebTorrent (http://webtorrent.io)' }
+-    }, function (err, data) {
+-      if (err) {
+-        err = new Error('Error downloading torrent: ' + err.message)
+-        return self._onError(err)
+-      }
+-      onTorrentId(data)
+-    })
+-  } else if (typeof fs.readFile === 'function') {
+-    // assume it's a filesystem path
+-    fs.readFile(torrentId, function (err, torrent) {
+-      if (err) return self._onError(new Error('Invalid torrent identifier'))
+-      onTorrentId(torrent)
+-    })
+-  } else throw new Error('Invalid torrent identifier')
+-
+-  function onTorrentId (torrentId) {
+-    try {
+-      self.parsedTorrent = parseTorrent(torrentId)
+-    } catch (err) {
+-      return self._onError(new Error('Malformed torrent data: ' + err.message))
+-    }
+-
+-    self.infoHash = self.parsedTorrent.infoHash
+-
+-    if (!self.infoHash) {
+-      return self._onError(new Error('Malformed torrent data: Missing info hash.'))
+-    }
+-
+-    if (self.parsedTorrent.name) self.name = self.parsedTorrent.name // preliminary name
+-
+-    if (opts.announce) {
+-      self.parsedTorrent.announce.push.apply(self.parsedTorrent.announce, opts.announce)
+-    }
+-
+-    // When no trackers specified, use some reasonable defaults
+-    if (self.parsedTorrent.announce.length === 0) {
+-      self.parsedTorrent.announce = createTorrent.announceList.map(function (list) {
+-        return list[0]
+-      })
+-    }
+-
+-    // So `webtorrent-hybrid` can force specific trackers to be used
+-    if (global.WEBTORRENT_ANNOUNCE) {
+-      global.WEBTORRENT_ANNOUNCE.forEach(function (url) {
+-        self.parsedTorrent.announce.push(url)
+-      })
+-    }
+-
+-    uniq(self.parsedTorrent.announce)
+-
+-    // create swarm
+-    self.swarm = new Swarm(self.infoHash, self.client.peerId, {
+-      handshake: { dht: !!self.client.dht }
+-    })
+-    self.swarm.on('error', self._onError.bind(self))
+-    reemit(self.swarm, self, ['warning'])
+-    self.swarm.on('wire', self._onWire.bind(self))
+-
+-    // update overall client stats
+-    self.swarm.on('download', self.client.downloadSpeed.bind(self.client))
+-    self.swarm.on('upload', self.client.uploadSpeed.bind(self.client))
+-
+-    // listen for peers (note: in the browser, this is a no-op and callback is called on
+-    // next tick)
+-    self.swarm.listen(self.client.torrentPort, self._onSwarmListening.bind(self))
+-
+-    process.nextTick(function () {
+-      self.emit('infoHash')
+-    })
+-  }
++  if (torrentId) self._onTorrentId(torrentId)
+ }
+ 
+ // torrent size (in bytes)
+ Object.defineProperty(Torrent.prototype, 'length', {
+   get: function () {
+@@ -228,10 +142,80 @@ Object.defineProperty(Torrent.prototype, 'torrentFileURL', {
+     )
+     return this._torrentFileURL
+   }
+ })
+ 
++Torrent.prototype._onTorrentId = function (torrentId) {
++  var self = this
++  if (self.destroyed) return
++  var parsedTorrent = torrentId && torrentId.parsedTorrent
++  if (parsedTorrent) {
++    self._onParsedTorrent(parsedTorrent)
++  } else {
++    parseTorrent.remote(torrentId, function (err, parsedTorrent) {
++      if (self.destroyed) return
++      if (err) return self._onError(err)
++      self._onParsedTorrent(parsedTorrent)
++    })
++  }
++}
++
++Torrent.prototype._onParsedTorrent = function (parsedTorrent) {
++  var self = this
++  if (self.destroyed) return
++  self.parsedTorrent = parsedTorrent
++  self.infoHash = parsedTorrent.infoHash
++
++  if (!self.infoHash) {
++    return self._onError(new Error('Malformed torrent data: Missing info hash.'))
++  }
++
++  if (self.parsedTorrent.name) self.name = self.parsedTorrent.name // preliminary name
++
++  // Allow specifying trackers via `opts` parameter
++  if (self.opts.announce) {
++    self.parsedTorrent.announce =
++      self.parsedTorrent.announce.concat(self.opts.announce)
++  }
++
++  // So `webtorrent-hybrid` can force specific trackers to be used
++  if (global.WEBTORRENT_ANNOUNCE) {
++    self.parsedTorrent.announce =
++      self.parsedTorrent.announce.concat(global.WEBTORRENT_ANNOUNCE)
++  }
++
++  // When no trackers specified, use some reasonable defaults
++  if (self.parsedTorrent.announce.length === 0) {
++    self.parsedTorrent.announce = createTorrent.announceList.map(function (list) {
++      return list[0]
++    })
++  }
++
++  uniq(self.parsedTorrent.announce)
++
++  // create swarm
++  self.swarm = new Swarm(self.infoHash, self.client.peerId, {
++    handshake: { dht: !!self.client.dht }
++  })
++  self.swarm.on('error', self._onError.bind(self))
++  reemit(self.swarm, self, ['warning'])
++  self.swarm.on('wire', self._onWire.bind(self))
++
++  // update overall client stats
++  self.swarm.on('download', self.client.downloadSpeed.bind(self.client))
++  self.swarm.on('upload', self.client.uploadSpeed.bind(self.client))
++
++  // listen for peers (note: in the browser, this is a no-op and callback is called on
++  // next tick)
++  self.swarm.listen(self.client.torrentPort, self._onSwarmListening.bind(self))
++
++  process.nextTick(function () {
++    if (self.destroyed) return
++    self.emit('infoHash', self.infoHash)
++  })
++}
++
+ Torrent.prototype._onSwarmListening = function () {
+   var self = this
+   if (self.destroyed) return
+ 
+   if (self.swarm.server) self.client.torrentPort = self.swarm.address().port
+@@ -271,15 +255,17 @@ Torrent.prototype._onMetadata = function (metadata) {
+     // `metadata` is a parsed torrent (from parse-torrent module)
+     self.metadata = parseTorrent.toTorrentFile(metadata)
+     self.parsedTorrent = metadata
+   } else {
+     self.metadata = metadata
++    var announce = self.parsedTorrent.announce
+     try {
+       self.parsedTorrent = parseTorrent(self.metadata)
+     } catch (err) {
+       return self._onError(err)
+     }
++    self.parsedTorrent.announce = announce
+   }
+ 
+   // update preliminary torrent name
+   self.name = self.parsedTorrent.name
+ 
+@@ -386,20 +372,25 @@ Torrent.prototype.destroy = function (cb) {
+  * @param {string|SimplePeer} peer
+  * @return {boolean} true if peer was added, false if peer was blocked
+  */
+ Torrent.prototype.addPeer = function (peer) {
+   var self = this
++
++  function addPeer () {
++    self.emit('peer', peer)
++    self.swarm.addPeer(peer)
++  }
++
+   // TODO: extract IP address from peer object and check blocklist
+-  if (typeof peer === 'string'
+-      && self.client.blocked
+-      && self.client.blocked.contains(addrToIPPort(peer)[0])) {
++  if (typeof peer === 'string' && self.client.blocked &&
++      self.client.blocked.contains(addrToIPPort(peer)[0])) {
+     self.numBlockedPeers += 1
+     self.emit('blockedPeer', peer)
+     return false
+   } else {
+-    self.emit('peer', peer)
+-    self.swarm.addPeer(peer)
++    if (self.swarm) addPeer()
++    else self.on('listening', addPeer)
+     return true
+   }
+ }
+ 
+ /**
+@@ -484,10 +475,38 @@ Torrent.prototype._onWire = function (wire, addr) {
+     var parts = addrToIPPort(addr)
+     wire.remoteAddress = parts[0]
+     wire.remotePort = parts[1]
+   }
+ 
++  // If peer supports DHT, send PORT message to report DHT listening port
++  if (wire.peerExtensions.dht && self.client.dht && self.client.dht.listening) {
++
++    // When peer sends PORT, add them to the routing table
++    wire.on('port', function (port) {
++      if (!wire.remoteAddress) {
++        debug('ignoring port from peer with no address')
++        return
++      }
++      debug('port: %s (from %s)', port, wire.remoteAddress + ':' + wire.remotePort)
++      self.client.dht.addNode(wire.remoteAddress + ':' + port)
++    })
++
++    wire.port(self.client.dht.address().port)
++  }
++
++  wire.on('timeout', function () {
++    debug('wire timeout (%s)', addr)
++    // TODO: this might be destroying wires too eagerly
++    wire.destroy()
++  })
++
++  // Timeout for piece requests to this peer
++  wire.setTimeout(self.pieceTimeout, true)
++
++  // Send KEEP-ALIVE (every 60s) so peers will not disconnect the wire
++  wire.setKeepAlive(true)
++
+   // use ut_metadata extension
+   wire.use(ut_metadata(self.metadata))
+ 
+   if (!self.metadata) {
+     wire.ut_metadata.on('metadata', function (metadata) {
+@@ -514,36 +533,13 @@ Torrent.prototype._onWire = function (wire, addr) {
+       var peerObj = self.swarm._peers[peer]
+       if (!peerObj || !peerObj.conn) self.swarm.removePeer(peer)
+     })
+   }
+ 
+-  // Send KEEP-ALIVE (every 60s) so peers will not disconnect the wire
+-  wire.setKeepAlive(true)
+-
+-  // If peer supports DHT, send PORT message to report DHT node listening port
+-  if (wire.peerExtensions.dht && self.client.dht && self.client.dht.listening) {
+-    wire.port(self.client.dht.address().port)
+-  }
+-
+-  // When peer sends PORT, add them to the routing table
+-  wire.on('port', function (port) {
+-    if (!wire.remoteAddress) {
+-      debug('ignoring port from peer with no address')
+-      return
+-    }
+-    debug('port: %s (from %s)', port, wire.remoteAddress + ':' + wire.remotePort)
+-    if (self.client.dht) self.client.dht.addNode(wire.remoteAddress + ':' + port)
+-  })
+-
+-  wire.on('timeout', function () {
+-    debug('wire timeout (%s)', addr)
+-    // TODO: this might be destroying wires too eagerly
+-    wire.destroy()
+-  })
+-
+-  // Timeout for piece requests to this peer
+-  wire.setTimeout(self.pieceTimeout, true)
++  // Hook to allow user-defined `bittorrent-protocol extensions
++  // More info: https://github.com/feross/bittorrent-protocol#extension-api
++  self.emit('wire', wire)
+ 
+   if (self.metadata) {
+     self._onWireWithMetadata(wire)
+   }
+ }

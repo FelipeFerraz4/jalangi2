@@ -1,0 +1,25 @@
+diff --git a/request.js b/request.js
+index 39c5c0c..3a40b3f 100644
+--- a/request.js
++++ b/request.js
+@@ -139,10 +139,20 @@ Request.prototype.init = function (options) {
+ 
+   if (self.strictSSL === false) {
+     self.rejectUnauthorized = false
+   }
+ 
++  if(!self.hasOwnProperty('proxy')) {
++    // check for HTTP(S)_PROXY environment variables
++    if(self.uri.protocol == "http:") {
++        self.proxy = process.env.HTTP_PROXY || process.env.http_proxy || null;
++    } else if(self.uri.protocol == "https:") {
++        self.proxy = process.env.HTTPS_PROXY || process.env.https_proxy || 
++                     process.env.HTTP_PROXY || process.env.http_proxy || null;
++    }
++  }
++  
+   if (self.proxy) {
+     if (typeof self.proxy == 'string') self.proxy = url.parse(self.proxy)
+ 
+     // do the HTTP CONNECT dance using koichik/node-tunnel
+     if (http.globalAgent && self.uri.protocol === "https:" && self.canTunnel) {

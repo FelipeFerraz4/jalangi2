@@ -1,0 +1,30 @@
+diff --git a/lib/ace/commands/command_manager.js b/lib/ace/commands/command_manager.js
+index 72a9942d7..537942ab4 100644
+--- a/lib/ace/commands/command_manager.js
++++ b/lib/ace/commands/command_manager.js
+@@ -11,11 +11,11 @@ var EventEmitter = require("../lib/event_emitter").EventEmitter;
+  *
+  **/
+ 
+ /**
+  * new CommandManager(platform, commands)
+- * @param {String} platform Identifier for the platform; must be either `'mac'` or `'win'`
++ * @param {String} platform Identifier for the platform; must be either `"mac"` or `"win"`
+  * @param {Array} commands A list of commands
+  *
+  **/
+ 
+ var CommandManager = function(platform, commands) {
+@@ -31,11 +31,11 @@ oop.inherits(CommandManager, HashHandler);
+ (function() {
+ 
+     oop.implement(this, EventEmitter);
+ 
+     this.exec = function(command, editor, args) {
+-        if (typeof command === 'string')
++        if (typeof command === "string")
+             command = this.commands[command];
+ 
+         if (!command)
+             return false;
+ 

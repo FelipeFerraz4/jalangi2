@@ -1,0 +1,94 @@
+diff --git a/lib/eslint.js b/lib/eslint.js
+index 396b50115..859fafb99 100755
+--- a/lib/eslint.js
++++ b/lib/eslint.js
+@@ -363,10 +363,11 @@ module.exports = (function() {
+         currentTextLines = [],
+         currentConfig = null,
+         currentTokens = null,
+         currentScopes = null,
+         scopeMap = null,
++        scopeManager = null,
+         currentFilename = null,
+         controller = null,
+         reportingConfig = [],
+         commentLocsEnter = [],
+         commentLocsExit = [];
+@@ -498,10 +499,11 @@ module.exports = (function() {
+         currentText = null;
+         currentTextLines = [];
+         currentTokens = null;
+         currentScopes = null;
+         scopeMap = null;
++        scopeManager = null;
+         controller = null;
+         reportingConfig = [];
+         commentLocsEnter = [];
+         commentLocsExit = [];
+     };
+@@ -579,11 +581,12 @@ module.exports = (function() {
+             currentConfig = config;
+             currentText = text;
+             controller = new estraverse.Controller();
+ 
+             // gather data that may be needed by the rules
+-            currentScopes = escope.analyze(ast, { ignoreEval: true }).scopes;
++            scopeManager = escope.analyze(ast, { ignoreEval: true });
++            currentScopes = scopeManager.scopes;
+ 
+             /*
+              * Index the scopes by the start range of their block for efficient
+              * lookup in getScope.
+              */
+@@ -828,12 +831,11 @@ module.exports = (function() {
+      * Gets the scope for the current node.
+      * @returns {Object} An object representing the current node's scope.
+      */
+     api.getScope = function() {
+         var parents = controller.parents(),
+-            innerBlock = null,
+-            selectedScopeIndex;
++            scope = currentScopes[0];
+ 
+         // Don't do this for Program nodes - they have no parents
+         if (parents.length) {
+ 
+             // if current node is function declaration, add it to the list
+@@ -843,32 +845,20 @@ module.exports = (function() {
+             }
+ 
+             // Ascend the current node's parents
+             for (var i = parents.length - 1; i >= 0; --i) {
+ 
+-                // The first node that requires a scope is the node that will be
+-                // our current node's innermost scope.
+-                if (escope.Scope.isScopeRequired(parents[i])) {
+-                    innerBlock = parents[i];
+-                    break;
++                scope = scopeManager.acquire(parents[i]);
++                if (scope) {
++                    return scope;
+                 }
+-            }
+-
+-            // Find and return the innermost scope
+-            selectedScopeIndex = scopeMap[innerBlock.range[0]];
+ 
+-            // Named function expressions create two nested scope objects. The
+-            // outer scope contains only the function expression name. We return
+-            // the inner scope.
+-            if (innerBlock.type === "FunctionExpression" && innerBlock.id && innerBlock.id.name) {
+-                ++selectedScopeIndex;
+             }
+ 
+-            return currentScopes[selectedScopeIndex];
+-        } else {
+-            return currentScopes[0];    // global scope
+         }
++
++        return currentScopes[0];
+     };
+ 
+     /**
+      * Gets the filename for the currently parsed source.
+      * @returns {string} The filename associated with the source being parsed.

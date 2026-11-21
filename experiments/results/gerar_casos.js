@@ -1,0 +1,218 @@
+// Gera as pastas da análise manual: uma por amostra com conflito no lote, com tudo o que é preciso para
+// julgar o caso sem rodar nada.
+//
+//   analise-manual/casos/<Cnn>-<projeto>-<merge8>/
+//     README.md      o caso: merge, arquivo, como foi executado, conflitos agrupados por par de linhas
+//                    (com o código de L, R e base e a pilha de chamadas), grupo e revisores
+//     base.js left.js right.js merge.js   as quatro versões do arquivo (ancestral, pais e merge)
+//     diff_left.diff diff_right.diff      base → left e base → right
+//   analise-manual/casos.json             metadados de todos os casos (usado pela planilha)
+//
+// Grupos (ordem de prioridade da inspeção):
+//   A  conflito direto (ou OA) e Left e Right alteraram a mesma função (Newminerjs): candidato mais forte
+//   B  conflito direto, em funções diferentes ou sem correspondência estática: interferência indireta
+//   C  só conflitos transitivos, ou arquivo gerado/minificado: suspeito de falso positivo
+// Revisores: 3 pessoas, 15 casos cada (45 revisões para 29 casos): 16 casos têm dois revisores, para medir
+// a concordância, e 13 têm um. Os casos duplos são escolhidos alternando dentro de cada grupo.
+//
+// Uso: node experiments/results/gerar_casos.js [--wild ~/Documentos/wild] [--run lote]
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFileSync } = require('child_process');
+const { readCsv } = require('../wild/lib/csv');
+
+const args = process.argv.slice(2);
+const opt = (n, d) => { const i = args.indexOf(n); return i === -1 ? d : args[i + 1]; };
+const W = opt('--wild', process.env.WILD_HOME || path.join(os.homedir(), 'Documentos', 'wild'));
+const RUN = path.join(W, 'execucoes', opt('--run', 'lote'));
+const OUT = path.join(__dirname, 'analise-manual');
+const REVIEWERS = ['Felipe', 'Italo', 'Priscila'];
+const GENERATED = /(^|\/)(dist|build|out|vendor)\/|\.min\.js$|(^|\/)bundle/;
+const n = x => parseInt(x || '0', 10) || 0;
+
+const git = (repo, ...a) => { try { return execFileSync('git', ['-C', repo, ...a], { encoding: 'utf-8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'ignore'] }); } catch (e) { return null; } };
+
+function groupOf(r, conflicts, sameFn) {
+    const strong = conflicts.some(c => c.natureza === 'direto' || c.tipo === 'OA');
+    if (!strong || GENERATED.test(r.arquivo)) return 'C';
+    return sameFn === 'Sim' ? 'A' : 'B';
+}
+
+// 15 casos por pessoa: um caso sim, outro não (e os últimos, se faltar) recebe dois revisores, até 16 duplos.
+// Os duplos giram entre os três pares (6, 5 e 5 casos por par), para a concordância poder ser medida entre
+// todas as duplas; os simples vão para quem estiver com menos casos
+function assignReviewers(cases) {
+    const load = Object.fromEntries(REVIEWERS.map(p => [p, 0]));
+    const PAIRS = [[0, 1], [0, 2], [1, 2]].map(([a, b]) => [REVIEWERS[a], REVIEWERS[b]]);
+    let doubles = 0;
+    cases.forEach((c, i) => {
+        const needDoubles = 16 - doubles;
+        const two = needDoubles > 0 && (i % 2 === 0 || needDoubles >= cases.length - i);
+        const who = two ? PAIRS[doubles++ % 3] : [REVIEWERS.slice().sort((a, b) => load[a] - load[b] || REVIEWERS.indexOf(b) - REVIEWERS.indexOf(a))[0]];
+        who.forEach(p => load[p]++);
+        c.revisores = who;
+    });
+    return load;
+}
+
+// Direção de cada registro, a partir da chave (o CSV só traz a linha de L e a de R):
+//   DF  "L@arq:43->R@arq:149"     de quem produz para quem consome
+//   OA  "alvo|arq:446|arq:89"      a primeira escrita sobrescreveu a segunda
+//   CF  "arq:L|arq:R@arq:base"     L e R confluem num comando da base
+function direction(k) {
+    const L = n(k.L_linha), R = n(k.R_linha);
+    if (k.tipo === 'DF') {
+        const m = k.chave.match(/^(L|R)@.*:(\d+)->(L|R)@.*:(\d+)$/);
+        if (m) return { first: m[1], firstLine: +m[2], second: m[3], secondLine: +m[4] };
+    }
+    if (k.tipo === 'OA') {
+        const parts = k.chave.split('|');
+        const over = n((parts[parts.length - 2] || '').split(':').pop());
+        if (over === L) return { first: 'L', firstLine: L, second: 'R', secondLine: R };
+        if (over === R) return { first: 'R', firstLine: R, second: 'L', secondLine: L };
+    }
+    return { first: 'L', firstLine: L, second: 'R', secondLine: R };
+}
+const VERB = { DF: ['produz', 'consome'], OA: ['sobrescreve', 'foi sobrescrita'], CF: ['', ''] };
+
+function codeAt(lines, ln) { const s = lines[ln - 1]; return s === undefined ? '' : s.trim().slice(0, 160); }
+
+function main() {
+    const manifest = new Map(readCsv(path.join(W, 'dados', 'manifesto.csv')).map(m => [m.sample_id, m]));
+    const results = readCsv(path.join(RUN, 'resultados.csv'), ';');
+    const conflicts = readCsv(path.join(RUN, 'conflitos.csv'), ';');
+    const crossFile = path.join(RUN, 'cruzamento_newminerjs.csv');
+    const cross = fs.existsSync(crossFile) ? new Map(readCsv(crossFile, ';').map(c => [c.sample_id, c])) : new Map();
+
+    const byId = new Map();
+    for (const c of conflicts) (byId.get(c.sample_id) || byId.set(c.sample_id, []).get(c.sample_id)).push(c);
+    const order = { A: 0, B: 1, C: 2 };
+    const cases = results.filter(r => n(r.OA) + n(r.DF) + n(r.CF) > 0).map(r => {
+        const cs = byId.get(r.sample_id) || [];
+        const x = cross.get(r.sample_id) || {};
+        return { r, cs, x, grupo: groupOf(r, cs, x.mesma_funcao) };
+    }).sort((a, b) => order[a.grupo] - order[b.grupo] || (a.r.projeto < b.r.projeto ? -1 : a.r.projeto > b.r.projeto ? 1 : 0) || b.cs.length - a.cs.length);
+    cases.forEach((c, i) => { c.id = 'C' + String(i + 1).padStart(2, '0'); });
+    const load = assignReviewers(cases);
+
+    fs.rmSync(path.join(OUT, 'casos'), { recursive: true, force: true });
+    const meta = [];
+    for (const c of cases) {
+        const { r, cs, x } = c;
+        const m = manifest.get(r.sample_id);
+        const repo = path.join(W, 'repos', r.projeto);
+        const short = r.projeto.split('__')[1];
+        const dir = path.join(OUT, 'casos', `${c.id}-${short}-${r.merge_commit.slice(0, 8)}`);
+        fs.mkdirSync(dir, { recursive: true });
+        const versions = { base: m.ancestor_commit, left: m.left_commit, right: m.right_commit, merge: m.merge_commit };
+        const text = {};
+        for (const [k, sha] of Object.entries(versions)) {
+            text[k] = git(repo, 'show', `${sha}:${r.arquivo}`);
+            if (text[k] !== null) fs.writeFileSync(path.join(dir, `${k}.js`), text[k]);
+        }
+        for (const side of ['left', 'right']) {
+            const d = git(repo, 'diff', '--no-color', '-U5', versions.base, versions[side], '--', r.arquivo);
+            if (d !== null) fs.writeFileSync(path.join(dir, `diff_${side}.diff`), d);
+        }
+        const mergeLines = (text.merge || '').split('\n');
+        let metaRun = {};
+        try { metaRun = JSON.parse(fs.readFileSync(path.join(RUN, 'amostras', r.sample_id, 'meta.json'), 'utf-8')); } catch (e) { }
+        let report = null;
+        try { report = JSON.parse(fs.readFileSync(path.join(RUN, 'amostras', r.sample_id, 'report.json'), 'utf-8')); } catch (e) { }
+        const stacks = new Map();
+        if (report) for (const kind of ['oa', 'df', 'cf']) for (const k of report.conflicts[kind] || []) stacks.set(`${kind}|${k.key}`, k.stack || []);
+
+        // Agrupa os registros por (tipo, linha L, linha R, linha da base)
+        const groups = new Map();
+        for (const k of cs) {
+            const d = direction(k);
+            const key = [k.tipo, d.first, d.firstLine, d.second, d.secondLine, k.linha_base].join('|');
+            const g = groups.get(key) || Object.assign({ tipo: k.tipo, L: n(k.L_linha), R: n(k.R_linha), base: n(k.linha_base), naturezas: new Set(), alvos: new Set(), viaParam: 0, registros: 0, chaves: [] }, d);
+            g.chaves.push(k.chave);
+            g.registros++; if (k.natureza) g.naturezas.add(k.natureza); if (k.via_parametro === 'sim') g.viaParam++;
+            for (const a of (k.alvo || '').split(/\s+/).filter(Boolean)) g.alvos.add(a);
+            groups.set(key, g);
+        }
+        const pairs = [...groups.values()].sort((a, b) => a.firstLine - b.firstLine || a.secondLine - b.secondLine);
+        const title = g => g.tipo === 'CF'
+            ? `L ${g.L} e R ${g.R} confluem na base ${g.base}`
+            : `${g.first} ${g.firstLine} ${VERB[g.tipo][0]} → ${g.second} ${g.secondLine} ${VERB[g.tipo][1]}`;
+        const short_ = g => g.tipo === 'CF' ? `CF L${g.L}+R${g.R}→B${g.base}` : `${g.tipo} ${g.first}${g.firstLine}→${g.second}${g.secondLine}`;
+        const testCmd = (metaRun.run && metaRun.run.testCommand) || r.comando_testes || '';
+        const url = (m.repo_url || '').replace(/\.git$/, '');
+        const md = [];
+        md.push(`# ${c.id}: ${short}, \`${r.arquivo}\``, '');
+        md.push(`| | |`, `|---|---|`);
+        md.push(`| Grupo | **${c.grupo}** (${{ A: 'conflito direto, mesma função', B: 'conflito direto, funções diferentes ou sem correspondência', C: 'só transitivo ou arquivo gerado: suspeito' }[c.grupo]}) |`);
+        md.push(`| Revisores | ${c.revisores.join(', ')} |`);
+        md.push(`| Projeto | [${r.projeto}](${url}) |`);
+        md.push(`| Merge | [\`${m.merge_commit.slice(0, 10)}\`](${url}/commit/${m.merge_commit}) (${m.merge_date}) |`);
+        md.push(`| Base / Left / Right | [\`${m.ancestor_commit.slice(0, 8)}\`](${url}/blob/${m.ancestor_commit}/${r.arquivo}) / [\`${m.left_commit.slice(0, 8)}\`](${url}/blob/${m.left_commit}/${r.arquivo}) / [\`${m.right_commit.slice(0, 8)}\`](${url}/blob/${m.right_commit}/${r.arquivo}) |`);
+        md.push(`| Linhas alteradas no merge | L ${r.linhas_L}, R ${r.linhas_R}; executadas L ${r.L_executadas}/${r.L_total}, R ${r.R_executadas}/${r.R_total} |`);
+        md.push(`| Como executou | ${r.modo === 'testes' ? `suíte de testes do projeto: \`${testCmd}\`` : 'carregando só o arquivo (`node merge.js`)'} |`);
+        md.push(`| Detectado | OA ${n(r.OA)}, DF ${n(r.DF)}, CF ${n(r.CF)} (${cs.length} registros em ${pairs.length} pares de linhas) |`);
+        md.push(`| Newminerjs (mesma função?) | ${x.mesma_funcao_detalhe || '—'}${x.funcoes_em_comum && x.funcoes_em_comum !== 'Nenhuma identificada' ? `: ${x.funcoes_em_comum}` : ''} |`);
+        md.push('', 'Como ler: **DF** a linha de um lado produz um valor que a linha do outro lado consome; **OA** a escrita de um lado sobrescreve a do outro com valor diferente; **CF** valores de L e de R se encontram num comando da base. *Direto*: o valor vai da escrita ao uso sem passar por outros valores; *transitivo*: passa (x → y → uso); *via parâmetro*: entrou numa função por parâmetro (mais sujeito a falso positivo).');
+        md.push('', 'Arquivos: `base.js`, `left.js`, `right.js` e `merge.js` são as quatro versões; `diff_left.diff` e `diff_right.diff` mostram o que cada lado mudou em relação à base. **As linhas abaixo são do `merge.js`**, que é a versão executada.', '');
+        md.push('## Conflitos (por par de linhas)', '');
+        for (const [i, g] of pairs.entries()) {
+            md.push(`### ${i + 1}. ${g.tipo}${g.naturezas.size ? ' ' + [...g.naturezas].join('/') : ''}: ${title(g)}`, '');
+            md.push(`Estado: \`${[...g.alvos].join('`, `') || '—'}\` · registros: ${g.registros}${g.viaParam ? ` · via parâmetro: ${g.viaParam}` : ''}`, '');
+            md.push('```js');
+            if (g.tipo === 'CF') {
+                md.push(`// L ${g.L}`.padEnd(12) + codeAt(mergeLines, g.L));
+                md.push(`// R ${g.R}`.padEnd(12) + codeAt(mergeLines, g.R));
+            } else {
+                md.push(`// ${g.first} ${g.firstLine}`.padEnd(12) + codeAt(mergeLines, g.firstLine) + `   // ${VERB[g.tipo][0]}`);
+                md.push(`// ${g.second} ${g.secondLine}`.padEnd(12) + codeAt(mergeLines, g.secondLine) + `   // ${VERB[g.tipo][1]}`);
+            }
+            if (g.base) md.push(`// base ${g.base}`.padEnd(12) + codeAt(mergeLines, g.base) + '   // confluência');
+            md.push('```');
+            const kind = g.tipo.toLowerCase();
+            const st = [...stacks.entries()].find(([k]) => g.chaves.includes(k.slice(kind.length + 1)) && k.startsWith(kind + '|'))
+                || [...stacks.entries()].find(([k]) => k.startsWith(kind + '|') && k.includes(`${g.L}|`) && k.includes(`${g.R}@`));
+            if (st && st[1].length) md.push('', `Pilha de chamadas no momento: ${st[1].map(s => `${path.basename(s.file)}:${s.line}`).join(' → ')}`);
+            md.push('');
+        }
+        md.push('## Para preencher', '', 'Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.', '');
+        md.push(`---`, `Arquivos de código copiados de [${r.projeto}](${url}) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.`);
+        fs.writeFileSync(path.join(dir, 'README.md'), md.join('\n') + '\n');
+
+        meta.push({
+            id: c.id, grupo: c.grupo, revisores: c.revisores, pasta: path.relative(OUT, dir), sample_id: r.sample_id, projeto: r.projeto, arquivo: r.arquivo,
+            merge: m.merge_commit, url: `${url}/commit/${m.merge_commit}`, modo: r.modo, comando_testes: testCmd,
+            OA: n(r.OA), DF: n(r.DF), CF: n(r.CF), registros: cs.length, pares: pairs.length,
+            diretos: cs.filter(k => k.natureza === 'direto').length, transitivos: cs.filter(k => k.natureza === 'transitivo').length,
+            via_parametro: cs.filter(k => k.via_parametro === 'sim').length, mesma_funcao: x.mesma_funcao || '', mesma_funcao_detalhe: x.mesma_funcao_detalhe || '',
+            linhas_L: r.linhas_L, linhas_R: r.linhas_R,
+            pares_resumo: pairs.slice(0, 6).map(short_).join('; ') + (pairs.length > 6 ? `; … (+${pairs.length - 6})` : ''),
+        });
+    }
+    fs.writeFileSync(path.join(OUT, 'casos.json'), JSON.stringify(meta, null, 1) + '\n');
+
+    // Índice da análise manual (o que a equipe vê ao abrir a pasta no GitHub)
+    const idx = [];
+    idx.push('# Análise manual dos conflitos do lote', '');
+    idx.push(`As ${meta.length} amostras em que a análise dinâmica detectou conflito no lote completo (976 amostras de merges reais, coleta Newminerjs). Cada pasta tem tudo o que é preciso para julgar o caso sem rodar nada.`, '');
+    idx.push('## Como fazer', '');
+    idx.push('1. Abra a planilha [`../resultados.xlsx`](../resultados.xlsx) (ou a cópia no Google Sheets), aba **Análise - \\<seu nome\\>**: lá estão os seus 15 casos.');
+    idx.push('2. Para cada caso, abra a pasta abaixo. O `README.md` mostra cada conflito com o código das linhas de L, R e base (linhas do `merge.js`, a versão executada). `base.js`, `left.js`, `right.js` e `merge.js` são as quatro versões do arquivo; `diff_left.diff` e `diff_right.diff` mostram o que cada lado mudou.');
+    idx.push('3. Decida se a interferência é **real**: o comportamento do merge depende das duas mudanças juntas de um jeito que nenhuma delas produz sozinha? Ou é um falso positivo (por exemplo, uma refatoração que não muda o valor, um fluxo transitivo que não carrega a mudança, um arquivo gerado)?');
+    idx.push('4. Preencha as colunas amarelas da sua aba. Não precisa conversar antes: nos casos com dois revisores, a aba **Concordância** compara as respostas, e só os desacordos são discutidos.', '');
+    idx.push('**Grupos.** A: conflito direto e Left e Right alteraram a mesma função (candidatos mais fortes). B: conflito direto em funções diferentes ou sem correspondência estática (interferência indireta: o que distingue a análise dinâmica). C: só conflitos transitivos, ou arquivo gerado/minificado (suspeitos de falso positivo).', '');
+    idx.push('**Divisão.** 15 casos por pessoa: 16 casos têm dois revisores (6, 5 e 5 por dupla), para medir a concordância, e 13 têm um.', '');
+    idx.push('| Caso | Grupo | Revisores | Projeto | Arquivo | Executado por | OA/DF/CF | Pares | Mesma função? |', '|---|:-:|---|---|---|---|---|--:|---|');
+    for (const c of meta) {
+        idx.push(`| [${c.id}](${c.pasta.replace(/^casos\//, 'casos/')}) | ${c.grupo} | ${c.revisores.join(' + ')} | ${c.projeto.split('__')[1]} | \`${c.arquivo}\` | ${c.modo === 'testes' ? 'testes' : 'arquivo'} | ${c.OA}/${c.DF}/${c.CF} | ${c.pares} | ${c.mesma_funcao || '—'} |`);
+    }
+    idx.push('', '| Revisor | Casos |', '|---|---|');
+    for (const p of REVIEWERS) idx.push(`| ${p} | ${meta.filter(c => c.revisores.includes(p)).map(c => c.id).join(', ')} |`);
+    idx.push('', 'Gerado por `experiments/results/gerar_casos.js` a partir do lote. Os arquivos de código pertencem aos autores de cada projeto e seguem a licença dele; estão aqui só para a pesquisa.');
+    fs.writeFileSync(path.join(OUT, 'README.md'), idx.join('\n') + '\n');
+    console.log(`${meta.length} casos em ${path.relative(process.cwd(), path.join(OUT, 'casos'))}`);
+    console.log('grupos:', meta.reduce((a, c) => (a[c.grupo] = (a[c.grupo] || 0) + 1, a), {}), '| casos por revisor:', load,
+        '| com dois revisores:', meta.filter(c => c.revisores.length === 2).length);
+}
+
+main();

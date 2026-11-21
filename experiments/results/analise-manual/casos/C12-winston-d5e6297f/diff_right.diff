@@ -1,0 +1,27 @@
+diff --git a/lib/winston/common.js b/lib/winston/common.js
+index c754942..888fc6a 100644
+--- a/lib/winston/common.js
++++ b/lib/winston/common.js
+@@ -186,15 +186,17 @@ exports.log = function (options) {
+ 
+     if (typeof meta !== 'object') {
+       output += ' ' + meta;
+     }
+     else if (Object.keys(meta).length > 0) {
+-      output += ' ' + (
+-        options.prettyPrint
+-          ? ('\n' + util.inspect(meta, false, null, options.colorize))
+-          : exports.serialize(meta)
+-      );
++      if (typeof options.prettyPrint === 'function') {
++        output += ' ' + options.prettyPrint(meta);
++      } else if (options.prettyPrint) {
++        output += ' ' + '\n' + util.inspect(meta, false, null, options.colorize);
++      } else {
++        output += ' ' + exports.serialize(meta);
++      }
+     }
+   }
+ 
+   return output;
+ };

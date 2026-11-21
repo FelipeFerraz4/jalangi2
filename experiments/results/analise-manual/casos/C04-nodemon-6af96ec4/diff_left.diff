@@ -1,0 +1,80 @@
+diff --git a/lib/monitor/watch.js b/lib/monitor/watch.js
+index 67ed0ba..ca90c82 100644
+--- a/lib/monitor/watch.js
++++ b/lib/monitor/watch.js
+@@ -32,14 +32,18 @@ function reset() {
+ }
+ 
+ function showWatchCount() {
+   var cmds = [];
+   config.dirs.forEach(function(dir) {
+-    cmds.push('find -L "' + dir + '" -type f ' + ignoredFileTypesForFind(dir) + ' | wc');
++    cmds.push('find -L "' + dir + '" ' + ignoredFileTypesForFind(dir) + ' \\( -type f -print \\) | wc');
+   });
+ 
+   exec(cmds.join(';'), function (error, stdout) {
++    if (!config.run) {
++      return; // we're too late
++    }
++
+     var total = 0;
+     stdout.split(/\n/).map(function (line) {
+       total += (line.trim().split(/\s+/)[0]||0) * 1;
+     });
+ 
+@@ -62,11 +66,11 @@ bus.on('config:update', function () {
+     // command (mac only oddly)
+     changeFunction = function (lastStarted, callback) {
+       var cmds = [];
+ 
+       config.dirs.forEach(function(dir) {
+-        cmds.push('find -L "' + dir + '" -type f ' + ignoredFileTypesForFind(dir) + ' -mtime -' + ((Date.now() - config.lastStarted)/1000|0) + 's -print');
++        cmds.push('find -L "' + dir + '" ' + ignoredFileTypesForFind(dir) + ' \\( -type f -and -mtime -' + ((Date.now() - config.lastStarted)/1000|0) + 's -print \\)');
+       });
+ 
+       exec(cmds.join(';'), function (error, stdout) {
+         var files = stdout.split(/\n/);
+         files.pop(); // remove blank line ending and split
+@@ -103,11 +107,11 @@ bus.on('config:update', function () {
+             if (err) { return; }
+ 
+             files.forEach(function (rawfile) {
+               var file = path.join(dir, rawfile);
+               if (watched.indexOf(file) === -1 && ignoredFilter(file)) {
+-                fs.stat(file, function (err, stat) {
++                fs.lstat(file, function (err, stat) {
+                   if (err || !stat) { return; }
+ 
+                   // if we're using fs.watch, then watch directories
+                   if (!watchFile && stat.isDirectory()) {
+                     // recursive call to watch()
+@@ -180,19 +184,26 @@ function ignoredFileTypesForFind(dir) {
+     dir += '/';
+   }
+   config.options.ignore.forEach(function (path) {
+     var pathIsDir = (path.charAt(path.length - 1) == '/');
+     if (pathIsDir) {
+-      paths.push('! -ipath "' + dir + path + '*"');
++      paths.push(' -ipath "' + dir + path + '*" -prune');
+     }
+-    paths.push('! -ipath "' + dir + path + '"');
++    paths.push(' -ipath "' + dir + path + '" -prune');
+   });
+-  return ' \\( ' + paths.join(' -and ') + ' \\)';
++  return ' \\( ' + paths.join(' -or ') + ' \\) -or ';
+ }
+ 
+ function filterAndRestart(files) {
+   if (files.length) {
++    if (utils.isWindows) {
++      // ensure the drive letter is in uppercase (c:\foo -> C:\foo)
++      files = files.map(function (f) {
++        return f[0].toUpperCase() + f.slice(1);
++      });
++    }
++
+     var cwd = process.cwd();
+     utils.log.detail('files triggering change check: ' + files.map(function (file) {
+       return path.relative(cwd, file);
+     }).join(', '));
+ 

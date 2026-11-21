@@ -1,0 +1,24 @@
+diff --git a/lib/ace/lib/keys.js b/lib/ace/lib/keys.js
+index c4cc3f31f..93622c09f 100644
+--- a/lib/ace/lib/keys.js
++++ b/lib/ace/lib/keys.js
+@@ -131,10 +131,19 @@ var Keys = (function() {
+     ret.escape = ret.esc;
+     ret.del = ret["delete"];
+ 
+     // workaround for firefox bug
+     ret[173] = '-';
++    
++    (function() {
++        var mods = ["cmd", "ctrl", "alt", "shift"];
++        for (var i = Math.pow(2, mods.length); i--;) {
++            ret.KEY_MODS[i] = mods.filter(function(x) {
++                return i & ret.KEY_MODS[x];
++            }).join("-") + "-";
++        }
++    })();
+ 
+     (function() {
+         var mods = ["cmd", "ctrl", "alt", "shift"];
+         for (var i = Math.pow(2, mods.length); i--;) {
+             ret.KEY_MODS[i] = mods.filter(function(x) {
