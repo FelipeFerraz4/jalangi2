@@ -164,6 +164,21 @@ const atest = (name, fn) => asyncTests.push([name, fn]);
 // --- Modo testes ---
 const { testCommand } = require('./lib/test-command');
 
+test('cruzamento Newminerjs: classe estática ao lado do resultado dinâmico, e taxa só entre as que executaram L e R', () => {
+    const { crossRows, sameFunctionTable } = require('./cross-newminerjs');
+    const res = (id, L, R, DF) => ({ sample_id: id, projeto: 'p', merge_commit: 'm', arquivo: 'a.js', execucao: 'ok', modo: 'testes', categoria_erro: '', L_executadas: L, R_executadas: R, OA: '0', DF, CF: '' });
+    const scen = (id, cls) => ({ ID: id, 'Cenário': id, 'Mesma função?': cls, 'Fonte Merge': 'https://x/' + id });
+    const cross = crossRows(
+        [res('a', '2', '1', '3'), res('b', '1', '1', '0'), res('c', '1', '0', '0'), res('d', '1', '1', '1'), res('e', '1', '1', '0')],
+        [scen('a', 'Sim: função da base alterada nos dois lados'), scen('b', 'Sim: função correspondente adicionada nos dois lados'),
+            scen('c', 'Sim: função da base alterada nos dois lados'), scen('d', 'Não: sem função correspondente alterada nos dois lados')]);
+    assert.deepStrictEqual(cross.map(c => [c.mesma_funcao, c.executou_L_e_R, c.tem_conflito]),
+        [['Sim', 'sim', 'sim'], ['Sim', 'sim', 'nao'], ['Sim', 'nao', 'nao'], ['Não', 'sim', 'sim'], ['sem_cenario', 'sim', 'nao']]);
+    assert.strictEqual(cross[0].link_merge, 'https://x/a');
+    const t = Object.fromEntries(sameFunctionTable(cross).map(l => [l.mesma_funcao, [l.amostras, l.executaram_L_e_R, l.com_conflito, l.taxa_conflito_pct]]));
+    assert.deepStrictEqual(t, { 'Sim': [3, 2, 1, '50.0'], 'Não': [1, 1, 1, '100.0'], sem_cenario: [1, 1, 0, '0.0'], TOTAL: [5, 4, 2, '50.0'] });
+});
+
 test('comando de testes: tira lint e navegador, une o resto com ;', () => {
     const t = script => testCommand({ scripts: { test: script } });
     assert.deepStrictEqual(t('make test'), { command: 'make test', dropped: [] });
