@@ -317,6 +317,23 @@ atest('jalangi2: escrita da variável do for...in fica na linha do laço, não n
     }
 });
 
+// Regressão (achado ao montar a análise manual, nodemon): o Jalangi2 apagava a linha do shebang (#!) antes de
+// instrumentar, e todas as posições do arquivo subiam uma linha. Aqui L escreve na linha 3 e R lê na 4.
+atest('jalangi2: arquivo com shebang mantém a numeração das linhas', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wild-shebang-'));
+    try {
+        fs.writeFileSync(path.join(dir, 'p.js'), ['#!/usr/bin/env node', 'var x = 0;', 'x = 1;', 'var y = x + 1;'].join('\n') + '\n');
+        fs.writeFileSync(path.join(dir, 'map.json'), JSON.stringify({ files: { 'p.js': { L: [3], R: [4] } } }));
+        const out = path.join(dir, 'report.json');
+        require('child_process').spawnSync(process.execPath, [path.join(__dirname, 'lib', 'launcher.js'), path.join(dir, 'p.js')],
+            { cwd: dir, encoding: 'utf-8', env: { ...process.env, BRANCH_MAP_FILE: path.join(dir, 'map.json'), BRANCH_MAP_ROOT: dir, ANALYSIS_REPORT: out, ANALYSIS_QUIET: '1' } });
+        const report = JSON.parse(fs.readFileSync(out, 'utf-8'));
+        assert.deepStrictEqual(report.conflicts.df.map(c => `${c.targets.join(',')} ${c.from.branch}${c.from.position.line}->${c.to.branch}${c.to.position.line}`), ['x L3->R4']);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+});
+
 atest('git-sync: clona sem checkout e confere o arquivo (ok)', () => withGitRepo(async ({ dir, src, commit }) => {
     const dest = path.join(dir, 'clone');
     const r = await ensureClone(src, dest);
