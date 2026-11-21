@@ -127,11 +127,15 @@
         }
     }
 
+    // Mapas indexados por nome de estado sem protótipo: com {} um alvo chamado "toString" ou "constructor"
+    // devolveria a função herdada de Object.prototype em vez de undefined
+    function dict() { return Object.create(null); }
+
     // --- ESTADO DO OVERRIDING ASSIGNMENT (OA) ---
     // assignments[branch][alvo] = { line, val }: última atribuição de cada branch ao alvo
     var assignments = {
-        "L": {},
-        "R": {}
+        "L": dict(),
+        "R": dict()
     };
 
     // --- ESTADO DO DATA FLOW ---
@@ -140,7 +144,7 @@
     //   derived:  false se a escrita da branch produziu o valor; true se ele chegou por outros valores
     //             (x -> y -> uso de y), que é o fluxo transitivo (Tainted)
     //   viaParam: o valor entrou na função por parâmetro
-    var origins = {};
+    var origins = dict();
 
     // Origens lidas na expressão em andamento, ainda não atribuídas a nenhum alvo.
     // A pilha guarda as da função chamadora enquanto a chamada executa.
@@ -149,7 +153,7 @@
     var entryTaint = [];
 
     // Rótulos legíveis dos alvos (a chave interna usa ids da memória sombra)
-    var labels = {};
+    var labels = dict();
 
     // --- PILHA DE CHAMADAS ---
     // Guarda a branch de cada chamada em andamento (undefined = chamada de linha da Base) e a
@@ -203,7 +207,9 @@
     var nextObjectId = 1;
 
     function fieldTarget(base, offset, isGetField) {
-        if (!base || (typeof base !== 'object' && typeof base !== 'function')) return String(offset);
+        // Propriedade de um valor primitivo (y.toString, s.length) não é estado: o valor já foi lido na
+        // variável. Sem isso, todas as leituras de "length" de qualquer string virariam um só elemento
+        if (!base || (typeof base !== 'object' && typeof base !== 'function')) return null;
         var id;
         if (smemory()) {
             try {
@@ -599,8 +605,8 @@
         // Função para configurar programaticamente as linhas das branches
         setBranches: function (map) {
             loadBranchMap(map);
-            assignments = { "L": {}, "R": {} };
-            origins = {};
+            assignments = { "L": dict(), "R": dict() };
+            origins = dict();
             pending = [];
             pendingStack = [];
             openCond = null;
