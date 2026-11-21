@@ -12,7 +12,7 @@ Entradas:
   experiments/results/dados/suites.json           (coletar_suites.js)
   ../Newminerjs/dataset/resumo.json               (funil da coleta)
 
-Uso: python3 experiments/results/gerar_planilha.py [--lote DIR] [--newminerjs DIR] [--branch feature/wild-analysis]
+Uso: python3 experiments/results/gerar_planilha.py [--lote DIR] [--newminerjs DIR] [--branch master]
 Requer openpyxl (pip install openpyxl).
 """
 import argparse
@@ -157,7 +157,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--lote', default=os.path.expanduser('~/Documentos/wild/execucoes/lote'))
     ap.add_argument('--newminerjs', default=os.path.join(os.path.dirname(REPO), 'Newminerjs'))
-    ap.add_argument('--branch', default='feature/wild-analysis')
+    ap.add_argument('--branch', default='master')
     ap.add_argument('--out', default=os.path.join(HERE, 'resultados.xlsx'))
     a = ap.parse_args()
 
