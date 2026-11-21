@@ -85,7 +85,7 @@ const cases = [
         sink: [P(13, 'multipleConfluencesToTheSameLine', /\bz\s*=\s*z\s*\+\s*1|\bz\s*\+=\s*1|\bz\s*\+\+/)] },
     { set: 'cf', test: 'DFPConfluenceAnalysisWithInterproceduralConfluenceTest', analysis: 'DFPConfluence', sample: 'InterproceduralConfluenceSample', expected: 1,
         source: [P(10, 'interproceduralSample', /\bx\s*=\s*x\s*\+\s*1|\bx\s*\+=\s*1|\bx\s*\+\+/)], sink: [P(12, 'interproceduralSample', /\by\s*=\s*y\s*\+\s*2|\by\s*\+=\s*2/)],
-        note: '@Ignore no Java (o SVFA não passa); a confluência é em counter += value, em duas chamadas' },
+        note: '@Ignore no Java desde 2021, sem motivo registrado; aqui o CF ignora origens vindas por parâmetro (veja DECISOES_PENDENTES.md)' },
 ];
 
 // ---- localização das linhas ----

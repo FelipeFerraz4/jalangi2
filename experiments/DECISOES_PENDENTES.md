@@ -53,13 +53,21 @@ O problema aqui é que, na 1ª chamada, o `counter` (um campo de objeto, que sob
 
 ### Situação de referência
 
-O teste está marcado com **`@Ignore` no Java**: o próprio SVFA do `conflict-static-analysis` não detecta esse caso. Por isso, hoje a análise **coincide com a ferramenta de referência**. Não é uma regressão.
+O teste está marcado com **`@Ignore` no Java**, mas **não está comprovado que o Java não detecta esse caso**. O histórico do `conflict-static-analysis` (commit `8ab71e3`) mostra:
+
+- **Criado como caso que passava:** o teste e a sample entraram em `d83e014` (07/07/2020, Rafael Mota), num commit chamado *"Fix confluence analysis to work with interprocedural cases"*, com `@Test` ativo.
+- **Desligado sem motivo registrado:** foi para `@Ignore` em `e772283` (16/02/2021, Rodrigo Bonifacio, *"mark some test cases as @ignore"*). Esse commit é a migração para uma nova versão do svfa-scala (`Node` → `LambdaNode`): no mesmo commit, outros testes de confluência tiveram o número esperado trocado de 1 para 2 e as asserções de texto comentadas. Não há motivo registrado para o `@Ignore` deste teste: ele pode ter deixado de passar com a nova versão, ou só não ter sido ajustado.
+- **O algoritmo atual não exclui o caso em princípio:** `DFPConfluenceAnalysis` roda duas análises de fluxo de valores (source → Base e sink → Base) e cruza os caminhos que terminam no mesmo comando (`intersectPathsByLastNode`), com análise interprocedural ligada no teste. Os dois caminhos (`x` → `value` → `counter += value` e `y` → `value` → `counter += value`) existem no programa, então não há uma regra que descarte o caso, como a nossa regra do `viaParam`.
+
+**Não foi possível rodar o teste:** a dependência `br.unb.cic:svfa-scala_2.12:0.5.11` só está no GitHub Packages (`maven.pkg.github.com/spgroup/svfa-scala`), que exige um token do GitHub com `read:packages`. Ela não está no cache local do Maven (só o registro de uma tentativa com erro 401, de 12/10/2026). Com o token, basta tirar o `@Ignore` numa cópia e rodar `mvn test -Dtest=DFPConfluenceAnalysisWithInterproceduralConfluenceTest`.
+
+Até lá, a afirmação correta é: **o teste está desligado no Java desde 2021, sem motivo registrado; não sabemos se a versão atual o detecta.**
 
 ### Opções
 
 | Opção | O que muda | Ganho | Risco |
 |---|---|---|---|
-| **A. Manter** (situação atual) | nada | equivalência com o Java; sem dupla contagem | não detecta confluências que passam por estado guardado entre chamadas |
+| **A. Manter** (situação atual) | nada | sem dupla contagem; mesma regra de "cada corpo isolado" do Java intraprocedural | não detecta confluências que passam por estado guardado entre chamadas |
 | **B. A marca `viaParam` vale só dentro da chamada** | ao gravar num alvo que sobrevive à chamada (campo de objeto, variável de closure ou global), a origem perde o `viaParam` | detecta o caso acima; é a interferência interprocedural que a análise dinâmica consegue ver e a estática não | mais CF em código real, possivelmente com dupla contagem; deixa de ser comparável um-para-um com o Java nesse ponto |
 | **C. Como B, mas atrás de uma opção** (`ANALYSIS_CF_INTERPROC=1`), desligada por padrão | o mesmo que B, só quando pedido | permite medir antes de decidir; o padrão continua igual ao Java | mais um caminho de código para manter |
 
@@ -73,4 +81,4 @@ Com a opção C implementada:
 
 ### Decisão
 
-*A ser tomada.* Para a apresentação e o texto, o caso entra como **limitação conhecida, compartilhada com a ferramenta Java** (o teste é `@Ignore` lá).
+*A ser tomada.* Para a apresentação e o texto, o caso entra como **limitação conhecida da análise**, com a observação de que o teste correspondente está desligado (`@Ignore`) no `conflict-static-analysis` desde 2021, sem motivo registrado. Não se deve afirmar que é uma limitação também do Java antes de rodar o teste (veja "Situação de referência").
