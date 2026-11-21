@@ -18,9 +18,9 @@ Os dados e os clones ficam **fora do repositório e fora do vault**, em `~/Docum
 |---|---|---|
 | 0 | Insumos: mapas por merge, manifesto, teste de instrumentabilidade, correções da análise | **concluída** |
 | 1 | Clonagem em `repos/` e conferência de cada arquivo contra o `merge.js` do pacote | **concluída** |
-| 2 | Execução isolada de um arquivo em contêiner | **piloto feito** (3 projetos) |
-| 3 | Execução em lote, retomável | |
-| 4 | Agregação (funil) e inspeção manual das detecções | |
+| 2 | Execução isolada de um arquivo em contêiner | **concluída** (modos arquivo, testes e híbrido) |
+| 3 | Execução em lote, retomável | **concluída** (976 amostras, modo híbrido) |
+| 4 | Agregação (funil) e inspeção manual das detecções | agregação e cruzamento com o Newminerjs feitos; inspeção dos 29 casos pendente |
 
 ## Fase 0
 
@@ -136,7 +136,54 @@ Os 386 conflitos do piloto em modo testes vieram de 23 amostras, e 5 delas tinha
 - **Interação plausível.** commander `lib/commander.js`: as duas branches implementaram o tratamento de opções desconhecidas, e o `unknown` que a L passa a repassar é lido pelo `unknown = unknown || []` da R. winston `common.js` (`d5e6297f`): a L muda o que entra em `meta` (erros deixam de ser clonados, `decycle`) e a R muda como `meta` é impresso (`prettyPrint` como função).
 - **Contagem inflada.** Um mesmo par de alterações gera dezenas de registros, um por par de linhas e por caminho transitivo, repetidos ao longo da suíte. Para comparar amostras, vale mais "a amostra tem conflito" e o número de linhas L e R distintas do que o total de registros.
 
-### Resultado do piloto
+### Resultado do lote completo
+
+976 amostras (845 merges, 38 projetos), modo híbrido, 2 frentes, cerca de 2 h 20 min (`run-batch.js --run lote --jobs 2`).
+
+| Execução | Amostras |
+|---|---:|
+| `ok` | 323 (145 pelo relatório dos testes, 178 pelo do arquivo) |
+| `erro_execucao` | 551 |
+| `nao_instrumentavel` | 83 |
+| `timeout` | 12 |
+| `sem_relatorio` | 7 |
+
+Falhas por origem: **ambiente 548** (código de navegador 232, global ausente 180, dependência ausente 71, módulo nativo 51, tempo esgotado 12, outras 2), **ferramenta 84** (83 não instrumentáveis pelo parser ES5, 1 possível erro do Jalangi2) e **projeto 21**. Os testes do projeto: 419 amostras sem `scripts.test` utilizável, 276 com suíte que não carrega o alvo, 145 que carregam.
+
+- **411** amostras executaram linhas de pelo menos um lado; **157** executaram linhas de L e de R.
+- **29 amostras com conflito**, em 28 merges e 10 projetos (request 9, commander 6; ace, eslint, jsPDF, vimium, nodemon e winston 2 cada; nprogress e webtorrent 1). Os testes respondem por 23 delas.
+
+| Tipo | Registros | Amostras | Projetos |
+|---|---:|---:|---:|
+| DF | 306 (168 via parâmetro) | 26 | 10 |
+| CF | 68 | 7 | 3 |
+| OA | 1 | 1 | 1 |
+
+4 amostras têm DF e CF. Os registros são inflados (um laço repete o mesmo par de linhas; o request sozinho tem 58 de CF), então a medida de comparação é o número de amostras.
+
+### Cruzamento com a análise estática do Newminerjs
+
+O Newminerjs traz `analise_left_right.xlsx`, uma análise estática (sem executar nada) que diz, por cenário, se Left e Right alteraram **a mesma função** (comparação de tokens, Acorn). Os IDs são os mesmos do manifesto: as 976 amostras do lote estão entre os 1.283 cenários da planilha (os outros 307 não têm linhas de L e de R no merge).
+
+```bash
+node experiments/wild/cross-newminerjs.js <Newminerjs>/analise_left_right.xlsx ~/Documentos/wild/execucoes/lote          # ; com BOM (Excel)
+node experiments/wild/cross-newminerjs.js <Newminerjs>/analise_left_right.xlsx ~/Documentos/wild/execucoes/lote --sep ,  # Google Sheets
+```
+
+Grava `cruzamento_newminerjs.csv` (uma linha por amostra, com OA/DF/CF ao lado da classificação estática, das funções em comum e do link do merge) e `tabela_mesma_funcao.csv`:
+
+| Mesma função? | Amostras | Executaram L e R | Com conflito | Taxa |
+|---|---:|---:|---:|---:|
+| Sim | 363 | 67 | 15 | 22,4% |
+| Não | 301 | 49 | 7 | 14,3% |
+| Inconclusivo | 312 | 41 | 7 | 17,1% |
+| **Total** | 976 | 157 | 29 | 18,5% |
+
+- Alterar a mesma função aumenta a chance de conflito, mas não decide: 78% dos casos "Sim" que executaram os dois lados não têm conflito.
+- **7 dos 29 conflitos são entre funções diferentes** (por exemplo commander `index.js`, 9 DF; winston `transports/file.js`, 8 CF), e outros 7 são inconclusivos estaticamente. Um filtro estático por "mesma função" perderia ao menos um quarto das detecções: é a interferência interprocedural, por chamadas e estado compartilhado, que a análise dinâmica vê.
+- Para a inspeção manual: os 15 "Sim + conflito" são os candidatos mais fortes a interferência real; os 7 "Não + conflito" são interferência indireta real ou falso positivo, e são os que mais precisam ser conferidos.
+
+### Primeiro piloto (modo arquivo, 3 projetos)
 
 | Projeto | Amostras | Execução | OA / DF / CF |
 |---|---:|---|---|
