@@ -150,16 +150,18 @@ Os 386 conflitos do piloto em modo testes vieram de 23 amostras, e 5 delas tinha
 
 Falhas por origem: **ambiente 548** (código de navegador 232, global ausente 180, dependência ausente 71, módulo nativo 51, tempo esgotado 12, outras 2), **ferramenta 84** (83 não instrumentáveis pelo parser ES5, 1 possível erro do Jalangi2) e **projeto 21**. Os testes do projeto: 419 amostras sem `scripts.test` utilizável, 276 com suíte que não carrega o alvo, 145 que carregam.
 
-- **411** amostras executaram linhas de pelo menos um lado; **157** executaram linhas de L e de R.
+- **412** amostras executaram linhas de pelo menos um lado; **159** executaram linhas de L e de R.
 - **29 amostras com conflito**, em 28 merges e 10 projetos (request 9, commander 6; ace, eslint, jsPDF, vimium, nodemon e winston 2 cada; nprogress e webtorrent 1). Os testes respondem por 23 delas.
 
 | Tipo | Registros | Amostras | Projetos |
 |---|---:|---:|---:|
-| DF | 306 (168 via parâmetro) | 26 | 10 |
-| CF | 68 | 7 | 3 |
+| DF | 316 (176 via parâmetro) | 27 | 10 |
+| CF | 67 | 6 | 2 |
 | OA | 1 | 1 | 1 |
 
 4 amostras têm DF e CF. Os registros são inflados (um laço repete o mesmo par de linhas; o request sozinho tem 58 de CF), então a medida de comparação é o número de amostras.
+
+**Correção do shebang (21/11/2026).** O Jalangi2 apagava a linha `#!` antes de instrumentar, e todas as posições desses arquivos subiam uma linha. As 21 amostras afetadas (`nodemon.js`, `bin/cmd.js`) foram reexecutadas com a correção (os resultados antigos estão em `execucoes/lote-antes-correcao-shebang/`): o CF de uma amostra do nodemon sumiu (apontava para uma linha em branco) e outra amostra do nodemon passou a ter 10 DF. Os números acima já são os corrigidos; o total continua 29 amostras com conflito.
 
 ### Cruzamento com a análise estática do Newminerjs
 
@@ -175,9 +177,9 @@ Grava `cruzamento_newminerjs.csv` (uma linha por amostra, com OA/DF/CF ao lado d
 | Mesma função? | Amostras | Executaram L e R | Com conflito | Taxa |
 |---|---:|---:|---:|---:|
 | Sim | 363 | 67 | 15 | 22,4% |
-| Não | 301 | 49 | 7 | 14,3% |
+| Não | 301 | 51 | 7 | 13,7% |
 | Inconclusivo | 312 | 41 | 7 | 17,1% |
-| **Total** | 976 | 157 | 29 | 18,5% |
+| **Total** | 976 | 159 | 29 | 18,2% |
 
 - Alterar a mesma função aumenta a chance de conflito, mas não decide: 78% dos casos "Sim" que executaram os dois lados não têm conflito.
 - **7 dos 29 conflitos são entre funções diferentes** (por exemplo commander `index.js`, 9 DF; winston `transports/file.js`, 8 CF), e outros 7 são inconclusivos estaticamente. Um filtro estático por "mesma função" perderia ao menos um quarto das detecções: é a interferência interprocedural, por chamadas e estado compartilhado, que a análise dinâmica vê.
