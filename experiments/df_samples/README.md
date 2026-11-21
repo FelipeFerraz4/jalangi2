@@ -71,3 +71,26 @@ A análise roda **uma única vez** por teste e reporta OA, DF e CF. Para compara
 * **Confluent (6 de 6):** o par `SourceSinkVariableAttributionWithAutoIncrement` mostra a diferença entre os dois recortes: com `x++` na Base, o Confluent espera 0 (a Base redefine `x`) e o ConfluentTainted espera 1 (`x` continua contaminado pelo source).
 * **Containment:** a sample é de OA (pacote `ioa`) e não está entre as 9 traduzidas pelo Italo. Roda com a tradução da Amanda, lida do clone `../SCAz.js` (não é copiada para cá). O Java usa a análise DFP/SVFA, que não implementamos; aqui conta-se o Data Flow (direto + transitivo), então o resultado só confirma que o valor criado por L chega a R.
 * Com poucos casos e o gabarito vindo de asserções comentadas, o resultado mostra consistência com o `conflict-static-analysis`, não precisão em código real.
+
+## Traduções A, B e C (estudo do tjtjdf)
+
+O Italo depois comparou três formas de traduzir as samples: **A** só JSweet, **B** JSweet + correção por IA (`gpt-oss-120b`) e **C** só IA (`gpt-oss-120b`), em dois conjuntos: `df` (as 9 samples acima) e `cf` (6 samples de confluência, 4 delas novas). As traduções estão em `abordagens/<df|cf>/<A-jsweet|B-jsweet-ia|C-ia>/`, copiadas de `testes-js/` do tjtjdf (commit `e3191bc`, 21/11/2026; a repetição 1 de B e C). Já vêm em ES5 e não passam pelo `to-es5.js`. As de `es5/` (a tradução "atual", tjtjdf `c201121`) continuam sendo as da suíte DF/CF, e o estado anterior está marcado com a tag `df-samples-jsweet-A-20261102`.
+
+```bash
+node experiments/run_translation_study.js                  # 18 casos × 4 traduções
+node experiments/run_translation_study.js --csv saida.csv  # e grava a matriz
+```
+
+A C reordena métodos e reescreve comandos (`console.log` no lugar de `console.info`, `process.stdout.write(y.toString())` no lugar do `print`, o for-each como `console.log(arr[i])`), então as linhas fixas não servem. Cada source/sink é localizado pelo método que o contém e por uma expressão regular do comando, sem olhar comentários. Na tradução atual, a localização tem de dar as mesmas linhas da suíte DF/CF, e isso é conferido a cada execução.
+
+Casos: os 12 da suíte DF/CF que usam as 9 samples, mais os 6 testes de confluência SVFA do `conflict-static-analysis` (`svfa/confluence`, com asserções **ativas**), que usam o conjunto `cf`. A métrica do SVFA é o CF direto + transitivo.
+
+| Conjunto | Atual | A (JSweet) | B (JSweet + IA) | C (IA) |
+|---|:-:|:-:|:-:|:-:|
+| DF/CF da suíte (12) | 11 | 11 | 11 | 11 |
+| Confluência SVFA (6) | — | 5 | 5 | 5 |
+
+* **As quatro traduções dão o mesmo resultado em todos os 18 casos, com a mesma contagem.** A forma de traduzir não mudou o que a análise detecta.
+* **A tradução C achou um bug da análise (corrigido).** `process.stdout.write(y.toString())` derrubava a análise. Ler uma propriedade de um valor primitivo virava um elemento de estado chamado só `"toString"`, e os mapas de estado eram objetos `{}`: `origins["toString"]` devolvia a função herdada de `Object.prototype`. Agora uma propriedade de primitivo não é estado (o valor já foi lido na variável), e os mapas são `Object.create(null)`. Os 33 toys e as suítes de OA e DF/CF dão exatamente o mesmo resultado de antes. No lote completo, o efeito são 8 registros de DF em uma amostra do winston (`common.js`) cujo alvo era um `length` sem objeto. A amostra tem 102 registros, então continua com conflito, e o total de 29 amostras não muda.
+* **As divergências são as mesmas nas quatro traduções e já eram conhecidas.** `ArrayTaintedAnalysisOneConflictIndirectTest` é a escolha dos índices independentes. `DFPConfluenceAnalysisWithInterproceduralConfluenceTest` é `@Ignore` no Java, porque o próprio SVFA não detecta. Aqui também dá 0: os valores entram em `incrementCounter` por parâmetro, e o CF ignora de propósito origens que chegaram por parâmetro (a confluência é contada no corpo onde os valores se encontram). O `counter` herda essa marca. Detectar esse caso pede rever essa regra.
+* **Contagem no SVFA.** O Java espera 2 em três testes em que a análise acha 1. O SVFA conta caminhos (SOURCE ⇒ BASE e SINK ⇒ BASE por elemento), e aqui se conta o trio (linha de L, linha de R, comando da Base). A presença bate em 5 de 6.

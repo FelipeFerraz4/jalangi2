@@ -202,7 +202,7 @@ function summarize(records) {
     };
 }
 
-module.exports = { collect, report, summarize };
+module.exports = { collect, report, summarize, cases };
 
 if (require.main === module) {
     const records = collect({ scazDir: defaultScazDir, filter: process.argv[2] });
