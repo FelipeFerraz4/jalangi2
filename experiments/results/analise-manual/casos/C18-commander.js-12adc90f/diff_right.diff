@@ -1,0 +1,34 @@
+diff --git a/lib/commander.js b/lib/commander.js
+index 5ba87eb..afaa1fe 100644
+--- a/lib/commander.js
++++ b/lib/commander.js
+@@ -340,11 +340,16 @@ Command.prototype.parse = function(argv){
+   // store raw args
+   this.rawArgs = argv;
+ 
+   // guess name
+   if (!this.name) this.name = basename(argv[1]);
+-
++  // guess version
++  if (!this._version) {
++    try {
++      this.version(require('../package.json').version);
++    } catch(e) {}
++  }
+   // process argv
+   var parsed = this.parseOptions(this.normalize(argv.slice(2)));
+   this.args = parsed.args;
+   return this.parseArgs(this.args, parsed.unknown);
+ };
+@@ -554,10 +559,11 @@ Command.prototype.unknownOption = function(flag){
+   console.error("  error: unknown option `%s'", flag);
+   console.error();
+   process.exit(1);
+ };
+ 
++
+ /**
+  * Set the program version to `str`.
+  *
+  * This method auto-registers the "-V, --version" flag
+  * which will print the version number when passed.

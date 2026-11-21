@@ -1,0 +1,17 @@
+diff --git a/lib/eslint.js b/lib/eslint.js
+index 396b50115..2b5f82c8a 100755
+--- a/lib/eslint.js
++++ b/lib/eslint.js
+@@ -7,11 +7,11 @@
+ //------------------------------------------------------------------------------
+ // Requirements
+ //------------------------------------------------------------------------------
+ 
+ var espree = require("espree"),
+-    estraverse = require("./util/estraverse-custom"),
++    estraverse = require("estraverse-fb"),
+     escope = require("escope"),
+     environments = require("../conf/environments"),
+     assign = require("object-assign"),
+     rules = require("./rules"),
+     util = require("./util"),

@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { buildLineMap, status } = require('./line-map');
+const { buildLineMap, status, mergeMaps } = require('./line-map');
 
 function scenario(base, left, right, merge) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'linemap-test-'));
@@ -61,6 +61,46 @@ test('remoção não gera linhas, e as linhas seguintes mantêm a numeração do
 test('acréscimo no início desloca as linhas', () => {
     const r = scenario(['a', 'b'], ['n', 'a', 'b'], ['a', 'b', 'z'], ['n', 'a', 'b', 'z']);
     assert.deepStrictEqual(r.map, { 1: 'L', 4: 'R' });
+});
+
+test('mapa por merge junta os arquivos do mesmo merge, inclusive os que só têm L ou só R', () => {
+    const sample = (project, mergeCommit, filePath, map, left, right) =>
+        ({ project, mergeCommit, filePath, result: { map, left, right } });
+    const merges = mergeMaps([
+        sample('p', 'c1', 'src/a.js', { 3: 'L' }, 1, 0),        // só L
+        sample('p', 'c1', 'src/b.js', { 7: 'R' }, 0, 1),        // só R
+        sample('p', 'c1', 'src/c.js', {}, 0, 0),                // sem L nem R: fica de fora
+        sample('p', 'c2', 'src/a.js', { 1: 'L' }, 1, 0),        // outro merge, só L
+    ]);
+    assert.strictEqual(merges.length, 2);
+    const c1 = merges.find(m => m.mergeCommit === 'c1');
+    assert.deepStrictEqual(c1.map, { files: { 'src/a.js': { 3: 'L' }, 'src/b.js': { 7: 'R' } } });
+    assert.strictEqual(c1.status, 'ok');
+    assert.strictEqual(merges.find(m => m.mergeCommit === 'c2').status, 'sem-R');
+});
+
+test('pacote sem nenhuma amostra é ignorado, e os outros pacotes continuam', () => {
+    const { spawnSync } = require('child_process');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'linemap-zip-'));
+    try {
+        const sample = path.join(dir, 'amostra');
+        fs.mkdirSync(path.join(sample, 'abc'), { recursive: true });
+        const versions = { base: ['a', 'b'], left: ['a', 'L'], right: ['a', 'b', 'R'], merge: ['a', 'L', 'R'] };
+        Object.entries(versions).forEach(([name, lines]) => fs.writeFileSync(path.join(sample, 'abc', `${name}.js`), lines.join('\n') + '\n'));
+        fs.writeFileSync(path.join(sample, 'abc', 'metadados.json'),
+            JSON.stringify({ project: 'p', 'merge commit': 'm1', 'file path': 'a.js' }));
+        // Um pacote com uma amostra e outro só com um arquivo qualquer (projeto sem amostras)
+        spawnSync('zip', ['-qr', path.join(dir, 'com.zip'), 'abc'], { cwd: sample });
+        fs.writeFileSync(path.join(dir, 'LEIAME.txt'), 'sem amostras');
+        spawnSync('zip', ['-q', path.join(dir, 'vazio.zip'), 'LEIAME.txt'], { cwd: dir });
+
+        const out = path.join(dir, 'saida');
+        const r = spawnSync('node', [path.join(__dirname, 'line-map.js'), '--zip', path.join(dir, 'vazio.zip'), path.join(dir, 'com.zip'), '--out-dir', out], { encoding: 'utf-8' });
+        assert.strictEqual(r.status, 0, r.stderr);
+        const csv = fs.readFileSync(path.join(out, 'mapa_linhas.csv'), 'utf-8').trim().split('\n');
+        assert.strictEqual(csv.length, 2, 'cabeçalho + 1 amostra');
+        assert.ok(csv[1].endsWith(',ok'), csv[1]);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 let failed = 0;

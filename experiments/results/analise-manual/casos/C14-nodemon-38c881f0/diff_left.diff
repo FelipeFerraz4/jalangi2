@@ -1,0 +1,69 @@
+diff --git a/nodemon.js b/nodemon.js
+index 88be505..9161afd 100755
+--- a/nodemon.js
++++ b/nodemon.js
+@@ -1,15 +1,15 @@
+ #!/usr/bin/env node
+ var fs = require('fs'),
+-    sys = require('sys'),
++    sys = require('util'),
+     childProcess = require('child_process'),
+     path = require('path'),
+     spawn = childProcess.spawn,
+     meta = JSON.parse(fs.readFileSync(__dirname + '/package.json')),
+     exec = childProcess.exec,
+     flag = './.monitor',
+-    nodeArgs = process.ARGV.splice(2), // removes 'node' and this script
++    nodeArgs = process.argv.splice(2), // removes 'node' and this script
+     app = nodeArgs[0],
+     node = null, 
+     monitor = null,
+     ignoreFilePath = './.nodemonignore',
+     oldIgnoreFilePath = './nodemon-ignore',
+@@ -113,11 +113,14 @@ function addIgnoreRule(line, noEscape) {
+     ignoreFiles.push(line);
+   }
+   reIgnoreFiles = new RegExp(ignoreFiles.join('|'));
+ }
+ 
+-function readIgnoreFile() {
++function readIgnoreFile(curr, prev) {
++  // unless the ignore file was actually modified, do no re-read it
++  if(curr && prev && curr.mtime.valueOf() === prev.mtime.valueOf()) return;
++
+   fs.unwatchFile(ignoreFilePath);
+ 
+   // Check if ignore file still exists. Vim tends to delete it before replacing with changed file
+   path.exists(ignoreFilePath, function(exists) {
+     // if (!exists) {
+@@ -132,11 +135,13 @@ function readIgnoreFile() {
+     sys.log('[nodemon] reading ignore list');
+     
+     // ignoreFiles = ignoreFiles.concat([flag, ignoreFilePath]);
+     addIgnoreRule(flag);
+     addIgnoreRule(ignoreFilePath);
+-    fs.readFileSync(ignoreFilePath).toString().split(/\n/).forEach(addIgnoreRule);
++    fs.readFileSync(ignoreFilePath).toString().split(/\n/).forEach(function (rule, i) {
++      addIgnoreRule(rule);
++    });
+     fs.watchFile(ignoreFilePath, { persistent: false }, readIgnoreFile);
+   });
+ }
+ 
+ function usage() {
+@@ -281,10 +286,15 @@ process.on('exit', function (code) {
+ process.on('SIGINT', function () {
+   cleanup();
+   process.exit(0);
+ });
+ 
++process.on('SIGTERM', function () {
++  cleanup();
++  process.exit(0);
++});
++
+ // on exception *inside* nodemon, shutdown wrapped node app
+ process.on('uncaughtException', function (err) {
+   sys.log('[nodemon] exception in nodemon killing node');
+   sys.error(err.stack);
+   cleanup();

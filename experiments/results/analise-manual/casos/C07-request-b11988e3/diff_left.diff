@@ -1,0 +1,203 @@
+diff --git a/index.js b/index.js
+index 981397d..57f3a26 100755
+--- a/index.js
++++ b/index.js
+@@ -23,10 +23,11 @@ var http = require('http')
+   , crypto = require('crypto')
+ 
+   , oauth = require('oauth-sign')
+   , hawk = require('hawk')
+   , aws = require('aws-sign')
++  , httpSignature = require('http-signature')
+   , uuid = require('node-uuid')
+   , mime = require('mime')
+   , tunnel = require('tunnel-agent')
+   , safeStringify = require('json-stringify-safe')
+ 
+@@ -114,21 +115,26 @@ function Request (options) {
+         delete options[i]
+       }
+     }
+   }
+ 
++  if (options.method) {
++    this.explicitMethod = true
++  }
++
+   this.init(options)
+ }
+ util.inherits(Request, stream.Stream)
+ Request.prototype.init = function (options) {
+   // init() contains all the code to setup the request object.
+   // the actual outgoing request is not started until start() is called
+   // this function is called from both the constructor and on redirect.
+   var self = this
+   if (!options) options = {}
+ 
+-  self.method = options.method || 'GET'
++  if (!self.method) self.method = options.method || 'GET'
++  self.localAddress = options.localAddress
+ 
+   debug(options)
+   if (!self.pool && self.pool !== false) self.pool = globalPool
+   self.dests = self.dests || []
+   self.__isRequestRequest = true
+@@ -156,10 +162,14 @@ Request.prototype.init = function (options) {
+     return self.emit('error', new Error("options.uri is a required argument"))
+   } else {
+     if (typeof self.uri == "string") self.uri = url.parse(self.uri)
+   }
+ 
++  if (self.strictSSL === false) {
++    self.rejectUnauthorized = false
++  }
++
+   if (self.proxy) {
+     if (typeof self.proxy == 'string') self.proxy = url.parse(self.proxy)
+ 
+     // do the HTTP CONNECT dance using koichik/node-tunnel
+     if (http.globalAgent && self.uri.protocol === "https:") {
+@@ -169,10 +179,11 @@ Request.prototype.init = function (options) {
+       var tunnelOptions = { proxy: { host: self.proxy.hostname
+                                    , port: +self.proxy.port
+                                    , proxyAuth: self.proxy.auth
+                                    , headers: { Host: self.uri.hostname + ':' +
+                                         (self.uri.port || self.uri.protocol === 'https:' ? 443 : 80) }}
++                          , rejectUnauthorized: self.rejectUnauthorized
+                           , ca: this.ca }
+ 
+       self.agent = tunnelFn(tunnelOptions)
+       self.tunnel = true
+     }
+@@ -284,10 +295,14 @@ Request.prototype.init = function (options) {
+ 
+   if (options.hawk) {
+     self.hawk(options.hawk)
+   }
+ 
++  if (options.httpSignature) {
++    self.httpSignature(options.httpSignature)
++  }
++
+   if (options.auth) {
+     self.auth(
+       options.auth.user || options.auth.username,
+       options.auth.pass || options.auth.password,
+       options.auth.sendImmediately)
+@@ -353,14 +368,10 @@ Request.prototype.init = function (options) {
+     } else {
+       self.agentClass = self.httpModule.Agent
+     }
+   }
+ 
+-  if (self.strictSSL === false) {
+-    self.rejectUnauthorized = false
+-  }
+-
+   if (self.pool === false) {
+     self.agent = false
+   } else {
+     self.agent = self.agent || self.getAgent()
+     if (self.maxSockets) {
+@@ -387,11 +398,11 @@ Request.prototype.init = function (options) {
+           }
+         }
+       }
+       if (self._json && !self.headers['content-type'] && !self.headers['Content-Type'])
+         self.headers['content-type'] = 'application/json'
+-      if (src.method && !self.method) {
++      if (src.method && !self.explicitMethod) {
+         self.method = src.method
+       }
+     }
+ 
+     self.on('pipe', function () {
+@@ -443,10 +454,11 @@ Request.prototype._updateProtocol = function () {
+       var tunnelFn = self.proxy.protocol === 'http:'
+                    ? tunnel.httpsOverHttp : tunnel.httpsOverHttps
+       var tunnelOptions = { proxy: { host: self.proxy.hostname
+                                    , port: +self.proxy.port
+                                    , proxyAuth: self.proxy.auth }
++                          , rejectUnauthorized: self.rejectUnauthorized
+                           , ca: self.ca }
+       self.agent = tunnelFn(tunnelOptions)
+       return
+     }
+ 
+@@ -767,17 +779,19 @@ Request.prototype.onResponse = function (response) {
+     delete self.src
+     delete self.req
+     delete self.agent
+     delete self._started
+     if (response.statusCode != 401) {
++      // Remove parameters from the previous response, unless this is the second request
++      // for a server that requires digest authentication.
+       delete self.body
+       delete self._form
+-    }
+-    if (self.headers) {
+-      delete self.headers.host
+-      delete self.headers['content-type']
+-      delete self.headers['content-length']
++      if (self.headers) {
++        delete self.headers.host
++        delete self.headers['content-type']
++        delete self.headers['content-length']
++      }
+     }
+     self.init()
+     return // Ignore the rest of the response
+   } else {
+     self._redirectsFollowed = self._redirectsFollowed || 0
+@@ -918,10 +932,11 @@ Request.prototype.qs = function (q, clobber) {
+     return this
+   }
+ 
+   this.uri = url.parse(this.uri.href.split('?')[0] + '?' + qs.stringify(base))
+   this.url = this.uri
++  this.path = this.uri.path
+ 
+   return this
+ }
+ Request.prototype.form = function (form) {
+   if (form) {
+@@ -995,11 +1010,11 @@ function getHeader(name, headers) {
+         if (match) result = headers[key]
+     })
+     return result
+ }
+ Request.prototype.auth = function (user, pass, sendImmediately) {
+-  if (typeof user !== 'string' || typeof pass !== 'string') {
++  if (typeof user !== 'string' || (pass !== undefined && typeof pass !== 'string')) {
+     throw new Error('auth() received invalid user or password')
+   }
+   this._user = user
+   this._pass = pass
+   this._hasAuth = true
+@@ -1037,10 +1052,26 @@ Request.prototype.aws = function (opts, now) {
+   auth.resource = aws.canonicalizeResource(auth.resource)
+   this.setHeader('authorization', aws.authorization(auth))
+ 
+   return this
+ }
++Request.prototype.httpSignature = function (opts) {
++  var req = this
++  httpSignature.signRequest({
++    getHeader: function(header) {
++      return getHeader(header, req.headers)
++    },
++    setHeader: function(header, value) {
++      req.setHeader(header, value)
++    },
++    method: this.method,
++    path: this.path
++  }, opts)
++  debug('httpSignature authorization', getHeader('authorization', this.headers))
++
++  return this
++}
+ 
+ Request.prototype.hawk = function (opts) {
+   this.headers.Authorization = hawk.client.header(this.uri, this.method, opts).field
+ }
+ 

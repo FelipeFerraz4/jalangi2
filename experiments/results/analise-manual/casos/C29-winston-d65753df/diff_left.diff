@@ -1,0 +1,38 @@
+diff --git a/lib/winston/transports/file.js b/lib/winston/transports/file.js
+index 96a38ca..6797580 100644
+--- a/lib/winston/transports/file.js
++++ b/lib/winston/transports/file.js
+@@ -363,10 +363,17 @@ File.prototype.close = function () {
+ // used by this instance.
+ //
+ File.prototype.flush = function () {
+   var self = this;
+ 
++  // If nothing to flush, there will be no "flush" event from native stream
++  // Thus, the "open" event will never be fired (see _createStream.createAndFlush function)
++  // That means, self.opening will never set to false and no logs will be written to disk
++  if (!this._buffer.length) {
++    return self.emit('flush');
++  }
++
+   //
+   // Iterate over the `_buffer` of enqueued messaged
+   // and then write them to the newly created stream.
+   //
+   this._buffer.forEach(function (item) {
+@@ -432,10 +439,15 @@ File.prototype._createStream = function () {
+       // When the current stream has finished flushing
+       // then we can be sure we have finished opening
+       // and thus can emit the `open` event.
+       //
+       self.once('flush', function () {
++        // Because "flush" event is based on native stream "drain" event,
++        // logs could be written inbetween "self.flush()" and here
++        // Therefore, we need to flush again to make sure everything is flushed
++        self.flush();
++
+         self.opening = false;
+         self.emit('open', fullname);
+       });
+ 
+       //

@@ -1,0 +1,55 @@
+diff --git a/main.js b/main.js
+index 53f3c4d..f694d2a 100644
+--- a/main.js
++++ b/main.js
+@@ -144,10 +144,13 @@ Request.prototype.request = function () {
+       self.headers.host += (':'+self.uri.port)
+     }
+     setHost = true
+   }
+ 
++  if (self._redirectsFollowed === 0) {
++    self.originalCookieHeader = self.headers.cookie;
++  }
+   if (self.jar === false) {
+     // disable cookies
+     var cookies = false;
+     self._disableCookies = true;
+   } else if (self.jar) {
+@@ -155,16 +158,21 @@ Request.prototype.request = function () {
+     var cookies = self.jar.get({ url: self.uri.href })
+   } else {
+     // fetch cookie from the global cookie jar
+     var cookies = cookieJar.get({ url: self.uri.href })
+   }
+-  if (cookies) {
++  if (cookies && cookies.length) {
+     var cookieString = cookies.map(function (c) {
+-      return c.name + "=" + c.value;
+-    }).join("; ");
+-    
+-    self.headers.Cookie = cookieString;
++      return c.name + "=" + c.value
++    }).join("; ")
++
++    if (self.originalCookieHeader) {
++      // Don't overwrite existing Cookie header
++      self.headers.cookie = self.originalCookieHeader + '; ' + cookieString
++    } else {
++      self.headers.cookie = cookieString
++    }
+   }
+ 
+   if (!self.uri.pathname) {self.uri.pathname = '/'}
+   if (!self.uri.port) {
+     if (self.uri.protocol == 'http:') {self.uri.port = 80}
+@@ -671,8 +679,9 @@ request.del = function (options, callback) {
+ }
+ request.jar = function () {
+   return new CookieJar
+ }
+ request.cookie = function (str) {
++  if (str && str.uri) str = str.uri
+   if (typeof str !== 'string') throw new Error("The cookie function only accepts STRING as param")
+   return new Cookie(str)
+ }

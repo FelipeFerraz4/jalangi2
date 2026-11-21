@@ -1,0 +1,42 @@
+diff --git a/index.js b/index.js
+index 68b54ff..59b995e 100644
+--- a/index.js
++++ b/index.js
+@@ -152,10 +152,20 @@ Command.prototype.command = function(name, desc) {
+   cmd.parent = this;
+   if (desc) return this;
+   return cmd;
+ };
+ 
++/**
++ * Define argument syntax for the top-level command.
++ *
++ * @api public
++ */
++
++Command.prototype.arguments = function (desc) {
++  return this.parseExpectedArgs(desc.split(/ +/));
++}
++
+ /**
+  * Add an implicit `help [cmd]` subcommand
+  * which invokes `--help` for the given command.
+  *
+  * @api private
+@@ -245,12 +255,14 @@ Command.prototype.action = function(fn){
+       args.push(self);
+     }
+ 
+     fn.apply(this, args);
+   };
+-  this.parent.on(this._name, listener);
+-  if (this._alias) this.parent.on(this._alias, listener);
++  var parent = this.parent || this;
++  var name = parent === this ? '*' : this._name;
++  parent.on(name, listener);
++  if (this._alias) parent.on(this._alias, listener);
+   return this;
+ };
+ 
+ /**
+  * Define option with `flags`, `description` and optional

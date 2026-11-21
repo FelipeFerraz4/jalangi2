@@ -1,0 +1,212 @@
+diff --git a/request.js b/request.js
+index d4b54b3..5552b73 100644
+--- a/request.js
++++ b/request.js
+@@ -17,10 +17,11 @@ var optional = require('./lib/optional')
+   , uuid = require('node-uuid')
+   , mime = require('mime-types')
+   , tunnel = optional('tunnel-agent')
+   , _safeStringify = require('json-stringify-safe')
+   , stringstream = optional('stringstream')
++  , caseless = require('caseless')
+ 
+   , ForeverAgent = require('forever-agent')
+   , FormData = optional('form-data')
+ 
+   , cookies = require('./lib/cookies')
+@@ -104,10 +105,12 @@ Request.prototype.init = function (options) {
+   // the actual outgoing request is not started until start() is called
+   // this function is called from both the constructor and on redirect.
+   var self = this
+   if (!options) options = {}
+ 
++  caseless.httpify(self, self.headers || {})
++
+   if (!self.method) self.method = options.method || 'GET'
+   self.localAddress = options.localAddress
+ 
+   debug(options)
+   if (!self.pool && self.pool !== false) self.pool = globalPool
+@@ -146,15 +149,15 @@ Request.prototype.init = function (options) {
+   if(!self.hasOwnProperty('proxy')) {
+     // check for HTTP(S)_PROXY environment variables
+     if(self.uri.protocol == "http:") {
+         self.proxy = process.env.HTTP_PROXY || process.env.http_proxy || null;
+     } else if(self.uri.protocol == "https:") {
+-        self.proxy = process.env.HTTPS_PROXY || process.env.https_proxy || 
++        self.proxy = process.env.HTTPS_PROXY || process.env.https_proxy ||
+                      process.env.HTTP_PROXY || process.env.http_proxy || null;
+     }
+   }
+-  
++
+   if (self.proxy) {
+     if (typeof self.proxy == 'string') self.proxy = url.parse(self.proxy)
+ 
+     // do the HTTP CONNECT dance using koichik/node-tunnel
+     if (http.globalAgent && self.uri.protocol === "https:" && self.canTunnel) {
+@@ -198,12 +201,10 @@ Request.prototype.init = function (options) {
+   self.followRedirect = (self.followRedirect !== undefined) ? self.followRedirect : true
+   self.followAllRedirects = (self.followAllRedirects !== undefined) ? self.followAllRedirects : false
+   if (self.followRedirect || self.followAllRedirects)
+     self.redirects = self.redirects || []
+ 
+-  self.headers = self.headers ? copy(self.headers) : {}
+-
+   self.setHost = false
+   if (!self.hasHeader('host')) {
+     self.setHeader('host', self.uri.hostname)
+     if (self.uri.port) {
+       if ( !(self.uri.port === 80 && self.uri.protocol === 'http:') &&
+@@ -434,11 +435,11 @@ Request.prototype.init = function (options) {
+         }
+       }
+ 
+       if (self._form && !self.hasHeader('content-length')) {
+         // Before ending the request, we had to compute the length of the whole form, asyncly
+-        self.setHeaders(self._form.getHeaders())
++        self.setHeader(self._form.getHeaders())
+         self._form.getLength(function (err, length) {
+           if (!err) {
+             self.setHeader('content-length', length)
+           }
+           end()
+@@ -489,11 +490,10 @@ Request.prototype.init = function (options) {
+       detach(function(){
+         // counter to prevent infinite blocking waiting for an open socket to be found.
+         response_counter++;
+         var trying = false;
+         for (r in lookup_table){
+-          //console.log(r, lookup_table[r], lookup_table[r].error_connecting)
+           if('undefined' == typeof lookup_table[r].error_connecting)
+             trying = true;
+         }
+         if(trying && response_counter<1000)
+           wait_for_socket_response()
+@@ -771,11 +771,11 @@ Request.prototype.onResponse = function (response) {
+     var sslErr = response.client.authorizationError
+     self.emit('error', new Error('SSL Error: '+ sslErr))
+     return
+   }
+ 
+-  if (self.setHost && self.hasHeader('host')) delete self.headers[self.hasHeader('host')]
++  if (self.setHost) self.removeHeader('host')
+   if (self.timeout && self.timeoutTimer) {
+     clearTimeout(self.timeoutTimer)
+     self.timeoutTimer = null
+   }
+ 
+@@ -787,19 +787,21 @@ Request.prototype.onResponse = function (response) {
+     } catch (e) {
+       self.emit('error', e);
+     }
+   }
+ 
+-  if (hasHeader('set-cookie', response.headers) && (!self._disableCookies)) {
+-    var headerName = hasHeader('set-cookie', response.headers)
++  response.caseless = caseless(response.headers)
++
++  if (response.caseless.has('set-cookie') && (!self._disableCookies)) {
++    var headerName = response.caseless.has('set-cookie')
+     if (Array.isArray(response.headers[headerName])) response.headers[headerName].forEach(addCookie)
+     else addCookie(response.headers[headerName])
+   }
+ 
+   var redirectTo = null
+-  if (response.statusCode >= 300 && response.statusCode < 400 && hasHeader('location', response.headers)) {
+-    var location = response.headers[hasHeader('location', response.headers)]
++  if (response.statusCode >= 300 && response.statusCode < 400 && response.caseless.has('location')) {
++    var location = response.caseless.get('location')
+     debug('redirect', location)
+ 
+     if (self.followAllRedirects) {
+       redirectTo = location
+     } else if (self.followRedirect) {
+@@ -814,11 +816,11 @@ Request.prototype.onResponse = function (response) {
+           redirectTo = location
+           break
+       }
+     }
+   } else if (response.statusCode == 401 && self._hasAuth && !self._sentAuth) {
+-    var authHeader = response.headers[hasHeader('www-authenticate', response.headers)]
++    var authHeader = response.caseless.get('www-authenticate')
+     var authVerb = authHeader && authHeader.split(' ')[0].toLowerCase()
+     debug('reauth', authVerb)
+ 
+     switch (authVerb) {
+       case 'basic':
+@@ -930,13 +932,13 @@ Request.prototype.onResponse = function (response) {
+       // Remove parameters from the previous response, unless this is the second request
+       // for a server that requires digest authentication.
+       delete self.body
+       delete self._form
+       if (self.headers) {
+-        if (self.hasHeader('host')) delete self.headers[self.hasHeader('host')]
+-        if (self.hasHeader('content-type')) delete self.headers[self.hasHeader('content-type')]
+-        if (self.hasHeader('content-length')) delete self.headers[self.hasHeader('content-length')]
++        self.removeHeader('host')
++        self.removeHeader('content-type')
++        self.removeHeader('content-length')
+       }
+     }
+ 
+     self.emit('redirect');
+ 
+@@ -1076,18 +1078,18 @@ Request.prototype.abort = function () {
+ 
+ Request.prototype.pipeDest = function (dest) {
+   var response = this.response
+   // Called after the response is received
+   if (dest.headers && !dest.headersSent) {
+-    if (hasHeader('content-type', response.headers)) {
+-      var ctname = hasHeader('content-type', response.headers)
++    if (response.caseless.has('content-type')) {
++      var ctname = response.caseless.has('content-type')
+       if (dest.setHeader) dest.setHeader(ctname, response.headers[ctname])
+       else dest.headers[ctname] = response.headers[ctname]
+     }
+ 
+-    if (hasHeader('content-length', response.headers)) {
+-      var clname = hasHeader('content-length', response.headers)
++    if (response.caseless.has('content-length')) {
++      var clname = response.caseless.has('content-length')
+       if (dest.setHeader) dest.setHeader(clname, response.headers[clname])
+       else dest.headers[clname] = response.headers[clname]
+     }
+   }
+   if (dest.setHeader && !dest.headersSent) {
+@@ -1101,34 +1103,10 @@ Request.prototype.pipeDest = function (dest) {
+     dest.statusCode = response.statusCode
+   }
+   if (this.pipefilter) this.pipefilter(response, dest)
+ }
+ 
+-// Composable API
+-Request.prototype.setHeader = function (name, value, clobber) {
+-  if (clobber === undefined) clobber = true
+-  if (clobber || !this.hasHeader(name)) this.headers[name] = value
+-  else this.headers[this.hasHeader(name)] += ',' + value
+-  return this
+-}
+-Request.prototype.setHeaders = function (headers) {
+-  for (var i in headers) {this.setHeader(i, headers[i])}
+-  return this
+-}
+-Request.prototype.hasHeader = function (header, headers) {
+-  var headers = Object.keys(headers || this.headers)
+-    , lheaders = headers.map(function (h) {return h.toLowerCase()})
+-    ;
+-  header = header.toLowerCase()
+-  for (var i=0;i<lheaders.length;i++) {
+-    if (lheaders[i] === header) return headers[i]
+-  }
+-  return false
+-}
+-
+-var hasHeader = Request.prototype.hasHeader
+-
+ Request.prototype.qs = function (q, clobber) {
+   var base
+   if (!clobber && this.uri.query) base = qs.parse(this.uri.query)
+   else base = {}
+ 

@@ -1,0 +1,17 @@
+diff --git a/index.js b/index.js
+index bddca73..c31f761 100644
+--- a/index.js
++++ b/index.js
+@@ -90,11 +90,11 @@ Option.prototype.is = function(arg){
+ 
+ function Command(name) {
+   this.commands = [];
+   this.options = [];
+   this._args = [];
+-  this._name = name;
++  this._name = name || '';
+ }
+ 
+ /**
+  * Inherit from `EventEmitter.prototype`.
+  */

@@ -1,0 +1,17 @@
+diff --git a/lib/monitor/watch.js b/lib/monitor/watch.js
+index 67ed0ba..dc44d99 100644
+--- a/lib/monitor/watch.js
++++ b/lib/monitor/watch.js
+@@ -178,11 +178,11 @@ function ignoredFileTypesForFind(dir) {
+   var paths = [];
+   if (dir.charAt(dir.length - 1) != '/') {
+     dir += '/';
+   }
+   config.options.ignore.forEach(function (path) {
+-    var pathIsDir = (path.charAt(path.length - 1) == '/');
++    var pathIsDir = (fs.existsSync(dir + path) && fs.statSync(dir + path).isDirectory()) || (path.charAt(path.length - 1) == '/');
+     if (pathIsDir) {
+       paths.push('! -ipath "' + dir + path + '*"');
+     }
+     paths.push('! -ipath "' + dir + path + '"');
+   });

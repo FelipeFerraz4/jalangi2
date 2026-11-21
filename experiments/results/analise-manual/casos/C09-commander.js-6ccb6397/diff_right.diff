@@ -1,0 +1,239 @@
+diff --git a/lib/commander.js b/lib/commander.js
+index d6d9adf..24f1f64 100644
+--- a/lib/commander.js
++++ b/lib/commander.js
+@@ -197,16 +197,41 @@ Command.prototype.parseExpectedArgs = function(args){
+  * @api public
+  */
+ 
+ Command.prototype.action = function(fn){
+   var self = this;
+-  this.parent.on(this.name, function(args){
++  this.parent.on(this.name, function(args, unknown){    
++    // Parse any so-far unknown options
++    unknown = unknown || [];
++    var parsed = self.parseOptions(unknown);
++    
++    // Output help if necessary
++    outputHelpIfNecessary(self, parsed.unknown);
++    
++    // If there are still any unknown options, then we simply 
++    // die, unless someone asked for help, in which case we give it
++    // to them, and then we die.
++    if (parsed.unknown.length > 0) {      
++      self.unknownOption(parsed.unknown[0]);
++    }
++    
+     self.args.forEach(function(arg, i){
+       if (arg.required && null == args[i]) {
+         self.missingArgument(arg.name);
+       }
+     });
++    
++    // Always append ourselves to the end of the arguments,
++    // to make sure we match the number of arguments the user
++    // expects
++    if (self.args.length) {
++      args[self.args.length] = self;
++    }
++    else {
++      args.push(self);
++    }
++    
+     fn.apply(this, args);
+   });
+   return this;
+ };
+ 
+@@ -318,12 +343,13 @@ Command.prototype.parse = function(argv){
+ 
+   // guess name
+   if (!this.name) this.name = basename(argv[1]);
+ 
+   // process argv
+-  this.args = this.parseOptions(this.normalize(argv));
+-  return this.parseArgs(this.args);
++  var parsed = this.parseOptions(this.normalize(argv.slice(2)));
++  this.args = parsed.args;
++  return this.parseArgs(this.args, parsed.unknown);
+ };
+ 
+ /**
+  * Normalize `args`, splitting joined short flags. For example
+  * the arg "-abc" is equivalent to "-a -b -c".
+@@ -361,23 +387,32 @@ Command.prototype.normalize = function(args){
+  * @param {Array} args
+  * @return {Command} for chaining
+  * @api private
+  */
+ 
+-Command.prototype.parseArgs = function(args){
++Command.prototype.parseArgs = function(args, unknown){
+   var cmds = this.commands
+     , len = cmds.length
+     , name;
+ 
+   if (args.length) {
+     name = args[0];
+     if (this.listeners(name).length) {
+-      this.emit(args.shift(), args);
++      this.emit(args.shift(), args, unknown);
+     } else {
+       this.emit('*', args);
+     }
+   }
++  else {
++    outputHelpIfNecessary(this, unknown);
++    
++    // If there were no args and we have unknown options,
++    // then they are extraneous and we need to error.
++    if (unknown.length > 0) {      
++      this.unknownOption(unknown[0]);
++    }
++  }
+ 
+   return this;
+ };
+ 
+ /**
+@@ -405,16 +440,17 @@ Command.prototype.optionFor = function(arg){
+  * @api public
+  */
+ 
+ Command.prototype.parseOptions = function(argv){
+   var args = []
+-    , argv = argv.slice(2)
+     , len = argv.length
+     , literal
+     , option
+     , arg;
+ 
++  var unknownOptions = [];
++
+   // parse options
+   for (var i = 0; i < len; ++i) {
+     arg = argv[i];
+ 
+     // literal args after --
+@@ -455,18 +491,26 @@ Command.prototype.parseOptions = function(argv){
+       continue;
+     }
+     
+     // looks like an option
+     if (arg.length > 1 && '-' == arg[0]) {
+-      this.unknownOption(arg);
++      unknownOptions.push(arg);
++      
++      // If the next argument looks like it might be
++      // an argument for this option, we pass it on.
++      // If it isn't, then it'll simply be ignored
++      if (argv[i+1] && !(argv[i+1][0] === '-')) {
++        unknownOptions.push(argv[++i]);
++      }
++      continue;
+     }
+     
+     // arg
+     args.push(arg);
+   }
+-
+-  return args;
++  
++  return {args: args, unknown: unknownOptions};
+ };
+ 
+ /**
+  * Argument `name` is missing.
+  *
+@@ -559,13 +603,19 @@ Command.prototype.description = function(str){
+  * @return {String|Command}
+  * @api public
+  */
+ 
+ Command.prototype.usage = function(str){
++  var args = this.args.map(function(arg){
++    return arg.required
++      ? '<' + arg.name + '>'
++      : '[' + arg.name + ']';
++  });
+   var usage = '[options'
+     + (this.commands.length ? '] [command' : '')
+-    + ']';
++    + ']'
++    + (this.args.length ? ' ' + args : '');
+   if (0 == arguments.length) return this._usage || usage;
+   this._usage = str;
+   return this;
+ };
+ 
+@@ -589,14 +639,18 @@ Command.prototype.largestOptionLength = function(){
+  * @api private
+  */
+ 
+ Command.prototype.optionHelp = function(){
+   var width = this.largestOptionLength();
+-  return this.options.map(function(option){
+-    return pad(option.flags, width)
+-      + '  ' + option.description;
+-  }).join('\n');
++  
++  // Prepend the help information
++  return [pad('-h, --help', width) + '  ' + 'output usage information']
++    .concat(this.options.map(function(option){
++      return pad(option.flags, width)
++        + '  ' + option.description;
++      }))
++    .join('\n');
+ };
+ 
+ /**
+  * Return command help documentation.
+  *
+@@ -614,11 +668,14 @@ Command.prototype.commandHelp = function(){
+       var args = cmd.args.map(function(arg){
+         return arg.required
+           ? '<' + arg.name + '>'
+           : '[' + arg.name + ']';
+       }).join(' ');
+-      return cmd.name + ' ' + args
++      return cmd.name 
++        + (cmd.options.length 
++          ? ' [options]'
++          : '') + ' ' + args
+         + (cmd.description()
+           ? '\n' + cmd.description()
+           : '');
+     }).join('\n\n').replace(/^/gm, '    ')
+     , ''
+@@ -910,14 +967,24 @@ function pad(str, width) {
+   var len = Math.max(0, width - str.length);
+   return str + Array(len + 1).join(' ');
+ }
+ 
+ /**
+- * Default -h, --help option.
++ * Output help information if necessary
++ *
++ * @param {Command} command to output help for
++ * @param {Array} array of options to search for -h or --help
++ * @api private
+  */
+ 
+-exports.option('-h, --help', 'output usage information');
+-exports.on('help', function(){
+-  exports.emit('--help');
+-  process.stdout.write(this.helpInformation());
+-  process.exit(0);
+-});
++function outputHelpIfNecessary(cmd, options) {
++  options = options || [];
++  
++  for(var i = 0; i < options.length; i++) {
++    if (options[i] === '--help' || options[i] === '-h') {
++      cmd.emit('--help');
++      process.stdout.write(cmd.helpInformation());
++      process.exit(0);
++    }
++  }
++  
++}

@@ -1,0 +1,22 @@
+diff --git a/index.js b/index.js
+index 790a751..e07b372 100644
+--- a/index.js
++++ b/index.js
+@@ -685,14 +685,13 @@ Command.prototype.usage = function(str){
+     return arg.required
+       ? '<' + arg.name + '>'
+       : '[' + arg.name + ']';
+   });
+ 
+-  var usage = '[options'
+-    + (this.commands.length ? '] [command' : '')
+-    + ']'
+-    + (this._args.length ? ' ' + args : '');
++  var usage = '[options]'
++    + (this.commands.length ? ' [command]' : '')
++    + (this._args.length ? ' ' + args.join(' ') : '');
+ 
+   if (0 == arguments.length) return this._usage || usage;
+   this._usage = str;
+ 
+   return this;

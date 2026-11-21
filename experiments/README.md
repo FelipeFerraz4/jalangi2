@@ -10,10 +10,13 @@ node experiments/run_validation.js     # OA (72 casos do SCAz.js) + DF/CF (13 te
 experiments/
 ├── analyses/
 │   └── analysis_dataflow.js   # OA + Data Flow + Confluence Flow (motor estendido)
-├── toys/                      # 24 programas sintéticos, numerados na ordem em que run_all_toys.js os executa
-├── lib/analysis.js            # executa a análise sobre um arquivo (usado pelos runners)
+├── toys/                      # 29 programas sintéticos (o 29 tem um módulo em toys/29_lib/), numerados na ordem em que run_all_toys.js os executa
+├── lib/analysis.js            # executa a análise sobre um arquivo (usado pelos runners); devolve o relatório JSON
+├── lib/report.js              # formato, contagens e cobertura do relatório JSON (motor e merge-reports)
 ├── tools/line-map.js          # gerador do mapa L/R de um merge a partir de base/left/right/merge
 ├── tools/test-line-map.js     # autoteste do gerador (cenários sintéticos)
+├── tools/merge-reports.js     # une os relatórios JSON de várias execuções do mesmo merge
+├── tools/test-reports.js      # autoteste do relatório JSON e da união
 ├── run_validation.js          # tudo junto: OA do SCAz.js + DF/CF dos testes do conflict-static-analysis
 ├── run_all_toys.js            # runner: instrumenta cada toy e imprime o relatório consolidado
 ├── run_oa_suite.js            # regressão de OA com os casos de teste do SCAz.js (Moraes et al.)
@@ -34,20 +37,72 @@ A análise não conhece nenhum arquivo; o mapa é sempre injetado de fora. Ordem
 |---|---|
 | `BRANCH_MAP` | JSON inline: `BRANCH_MAP='{"L":[4],"R":[6,7]}'` |
 | `BRANCH_MAP_FILE` | Caminho de um arquivo JSON (qualquer um dos dois formatos abaixo) |
-| `J$.analysis.setBranches(map)` | Configuração programática (reinicia o estado) |
+| `J$.mergeAnalysis.setBranches(map)` | Configuração programática (reinicia o estado). `J$.analysis` não serve para isso: no modo encadeado, ele devolve o `ChainedAnalyses` |
 
-Formatos aceitos: `{"L":[4],"R":[6,7]}` ou o do SCAz.js, `{"4":"L","6":"R","7":"R"}`. Sem mapa, nenhuma linha pertence a `L` ou `R` e nada é detectado.
+Formatos aceitos para as linhas de um arquivo: `{"L":[4],"R":[6,7]}` ou o do SCAz.js, `{"4":"L","6":"R","7":"R"}`. Sem mapa, nenhuma linha pertence a `L` ou `R` e nada é detectado.
+
+**Um arquivo só (mapa sem arquivo):** o mapa vale apenas para o script principal, o que foi passado ao Jalangi2. Os módulos que ele carrega com `require` também são instrumentados, mas ficam inteiros como Base.
+
+**Vários arquivos (mapa por arquivo):** use `files`, com um mapa de linhas por arquivo:
+```json
+{ "root": "/caminho/do/projeto",
+  "files": { "src/a.js": {"4": "L"}, "lib/b.js": {"L": [2], "R": [9]} } }
+```
+* Chave absoluta: casa com o caminho exato do arquivo.
+* Chave relativa: é resolvida contra `root`, ou contra `BRANCH_MAP_ROOT`, que tem precedência. Sem raiz, casa com o fim do caminho do arquivo em execução, ignorando `node_modules` (a menos que a chave o mencione). Se várias chaves casam, vence a mais longa.
+* Arquivos fora do mapa são Base.
+* Nos conflitos, cada posição aparece como `arquivo:linha`, então a linha 4 de dois arquivos diferentes não se confunde.
+
+O `tools/line-map.js` gera esse formato para cada merge do dataset (veja abaixo).
 
 Uma operação pertence à branch da última linha mapeada que ela ocupa (uma atribuição que se estende por várias linhas conta todas elas).
 
 ### Relatório da análise
-A análise imprime ao final três números:
+A análise imprime ao final os três números de conflitos e a cobertura das linhas de cada branch:
 ```
 - Conflitos de Overriding Assignment (OA): n
 - Conflitos de Data Flow (DF):             n
 - Conflitos de Confluence Flow (CF):       n
+- Linhas de L executadas:                  e/x (s sem código executável)
+- Linhas de R executadas:                  e/x
 ```
 DF e CF já incluem os diretos e os transitivos. Por dentro, cada conflito é marcado como direto ou transitivo (aparece no log de cada detecção), e os runners de teste pedem esse detalhe com `ANALYSIS_DETAIL=1` para comparar com a análise do Java que cada teste representa.
+
+### Cobertura das linhas de L e R
+Como a análise é dinâmica, "0 conflitos" só diz alguma coisa sobre as linhas que executaram. Por isso o relatório diz quantas linhas mapeadas de cada branch executaram:
+* **Executável:** a linha tem algum nó instrumentado. A lista vem da tabela de iids do Jalangi2 (`J$.smap`), que registra todo nó de cada arquivo.
+* **Executada:** algum desses nós executou. É registrado em todos os callbacks, inclusive `literal`, `binary`, `unary`, `_return`, `_throw` e `forinObject`, que só servem à cobertura e não alteram nenhum valor.
+* **Sem código executável:** linha mapeada com só `}`, comentário ou espaço. Não entra na conta, porque nunca poderia executar.
+* Um arquivo do mapa que nunca carregou fica com `loaded: false`, e todas as linhas dele contam como não executadas.
+
+### Relatório JSON
+Com `ANALYSIS_REPORT=caminho.json`, a análise grava o relatório completo da execução (formato `merge-analysis-report/1`):
+```json
+{ "format": "merge-analysis-report/1",
+  "runs": [{ "program": "/abs/main.js", "branchMap": "per-file" }],
+  "counts": { "oa": 1, "df": {"direct": 1, "transitive": 0, "total": 1, "viaParam": 0}, "cf": {...} },
+  "conflicts": {
+    "oa": [{ "key", "target", "branch", "position": {"file", "line"}, "value",
+             "previous": {"branch", "position", "value"}, "stack": [{"file", "line"}] }],
+    "df": [{ "kind": "direct", "key", "from": {"branch", "position"}, "to": {"branch", "position"},
+             "targets": ["taxa"], "viaParam": false, "stack": [...] }],
+    "cf": [{ "kind", "key", "left": {...}, "right": {...}, "base": {...}, "stack": [...] }] },
+  "coverage": {
+    "summary": { "total": { "L": {"mapped", "withoutCode", "executed", "notExecuted", "rate"}, "R": {...} },
+                 "files": [{ "file", "loaded", "L": {..., "notExecuted": [6]}, "R": {...} }] },
+    "files": [{ "file", "loaded", "lines": {"L": [...], "R": [...]}, "executable": [...], "executed": [...] }] } }
+```
+* `stack` lista os pontos de chamada em andamento no momento da detecção, do mais externo ao mais interno. Mostra, por exemplo, de qual chamada veio uma leitura feita dentro de uma função.
+* `value` é uma descrição do valor (`"2"`, `"[Object]"`, `"[function f]"`). O valor em si não é guardado.
+* `viaParam: true` num DF avisa que ele só existe por origens que entraram numa função de forma transitiva (`counts.df.viaParam` conta quantos; já estão em `transitive`). As origens lidas em todos os argumentos de uma chamada vão para todos os parâmetros, então com mais de um argumento ele pode ser um falso positivo (toy 26). Serve para separar esses casos na inspeção manual. Numa união de execuções, só continua marcado se todas o viram assim.
+* A lista `conflicts` traz exatamente o que as contagens contam: um par (DF) ou trio (CF) transitivo que também aparece como direto fica só como direto.
+* Em `coverage.files`, as listas de linhas cobrem só as linhas mapeadas. É o que permite unir execuções.
+
+**Várias execuções do mesmo merge** (um processo por arquivo de teste, por exemplo): `tools/merge-reports.js` une os relatórios. Cada conflito conta uma vez, pela mesma chave usada na execução. Um DF ou CF transitivo deixa de contar se outra execução o viu como direto. Uma linha conta como executada se executou em qualquer execução.
+```bash
+node experiments/tools/merge-reports.js uniao.json teste1.json teste2.json ...
+node experiments/tools/test-reports.js    # autoteste do relatório e da união
+```
 
 ### Como executar a análise
 A análise precisa da memória sombra do Jalangi2, então deve ser encadeada com `ChainedAnalyses.js` e `SMemory.js`, nesta ordem (veja o exemplo em "Direto pelo Jalangi2"). Os runners já fazem isso.
@@ -115,6 +170,15 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 | 22 | `22_test_confluence_direct.js` | `[3]` / `[4]` | 0 | CF 1 |
 | 23 | `23_test_confluence_separate.js` | `[3]` / `[4]` | 0 | CF 0 |
 | 24 | `24_test_confluence_transitive.js` | `[3]` / `[4]` | 0 | CF 1 |
+| 25 | `25_test_confluence_and.js` | `[3]` / `[4]` | 0 | CF 1 |
+| 26 | `26_test_taint_param_split.js` | `[6]` / `[2]` | 0 | 1 (transitivo) |
+| 27 | `27_test_oa_two_targets.js` | `[3,5]` / `[4,6]` | 2 | 1 |
+| 28 | `28_test_call_multiline.js` | `[6]` / `[8]` | 0 | 0 |
+| 29 | `29_test_multifile.js` (+ `29_lib/contador.js`) | por arquivo: `[3]` / `[5]` no principal | 0 | 1 |
+| 30 | `30_test_confluence_or.js` | `[3]` / `[4]` | 0 | CF 1 |
+| 31 | `31_test_confluence_or_short.js` | `[3]` / `[4]` | 0 | CF 0 |
+| 32 | `32_test_confluence_assign_and.js` | `[3]` / `[4]` | 0 | CF 1 |
+| 33 | `33_test_confluence_while_and.js` | `[4]` / `[5]` | 0 | CF 1 |
 
 ### 1. `01_example.js` — Overriding Assignment original (Amanda Moraes, SBLP 2024)
 * **Objetivo:** regressão do algoritmo de OA original.
@@ -202,6 +266,25 @@ Os resultados abaixo são a documentação do comportamento esperado; o runner a
 * **22:** `L` escreve `a`, `R` escreve `b`, e um comando da Base (`soma = a + b`) usa os dois. É o ponto de confluência direto.
 * **23:** a Base usa `a` num comando e `b` em outro. Os valores nunca se encontram, então não há confluência.
 * **24:** `x` e `y` derivam de `a` e `b` na Base e se encontram em `z = x + y`. Os valores não vêm direto das escritas (a Base escreveu `x` e `y`), e mesmo assim a confluência é detectada.
+
+### 25 e 30 a 33. Confluência em `&&` e `||`
+O Jalangi chama `conditional` para o operando da esquerda de `a && b` e de `a || b`, antes de o da direita ser lido, e de novo para o teste do `if` ou `while`. Encerrar a expressão no primeiro chamado fazia a análise perder `a` antes de `b` entrar, e o CF sumia, inclusive em `var c = a && b`. A análise agora mantém o `conditional` aberto até um evento sair do trecho de código da expressão (comparação por linha e coluna) ou até a segunda chamada para o mesmo trecho.
+* **25:** `if (a && b)` com `a` de `L` e `b` de `R`: o `if` da Base usa os dois, e há CF.
+* **30:** `if (a || b)` com `a` falso: `b` é lido e há CF.
+* **31:** `if (a || b)` com `a` verdadeiro: o `||` faz curto-circuito e `b` nunca é lido, então não há CF. É a regra de uma análise dinâmica: só vale o que executa.
+* **32:** `var c = a && b` na Base: há CF, e `c` herda as origens de `a` e `b`.
+* **33:** `while (a && b && n < 2)`: um só conflito, apesar das voltas do laço.
+
+O Jimple do Java separa essas expressões em desvios distintos, então a análise estática de referência não acusa `a && b`. Aqui a confluência é detectada, porque `&&` e `||` aparecem em quase todo arquivo real.
+
+### 26 a 28. Limites conhecidos
+Estes toys documentam o comportamento atual em pontos onde a análise se afasta do que se esperaria intuitivamente.
+* **26:** todas as origens lidas nos argumentos de uma chamada vão para todos os parâmetros. Em `segundo(a, b)`, só `p` recebe o valor de `L`, mas `R` lê `q` e é reportado um DF transitivo (falso positivo). Não dá para separar os argumentos porque o Jalangi não informa onde cada um termina. O conflito sai com `viaParam: true` no relatório JSON, para ser descontado na inspeção.
+* **27:** OA e DF deduplicam de jeitos diferentes. Duas escritas na mesma linha de `L` (`o.x`, `p.x`) sobrescritas na mesma linha de `R` contam **2 OA**, porque o OA conta por alvo. Duas leituras de alvos de `L` na mesma linha de `R` contam **1 DF**, porque o DF conta por par de linhas.
+* **28:** a branch de uma chamada é a da linha onde ela termina. `guardar(` … `1` … `)` com só a linha do argumento em `L` é uma chamada da Base, então a escrita de `g` dentro da função não é de `L` e `R` não tem DF ao ler `g`.
+
+### 29. Vários arquivos
+O script principal carrega `29_lib/contador.js`, e o mapa marca as linhas 3 (`L`) e 5 (`R`) só do principal. O único conflito é o DF de `total`. Antes do mapa por arquivo, o mapa valia para qualquer arquivo carregado: as linhas 3 e 5 do módulo também viravam `L` e `R`. Isso gerava um DF e um CF espúrios em `estado.n`, e o DF verdadeiro ficava escondido atrás do falso, porque os dois tinham a mesma chave `L@3->R@5`.
 
 ---
 
@@ -302,12 +385,17 @@ As linhas do merge que não vieram de nenhuma contribuição (código da base ou
 ```bash
 # um cenário
 node experiments/tools/line-map.js base.js left.js right.js merge.js --out mapa.json
-# os pacotes de versões do dataset de merges (um ZIP por projeto); grava mapas/<amostra>.json e mapa_linhas.csv
+# os pacotes de versões do dataset de merges (um ZIP por projeto); grava mapas/<amostra>.json, mapa_linhas.csv,
+# por-merge/<projeto>__<commit>.json e mapa_merges.csv
 node experiments/tools/line-map.js --versoes /caminho/MinerreporJavascriptMerge/versoes --out-dir /caminho/saida
 node experiments/tools/test-line-map.js   # autoteste
 ```
 
-O CSV traz, por amostra, as linhas de L e de R e o estado: `ok` (tem L e R, analisável), `sem-L`, `sem-R` ou `sem-L-e-R`. Só as amostras `ok` ganham arquivo de mapa.
+O `mapa_linhas.csv` traz, por amostra (um arquivo de um merge), as linhas de L e de R e o estado: `ok` (tem L e R, analisável), `sem-L`, `sem-R` ou `sem-L-e-R`. Só as amostras `ok` ganham arquivo em `mapas/`.
+
+Para executar um merge inteiro, use `por-merge/`. Cada arquivo junta todos os arquivos do merge no formato por arquivo da análise (`{"files": {...}}`, com os caminhos relativos à raiz do repositório; passe a raiz em `BRANCH_MAP_ROOT`). Entram também os arquivos que só têm L ou só têm R, porque L num arquivo e R em outro podem interferir. O `mapa_merges.csv` dá o estado de cada merge, que é `ok` quando há linhas de L e de R em algum arquivo.
+
+**Por merge**, no mesmo dataset: 3.505 merges, dos quais 2.987 estão `ok` (405 `sem-R` e 113 `sem-L`), de 33 projetos. 1.344 dos merges `ok` alteram mais de um arquivo (mediana 1, máximo 88). Em 14 deles, L e R nunca aparecem no mesmo arquivo: nenhuma amostra deles é `ok`, e só o mapa por merge os torna analisáveis.
 
 **No dataset de merges minerados** (10.162 amostras, 34 projetos, 4m38s para gerar tudo):
 
@@ -345,3 +433,6 @@ A diferença vem de os métodos medirem coisas diferentes: o blame olha o **hist
 * **O fluxo transitivo é aproximado:** a contaminação segue as leituras da expressão corrente (limpa em `endExpression` e `conditional`). Uma atribuição em cadeia (`a = b = c`) só leva as origens para o primeiro alvo, e todos os parâmetros de uma chamada recebem a união das origens dos argumentos.
 * **Sem dependência de controle:** um `if` cuja condição leu um valor contaminado não contamina o que é atribuído dentro dele.
 * A detecção depende de o script exercitar as linhas relevantes (análise dinâmica).
+* **Confluência interprocedural através de estado guardado entre chamadas** (por exemplo `counter += value` em duas chamadas, uma com valor de L e outra com valor de R) não é detectada: o CF ignora origens que entraram por parâmetro, e o campo herda essa marca. O teste correspondente está `@Ignore` no Java desde 2021, sem motivo registrado; não se sabe se a versão atual detecta. A correção está em aberto, com opções e riscos, em [DECISOES_PENDENTES.md](DECISOES_PENDENTES.md#1-confluência-interprocedural-através-de-estado-que-sobrevive-à-chamada).
+
+Decisões sobre limitações que ainda não foram tomadas ficam em [DECISOES_PENDENTES.md](DECISOES_PENDENTES.md).

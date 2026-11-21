@@ -148,9 +148,67 @@ const tests = [
         file: "experiments/toys/24_test_confluence_transitive.js",
         branchMap: { "L": [3], "R": [4] },
         description: "Os valores de L e R passam por variáveis da Base antes de se encontrarem em z"
+    },
+    {
+        name: "25. Confluência em if com && (25_test_confluence_and.js)",
+        file: "experiments/toys/25_test_confluence_and.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "if (a && b) com a de L e b de R: o if da Base usa os dois valores, e há CF"
+    },
+    {
+        name: "26. Argumentos contaminam todos os parâmetros (26_test_taint_param_split.js)",
+        file: "experiments/toys/26_test_taint_param_split.js",
+        branchMap: { "L": [6], "R": [2] },
+        description: "Só p recebe o valor de L, mas R lê q e é reportado DF transitivo (falso positivo)"
+    },
+    {
+        name: "27. OA por alvo, DF por par de linhas (27_test_oa_two_targets.js)",
+        file: "experiments/toys/27_test_oa_two_targets.js",
+        branchMap: { "L": [3, 5], "R": [4, 6] },
+        description: "Dois alvos entre as mesmas linhas: OA conta 2, DF conta 1"
+    },
+    {
+        name: "28. Chamada em várias linhas (28_test_call_multiline.js)",
+        file: "experiments/toys/28_test_call_multiline.js",
+        branchMap: { "L": [6], "R": [8] },
+        description: "L altera o argumento no meio da chamada, que termina numa linha da Base: a chamada não é de L e não há DF"
+    },
+    {
+        name: "29. Vários arquivos (29_test_multifile.js)",
+        file: "experiments/toys/29_test_multifile.js",
+        branchMap: { "files": { "experiments/toys/29_test_multifile.js": { "L": [3], "R": [5] } } },
+        description: "Mapa por arquivo: as linhas 3 e 5 do módulo carregado continuam Base; só o DF de total"
+    },
+    {
+        name: "30. Confluência em || com o operando da direita avaliado (30_test_confluence_or.js)",
+        file: "experiments/toys/30_test_confluence_or.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "a é falso, então b é lido: o if da Base usa o valor de L e o de R"
+    },
+    {
+        name: "31. || em curto-circuito (31_test_confluence_or_short.js)",
+        file: "experiments/toys/31_test_confluence_or_short.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "a é verdadeiro, então b nunca é lido: sem confluência (a análise dinâmica só vê o que executa)"
+    },
+    {
+        name: "32. Confluência em atribuição com && (32_test_confluence_assign_and.js)",
+        file: "experiments/toys/32_test_confluence_assign_and.js",
+        branchMap: { "L": [3], "R": [4] },
+        description: "var c = a && b na Base junta o valor de L e o de R"
+    },
+    {
+        name: "33. Confluência em while com && encadeado (33_test_confluence_while_and.js)",
+        file: "experiments/toys/33_test_confluence_while_and.js",
+        branchMap: { "L": [4], "R": [5] },
+        description: "A condição do laço lê a e b a cada volta: um só conflito, apesar das repetições"
     }
 ];
 
+module.exports = { tests };
+if (require.main === module) main();
+
+function main() {
 // Filtro opcional: node run_all_toys.js [número ou parte do nome]
 // Um número seleciona só o toy daquela posição; qualquer outro texto filtra por nome ou arquivo.
 const filterArg = process.argv[2];
@@ -178,6 +236,10 @@ results.forEach(r => {
     const statusIcon = r.failed ? "✖ ERRO DE EXECUÇÃO" : "✔";
     console.log(`${statusIcon} ${r.t.name}`);
     console.log(`   • Conflitos Detectados: Overriding Assignment (OA): ${r.oa} | Data Flow (DF): ${r.dfTotal} | Confluence Flow (CF): ${r.cfTotal}`);
+    if (r.report) {
+        const t = r.report.coverage.summary.total;
+        console.log(`   • Linhas executadas: L ${t.L.executed}/${t.L.mapped - t.L.withoutCode} | R ${t.R.executed}/${t.R.mapped - t.R.withoutCode}`);
+    }
     console.log(`   • Descrição: ${r.t.description}\n`);
 
     if (selectedTests.length === 1) {
@@ -193,4 +255,5 @@ console.log("===================================================================
 
 if (executionErrors > 0) {
     process.exit(1);
+}
 }

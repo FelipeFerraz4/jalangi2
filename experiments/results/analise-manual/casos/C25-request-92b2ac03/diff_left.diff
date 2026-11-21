@@ -1,0 +1,24 @@
+diff --git a/request.js b/request.js
+index af91a11..d9f4eec 100644
+--- a/request.js
++++ b/request.js
+@@ -1141,16 +1141,16 @@ Request.prototype.qs = function (q, clobber) {
+ 
+   for (var i in q) {
+     base[i] = q[i]
+   }
+ 
+-  if (self._qs.stringify(base) === '') {
++  var qs = self._qs.stringify(base)
++
++  if (qs === '') {
+     return self
+   }
+ 
+-  var qs = self._qs.stringify(base)
+-
+   self.uri = url.parse(self.uri.href.split('?')[0] + '?' + qs)
+   self.url = self.uri
+   self.path = self.uri.path
+ 
+   if (self.uri.host === 'unix') {

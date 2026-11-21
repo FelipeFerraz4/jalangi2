@@ -1,0 +1,109 @@
+diff --git a/main.js b/main.js
+index 0c84fca..e3df8fa 100644
+--- a/main.js
++++ b/main.js
+@@ -25,10 +25,11 @@ var http = require('http')
+   , ForeverAgent = require('./forever')
+   , Cookie = require('./vendor/cookie')
+   , CookieJar = require('./vendor/cookie/jar')
+   , cookieJar = new CookieJar
+   , tunnel = require('./tunnel')
++  , aws = require('./aws')
+   ;
+   
+ if (process.logging) {
+   var log = process.logging('request')
+ }
+@@ -212,10 +213,14 @@ Request.prototype.init = function (options) {
+   }
+ 
+   if (options.oauth) {
+     self.oauth(options.oauth)
+   }
++  
++  if (options.aws) {
++    self.aws(options.aws)
++  }
+ 
+   if (self.uri.auth && !self.headers.authorization) {
+     self.headers.authorization = "Basic " + toBase64(self.uri.auth.split(':').map(function(item){ return qs.unescape(item)}).join(':'))
+   }
+   if (self.proxy && self.proxy.auth && !self.headers['proxy-authorization'] && !self.tunnel) {
+@@ -393,10 +398,18 @@ Request.prototype.start = function () {
+   
+   self._started = true
+   self.method = self.method || 'GET'
+   self.href = self.uri.href
+   if (log) log('%method %href', self)
++  
++  if (self.src && self.src.stat && self.src.stat.size) {
++    self.headers['content-length'] = self.src.stat.size
++  }
++  if (self._aws) {
++    self.aws(self._aws, true)
++  }
++  
+   self.req = self.httpModule.request(self, function (response) {
+     if (self._aborted) return
+     if (self._paused) response.pause()
+     
+     self.response = response
+@@ -592,11 +605,11 @@ Request.prototype.setHeader = function (name, value, clobber) {
+   if (clobber || !this.headers.hasOwnProperty(name)) this.headers[name] = value
+   else this.headers[name] += ',' + value
+   return this
+ }
+ Request.prototype.setHeaders = function (headers) {
+-  for (i in headers) {this.setHeader(i, headers[i])}
++  for (var i in headers) {this.setHeader(i, headers[i])}
+   return this
+ }
+ Request.prototype.qs = function (q, clobber) {
+   var base
+   if (!clobber && this.uri.query) base = qs.parse(this.uri.query)
+@@ -630,11 +643,11 @@ Request.prototype.multipart = function (multipart) {
+ 
+   if (!multipart.forEach) throw new Error('Argument error, options.multipart.')
+ 
+   multipart.forEach(function (part) {
+     var body = part.body
+-    if(!body) throw Error('Body attribute missing in multipart.')
++    if(body == null) throw Error('Body attribute missing in multipart.')
+     delete part.body
+     var preamble = '--' + self.boundary + '\r\n'
+     Object.keys(part).forEach(function(key){
+       preamble += key + ': ' + part[key] + '\r\n'
+     })
+@@ -655,10 +668,32 @@ Request.prototype.json = function (val) {
+   } else {
+     this.body = JSON.stringify(val)
+   }
+   return this
+ }
++Request.prototype.aws = function (opts, now) {
++  if (!now) {
++    this._aws = opts
++    return this
++  }
++  var date = new Date()
++  this.setHeader('date', date.toUTCString())
++  this.setHeader('authorization', aws.authorization(
++    { key: opts.key
++    , secret: opts.secret
++    , verb: this.method
++    , date: date
++    , resource: aws.canonicalizeResource('/' + opts.bucket + this.path)
++    , contentType: this.headers['content-type'] || ''
++    , md5: this.headers['content-md5'] || ''
++    , amazonHeaders: aws.canonicalizeHeaders(this.headers)
++    }
++  ))
++  
++  return this
++}
++
+ Request.prototype.oauth = function (_oauth) {
+   var form
+   if (this.headers['content-type'] && 
+       this.headers['content-type'].slice(0, 'application/x-www-form-urlencoded'.length) ===
+         'application/x-www-form-urlencoded' 

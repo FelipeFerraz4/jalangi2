@@ -1,5 +1,7 @@
 // Execução da análise (OA, Data Flow e Confluence Flow) sobre um arquivo, usada pelos runners.
 const { execFileSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const rootDir = path.resolve(__dirname, '..', '..');
@@ -16,7 +18,8 @@ function detail(output) {
     return m ? JSON.parse(m[1]) : { dfDireto: 0, dfTransitivo: 0, cfDireto: 0, cfTransitivo: 0 };
 }
 
-// branchMap: objeto {L:[...],R:[...]} ou {"linha":"L"}; branchMapFile: caminho de um JSON com um deles
+// branchMap: objeto {L:[...],R:[...]}, {"linha":"L"} ou {files:{...}}; branchMapFile: caminho de um JSON com um deles.
+// O relatório JSON da execução (conflitos com posições e pilha, e cobertura) volta em `report`.
 function runAnalysis({ file, branchMap, branchMapFile, timeout = 60000 }) {
     const env = Object.assign({}, process.env);
     delete env.BRANCH_MAP;
@@ -24,6 +27,8 @@ function runAnalysis({ file, branchMap, branchMapFile, timeout = 60000 }) {
     env.ANALYSIS_DETAIL = '1';
     if (branchMap) env.BRANCH_MAP = JSON.stringify(branchMap);
     if (branchMapFile) env.BRANCH_MAP_FILE = branchMapFile;
+    const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'analysis-report-'));
+    env.ANALYSIS_REPORT = path.join(reportDir, 'report.json');
 
     let output = '', failed = false, error = null;
     try {
@@ -40,6 +45,10 @@ function runAnalysis({ file, branchMap, branchMapFile, timeout = 60000 }) {
         output = (e.stdout || '') + (e.stderr || '');
     }
 
+    let report = null;
+    try { report = JSON.parse(fs.readFileSync(env.ANALYSIS_REPORT, 'utf-8')); } catch (e) { }
+    fs.rmSync(reportDir, { recursive: true, force: true });
+
     const oa = count(output, 'Conflitos de Overriding Assignment \\(OA\\)');
     const d = detail(output);
     if (oa === null) {
@@ -47,7 +56,7 @@ function runAnalysis({ file, branchMap, branchMapFile, timeout = 60000 }) {
         error = error || 'sem relatório da análise';
     }
     return {
-        failed, error, output,
+        failed, error, output, report,
         oa: oa || 0,
         // Totais, como a análise reporta
         dfTotal: count(output, 'Conflitos de Data Flow \\(DF\\)') || 0,
