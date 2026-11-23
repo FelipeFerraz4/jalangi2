@@ -202,7 +202,7 @@ Command.prototype.action = function(fn){
   this.parent.on(this.name, function(args, unknown){                                       // [L=R]
     // Parse any so-far unknown options                                                    // [L=R]
     unknown = unknown || [];                                                               // [R]  ◀ #1 DF: produz (R) → L 76  ◀ #2 DF: produz (R) → L 77  ◀ #3 DF: produz (R) → L 205  … (+32 conflitos nesta linha)
-    var parsed = self.parseOptions(unknown);                                               // [L=R]  ◀ #3 DF: consome (L) ← R 204  ◀ #31 DF: produz (L) → R 208  ◀ #32 DF: produz (L) → R 979  … (+4 conflitos nesta linha)
+    var parsed = self.parseOptions(unknown);                                               // [L=R]  ◀ #3 DF: consome (L) (linha igual nos dois lados: o mapa conta como L) ← R 204  ◀ #31 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 208  ◀ #32 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 979  … (+4 conflitos nesta linha)
                                                                                            // [L=R]
     // Output help if necessary                                                            // [R]
     outputHelpIfNecessary(self, parsed.unknown);                                           // [R]  ◀ #31 DF: consome (R) ← L 205  ◀ #38 DF: consome (R) ← L 347  ◀ #46 DF: consome (R) ← L 348  … (+3 conflitos nesta linha)
@@ -210,7 +210,7 @@ Command.prototype.action = function(fn){
     // If there are still any unknown options, then we simply                              // [L=R]
     // die, unless someone asked for help, in which case we give it                        // [R]
     // to them, and then we die.                                                           // [R]
-    if (parsed.unknown.length > 0) {                                                       // [L=R]  ◀ #4 DF: consome (L) ← R 204
+    if (parsed.unknown.length > 0) {                                                       // [L=R]  ◀ #4 DF: consome (L) (linha igual nos dois lados: o mapa conta como L) ← R 204
       self.unknownOption(parsed.unknown[0]);                                               // [L=R]
     }                                                                                      // [L=R]
                                                                                            // [L=R]
@@ -344,9 +344,9 @@ Command.prototype.parse = function(argv){
   if (!this.name) this.name = basename(argv[1]);
 
   // process argv
-  var parsed = this.parseOptions(this.normalize(argv.slice(2)));                           // [L=R]  ◀ #37 DF: produz (L) → R 204  ◀ #38 DF: produz (L) → R 208  ◀ #39 DF: produz (L) → R 404  … (+5 conflitos nesta linha)
-  this.args = parsed.args;                                                                 // [L=R]  ◀ #45 DF: produz (L) → R 204  ◀ #46 DF: produz (L) → R 208  ◀ #47 DF: produz (L) → R 404  … (+5 conflitos nesta linha)
-  return this.parseArgs(this.args, parsed.unknown);                                        // [L=R]  ◀ #53 DF: produz (L) → R 204  ◀ #54 DF: produz (L) → R 208  ◀ #55 DF: produz (L) → R 404  … (+5 conflitos nesta linha)
+  var parsed = this.parseOptions(this.normalize(argv.slice(2)));                           // [L=R]  ◀ #37 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 204  ◀ #38 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 208  ◀ #39 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 404  … (+5 conflitos nesta linha)
+  this.args = parsed.args;                                                                 // [L=R]  ◀ #45 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 204  ◀ #46 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 208  ◀ #47 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 404  … (+5 conflitos nesta linha)
+  return this.parseArgs(this.args, parsed.unknown);                                        // [L=R]  ◀ #53 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 204  ◀ #54 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 208  ◀ #55 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 404  … (+5 conflitos nesta linha)
 };
 
 /**
@@ -388,7 +388,7 @@ Command.prototype.normalize = function(args){
  * @api private
  */
 
-Command.prototype.parseArgs = function(args, unknown){                                     // [L=R]  ◀ #65 DF: produz (L) → R 204  ◀ #66 DF: produz (L) → R 208  ◀ #67 DF: produz (L) → R 404  … (+5 conflitos nesta linha)
+Command.prototype.parseArgs = function(args, unknown){                                     // [L=R]  ◀ #65 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 204  ◀ #66 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 208  ◀ #67 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 404  … (+5 conflitos nesta linha)
   var cmds = this.commands
     , len = cmds.length
     , name;
@@ -396,7 +396,7 @@ Command.prototype.parseArgs = function(args, unknown){                          
   if (args.length) {
     name = args[0];
     if (this.listeners(name).length) {
-      this.emit(args.shift(), args, unknown);                                              // [L=R]  ◀ #73 DF: produz (L) → R 204  ◀ #74 DF: produz (L) → R 208  ◀ #75 DF: produz (L) → R 979  … (+4 conflitos nesta linha)
+      this.emit(args.shift(), args, unknown);                                              // [L=R]  ◀ #73 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 204  ◀ #74 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 208  ◀ #75 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 979  … (+4 conflitos nesta linha)
     } else {
       this.emit('*', args);
     }
@@ -445,7 +445,7 @@ Command.prototype.parseOptions = function(argv){
     , option
     , arg;
 
-  var unknownOptions = [];                                                                 // [L=R]  ◀ #80 DF: produz (L) → R 981
+  var unknownOptions = [];                                                                 // [L=R]  ◀ #80 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 981
                                                                                            // [L=R]
   // parse options
   for (var i = 0; i < len; ++i) {                                                          // ◀ #13 DF: consome (L) (herdou L pela chamada na linha 205) ← R 204  ◀ #81 DF: produz (L) (herdou L pela chamada na linha 399) → R 981
@@ -491,7 +491,7 @@ Command.prototype.parseOptions = function(argv){
     
     // looks like an option
     if (arg.length > 1 && '-' == arg[0]) {                                                 // ◀ #26 DF: consome (L) (herdou L pela chamada na linha 205) ← R 204
-      unknownOptions.push(arg);                                                            // [L=R]  ◀ #27 DF: consome (L) ← R 204  ◀ #84 DF: produz (L) → R 981
+      unknownOptions.push(arg);                                                            // [L=R]  ◀ #27 DF: consome (L) (linha igual nos dois lados: o mapa conta como L) ← R 204  ◀ #84 DF: produz (L) (linha igual nos dois lados: o mapa conta como L) → R 981
                                                                                            // [L=R]
       // If the next argument looks like it might be                                       // [L=R]
       // an argument for this option, we pass it on.                                       // [L=R]

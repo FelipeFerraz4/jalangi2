@@ -57,7 +57,36 @@ FILL_COLUMNS = [
 ]
 SAMPLE_SHEET = 'Conflitos sorteados'
 SAMPLE_SEED = 20261123  # 1 conflito sorteado por amostra; semente fixa para o sorteio ser reproduzível
-SAMPLE_FILL = [FILL_COLUMNS[0], FILL_COLUMNS[2], FILL_COLUMNS[4], FILL_COLUMNS[5], FILL_COLUMNS[6], FILL_COLUMNS[7]]
+# Colunas que o revisor preenche. O "como a ferramenta chegou ao conflito" não está aqui: sai dos dados (coluna automática)
+SAMPLE_FILL = [
+    FILL_COLUMNS[0],
+    ('Por que não é interferência (se Não ou Dúvida)', 30, ['Mudança que preserva o valor', 'Refatoração ou renomeação', 'Mudanças independentes',
+                                                           'Mudanças redundantes (corrigem o mesmo problema)', 'O valor não chega de fato ao outro lado',
+                                                           'Arquivo gerado ou minificado', 'Outro (explicar)']),
+    FILL_COLUMNS[4], FILL_COLUMNS[5], FILL_COLUMNS[6], FILL_COLUMNS[7],
+]
+
+
+def how_detected(g):
+    """Como a ferramenta chegou ao conflito, a partir dos dados (sem julgamento): de onde veio a branch de cada linha,
+    se o fluxo é transitivo e se passou por parâmetro."""
+    parts = []
+    for side, line, orig in ((g['primeiro'], g['linha1'], g['origem1']), (g['segundo'], g['linha2'], g['origem2'])):
+        if 'igual nos dois lados' in orig:
+            parts.append(f'{side} {line}: linha igual nos dois lados')
+        elif 'várias linhas' in orig:
+            parts.append(f'{side} {line}: comando de várias linhas ou chamada não registrada')
+        elif 'herdou' in orig:
+            parts.append(f'{side} {line}: herdou pela pilha (chamada na linha {orig.split("linha")[-1].strip(" )")})')
+        elif orig:
+            parts.append(f'{side} {line}: {orig.strip("() ")}')
+    if not parts:
+        parts.append('as duas linhas foram alteradas pelos lados')
+    if 'transitivo' in (g['natureza'] or ''):
+        parts.append('fluxo transitivo')
+    if g['via_parametro']:
+        parts.append('via parâmetro')
+    return '; '.join(parts)
 
 
 def read_csv(path, sep=';'):
@@ -359,9 +388,9 @@ def main():
     ROLE = {'DF': ('produz', 'consome'), 'OA': ('sobrescreve', 'foi sobrescrita'), 'CF': ('valor de L', 'valor de R')}
     cols = ['Caso', 'Grupo', 'Projeto', 'Arquivo', 'Pasta no GitHub', 'Conflito (# no README)', 'Tipo', 'Natureza', 'Registros iguais',
             'Linha 1', 'Código da linha 1', 'De onde veio a branch (1)', 'Linha 2', 'Código da linha 2', 'De onde veio a branch (2)',
-            'Base (CF)', 'Código da base', 'Estado', 'Pilha de chamadas']
+            'Base (CF)', 'Código da base', 'Estado', 'Pilha de chamadas', 'Como a ferramenta chegou ao conflito (automático)']
     fill_heads = [h for h, _, _ in SAMPLE_FILL]
-    widths = [7, 7, 18, 26, 12, 10, 6, 11, 9, 16, 50, 34, 16, 50, 34, 10, 40, 24, 22] + [w for _, w, _ in SAMPLE_FILL]
+    widths = [7, 7, 18, 26, 12, 10, 6, 11, 9, 16, 50, 34, 16, 50, 34, 10, 40, 24, 22, 40] + [w for _, w, _ in SAMPLE_FILL]
     header(ws, 1, cols + fill_heads, widths)
     for k in range(len(cols) + 1, len(cols) + len(fill_heads) + 1):
         ws.cell(row=1, column=k).fill = PatternFill('solid', fgColor='B7791F')
@@ -373,7 +402,7 @@ def main():
         vals = [c['id'], c['grupo'], c['projeto'].split('__')[1], c['arquivo'], None, f"#{g['n']} de {len(c['conflitos'])}", g['tipo'], g['natureza'],
                 g['registros'], f"{g['primeiro']} {g['linha1']} ({r1})", g['codigo1'], g['origem1'] or 'linha alterada por esse lado',
                 f"{g['segundo']} {g['linha2']} ({r2})", g['codigo2'], g['origem2'] or 'linha alterada por esse lado',
-                g['base'], g['codigo_base'], g['alvos'], g['pilha']]
+                g['base'], g['codigo_base'], g['alvos'], g['pilha'], how_detected(g)]
         for k, v in enumerate(vals, 1):
             ws.cell(row=i, column=k, value=v).alignment = WRAP
         link = ws.cell(row=i, column=5, value='abrir pasta')
@@ -394,7 +423,7 @@ def main():
     ws.freeze_panes = 'B2'
     ws.auto_filter.ref = f'A1:{get_column_letter(len(cols) + len(fill_heads))}{last}'
     note = last + 2
-    ws.cell(row=note, column=1, value=f'Um conflito sorteado por amostra (uniforme entre os registros da amostra, semente {SAMPLE_SEED}). O número # é o do README.md e do merge_anotado.js do caso. "De onde veio a branch": quando a linha não foi alterada por aquele lado, ela herdou a branch de uma chamada feita numa linha alterada (julgue a linha indicada) ou faz parte de um comando de várias linhas. Pergunta: este conflito é uma interferência real (o comportamento do merge depende das duas mudanças juntas)?').alignment = WRAP
+    ws.cell(row=note, column=1, value=f'Um conflito sorteado por amostra (uniforme entre os registros da amostra, semente {SAMPLE_SEED}). O número # é o do README.md e do merge_anotado.js do caso. "De onde veio a branch": quando a linha não foi alterada por aquele lado, ela herdou a branch de uma chamada feita numa linha alterada (julgue a linha indicada) ou faz parte de um comando de várias linhas. A coluna "Como a ferramenta chegou ao conflito" é automática (sai dos dados). Pergunta para o revisor: este conflito é uma interferência real (o comportamento do merge depende das duas mudanças juntas)? Se não, por quê, olhando o código?').alignment = WRAP
     ws.merge_cells(start_row=note, start_column=1, end_row=note, end_column=12)
     ws.row_dimensions[note].height = 75
 

@@ -1180,7 +1180,7 @@
     "alvos": "unknown",
     "pilha": "349 → 399",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@lib/commander.js:204->L@lib/commander.js:205"
     ]
@@ -1202,7 +1202,7 @@
     "alvos": "parsed",
     "pilha": "349 → 399",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@lib/commander.js:204->L@lib/commander.js:213"
     ]
@@ -1708,7 +1708,7 @@
     "alvos": "arg",
     "pilha": "349 → 399 → 205",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@lib/commander.js:204->L@lib/commander.js:494"
     ]
@@ -1795,7 +1795,7 @@
     "codigo_base": "",
     "alvos": "parsed",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:205->R@lib/commander.js:208"
@@ -1817,7 +1817,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:205->R@lib/commander.js:979"
@@ -1839,7 +1839,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:205->R@lib/commander.js:980"
@@ -1861,7 +1861,7 @@
     "codigo_base": "",
     "alvos": "options Array#835.0",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "(herdou R pela chamada na linha 208)",
     "chaves": [
      "L@lib/commander.js:205->R@lib/commander.js:981"
@@ -1883,7 +1883,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:205->R@lib/commander.js:982"
@@ -1905,7 +1905,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:205->R@lib/commander.js:983"
@@ -1927,7 +1927,7 @@
     "codigo_base": "",
     "alvos": "unknown",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:347->R@lib/commander.js:204"
@@ -1949,7 +1949,7 @@
     "codigo_base": "",
     "alvos": "parsed",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:347->R@lib/commander.js:208"
@@ -1971,7 +1971,7 @@
     "codigo_base": "",
     "alvos": "unknown",
     "pilha": "349",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:347->R@lib/commander.js:404"
@@ -1993,7 +1993,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 404",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:347->R@lib/commander.js:979"
@@ -2015,7 +2015,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 404",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:347->R@lib/commander.js:980"
@@ -2037,7 +2037,7 @@
     "codigo_base": "",
     "alvos": "options Array#835.0",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "(herdou R pela chamada na linha 208)",
     "chaves": [
      "L@lib/commander.js:347->R@lib/commander.js:981"
@@ -2059,7 +2059,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:347->R@lib/commander.js:982"
@@ -2081,7 +2081,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:347->R@lib/commander.js:983"
@@ -2103,7 +2103,7 @@
     "codigo_base": "",
     "alvos": "unknown",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:348->R@lib/commander.js:204"
@@ -2125,7 +2125,7 @@
     "codigo_base": "",
     "alvos": "parsed",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:348->R@lib/commander.js:208"
@@ -2147,7 +2147,7 @@
     "codigo_base": "",
     "alvos": "unknown",
     "pilha": "349",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:348->R@lib/commander.js:404"
@@ -2169,7 +2169,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 404",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:348->R@lib/commander.js:979"
@@ -2191,7 +2191,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 404",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:348->R@lib/commander.js:980"
@@ -2213,7 +2213,7 @@
     "codigo_base": "",
     "alvos": "options Array#835.0",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "(herdou R pela chamada na linha 208)",
     "chaves": [
      "L@lib/commander.js:348->R@lib/commander.js:981"
@@ -2235,7 +2235,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:348->R@lib/commander.js:982"
@@ -2257,7 +2257,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:348->R@lib/commander.js:983"
@@ -2279,7 +2279,7 @@
     "codigo_base": "",
     "alvos": "unknown",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:349->R@lib/commander.js:204"
@@ -2301,7 +2301,7 @@
     "codigo_base": "",
     "alvos": "parsed",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:349->R@lib/commander.js:208"
@@ -2323,7 +2323,7 @@
     "codigo_base": "",
     "alvos": "unknown",
     "pilha": "349",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:349->R@lib/commander.js:404"
@@ -2345,7 +2345,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 404",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:349->R@lib/commander.js:979"
@@ -2367,7 +2367,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 404",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:349->R@lib/commander.js:980"
@@ -2389,7 +2389,7 @@
     "codigo_base": "",
     "alvos": "options Array#835.0",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "(herdou R pela chamada na linha 208)",
     "chaves": [
      "L@lib/commander.js:349->R@lib/commander.js:981"
@@ -2411,7 +2411,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:349->R@lib/commander.js:982"
@@ -2433,7 +2433,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:349->R@lib/commander.js:983"
@@ -2543,7 +2543,7 @@
     "codigo_base": "",
     "alvos": "unknown",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:391->R@lib/commander.js:204"
@@ -2565,7 +2565,7 @@
     "codigo_base": "",
     "alvos": "parsed",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:391->R@lib/commander.js:208"
@@ -2587,7 +2587,7 @@
     "codigo_base": "",
     "alvos": "unknown",
     "pilha": "349",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:391->R@lib/commander.js:404"
@@ -2609,7 +2609,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 404",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:391->R@lib/commander.js:979"
@@ -2631,7 +2631,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 404",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:391->R@lib/commander.js:980"
@@ -2653,7 +2653,7 @@
     "codigo_base": "",
     "alvos": "options Array#835.0",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "(herdou R pela chamada na linha 208)",
     "chaves": [
      "L@lib/commander.js:391->R@lib/commander.js:981"
@@ -2675,7 +2675,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:391->R@lib/commander.js:982"
@@ -2697,7 +2697,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:391->R@lib/commander.js:983"
@@ -2719,7 +2719,7 @@
     "codigo_base": "",
     "alvos": "unknown",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:399->R@lib/commander.js:204"
@@ -2741,7 +2741,7 @@
     "codigo_base": "",
     "alvos": "parsed",
     "pilha": "349 → 399",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:399->R@lib/commander.js:208"
@@ -2763,7 +2763,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:399->R@lib/commander.js:979"
@@ -2785,7 +2785,7 @@
     "codigo_base": "",
     "alvos": "options",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:399->R@lib/commander.js:980"
@@ -2807,7 +2807,7 @@
     "codigo_base": "",
     "alvos": "options Array#835.0",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "(herdou R pela chamada na linha 208)",
     "chaves": [
      "L@lib/commander.js:399->R@lib/commander.js:981"
@@ -2829,7 +2829,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:399->R@lib/commander.js:982"
@@ -2851,7 +2851,7 @@
     "codigo_base": "",
     "alvos": "cmd",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@lib/commander.js:399->R@lib/commander.js:983"
@@ -2873,7 +2873,7 @@
     "codigo_base": "",
     "alvos": "Array#835.0",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "(herdou R pela chamada na linha 208)",
     "chaves": [
      "L@lib/commander.js:448->R@lib/commander.js:981"
@@ -2961,7 +2961,7 @@
     "codigo_base": "",
     "alvos": "Array#835.0",
     "pilha": "349 → 399 → 208",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "(herdou R pela chamada na linha 208)",
     "chaves": [
      "L@lib/commander.js:494->R@lib/commander.js:981"
@@ -5512,7 +5512,7 @@
     "alvos": "command",
     "pilha": "52 → 24 → 93 → 97",
     "origem1": "(herdou R pela chamada na linha 52)",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@lib/ace/commands/command_manager.js:24->L@lib/ace/commands/command_manager.js:42"
     ]
@@ -5534,7 +5534,7 @@
     "alvos": "command",
     "pilha": "52 → 24 → 93 → 97",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@lib/ace/commands/command_manager.js:52->L@lib/ace/commands/command_manager.js:42"
     ]
@@ -5556,7 +5556,7 @@
     "alvos": "command",
     "pilha": "52 → 24 → 93 → 97",
     "origem1": "(herdou R pela chamada na linha 52)",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@lib/ace/commands/command_manager.js:79->L@lib/ace/commands/command_manager.js:42"
     ]
@@ -5578,7 +5578,7 @@
     "alvos": "command",
     "pilha": "52 → 24 → 93 → 97",
     "origem1": "(herdou R pela chamada na linha 52)",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@lib/ace/commands/command_manager.js:93->L@lib/ace/commands/command_manager.js:42"
     ]
@@ -5600,7 +5600,7 @@
     "alvos": "command",
     "pilha": "52 → 24 → 93 → 97",
     "origem1": "(herdou R pela chamada na linha 52)",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@lib/ace/commands/command_manager.js:97->L@lib/ace/commands/command_manager.js:42"
     ]
@@ -8026,7 +8026,7 @@
     "alvos": "s",
     "pilha": "1 → 55",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.amd.min.js:55->L@dist/jspdf.amd.min.js:57"
     ]
@@ -8048,7 +8048,7 @@
     "alvos": "s",
     "pilha": "1 → 55",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.amd.min.js:55->L@dist/jspdf.amd.min.js:58"
     ]
@@ -8070,7 +8070,7 @@
     "alvos": "s",
     "pilha": "1 → 55",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.amd.min.js:55->L@dist/jspdf.amd.min.js:59"
     ]
@@ -8092,7 +8092,7 @@
     "alvos": "s",
     "pilha": "1 → 55",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.amd.min.js:55->L@dist/jspdf.amd.min.js:60"
     ]
@@ -8114,7 +8114,7 @@
     "alvos": "s",
     "pilha": "1 → 55",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.amd.min.js:55->L@dist/jspdf.amd.min.js:61"
     ]
@@ -8136,7 +8136,7 @@
     "alvos": "s",
     "pilha": "1 → 55",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.amd.min.js:55->L@dist/jspdf.amd.min.js:62"
     ]
@@ -8158,7 +8158,7 @@
     "alvos": "s",
     "pilha": "1 → 55",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.amd.min.js:55->L@dist/jspdf.amd.min.js:63"
     ]
@@ -8179,7 +8179,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "1 → 55 → 57",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.amd.min.js:57->R@dist/jspdf.amd.min.js:55"
@@ -8201,7 +8201,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "1 → 55 → 58",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.amd.min.js:58->R@dist/jspdf.amd.min.js:55"
@@ -8223,7 +8223,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "1 → 55 → 59",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.amd.min.js:59->R@dist/jspdf.amd.min.js:55"
@@ -8245,7 +8245,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "1 → 55 → 60",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.amd.min.js:60->R@dist/jspdf.amd.min.js:55"
@@ -8267,7 +8267,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "1 → 55 → 61",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.amd.min.js:61->R@dist/jspdf.amd.min.js:55"
@@ -8289,7 +8289,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "1 → 55 → 62",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.amd.min.js:62->R@dist/jspdf.amd.min.js:55"
@@ -8311,7 +8311,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "1 → 55 → 63",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.amd.min.js:63->R@dist/jspdf.amd.min.js:55"
@@ -8361,7 +8361,7 @@
     "alvos": "s",
     "pilha": "54",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.min.js:54->L@dist/jspdf.min.js:56"
     ]
@@ -8383,7 +8383,7 @@
     "alvos": "s",
     "pilha": "54",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.min.js:54->L@dist/jspdf.min.js:57"
     ]
@@ -8405,7 +8405,7 @@
     "alvos": "s",
     "pilha": "54",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.min.js:54->L@dist/jspdf.min.js:58"
     ]
@@ -8427,7 +8427,7 @@
     "alvos": "s",
     "pilha": "54",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.min.js:54->L@dist/jspdf.min.js:59"
     ]
@@ -8449,7 +8449,7 @@
     "alvos": "s",
     "pilha": "54",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.min.js:54->L@dist/jspdf.min.js:60"
     ]
@@ -8471,7 +8471,7 @@
     "alvos": "s",
     "pilha": "54",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.min.js:54->L@dist/jspdf.min.js:61"
     ]
@@ -8493,7 +8493,7 @@
     "alvos": "s",
     "pilha": "54",
     "origem1": "",
-    "origem2": "",
+    "origem2": "(linha igual nos dois lados: o mapa conta como L)",
     "chaves": [
      "R@dist/jspdf.min.js:54->L@dist/jspdf.min.js:62"
     ]
@@ -8514,7 +8514,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "54 → 56",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.min.js:56->R@dist/jspdf.min.js:54"
@@ -8536,7 +8536,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "54 → 57",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.min.js:57->R@dist/jspdf.min.js:54"
@@ -8558,7 +8558,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "54 → 58",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.min.js:58->R@dist/jspdf.min.js:54"
@@ -8580,7 +8580,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "54 → 59",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.min.js:59->R@dist/jspdf.min.js:54"
@@ -8602,7 +8602,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "54 → 60",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.min.js:60->R@dist/jspdf.min.js:54"
@@ -8624,7 +8624,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "54 → 61",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.min.js:61->R@dist/jspdf.min.js:54"
@@ -8646,7 +8646,7 @@
     "codigo_base": "",
     "alvos": "a",
     "pilha": "54 → 62",
-    "origem1": "",
+    "origem1": "(linha igual nos dois lados: o mapa conta como L)",
     "origem2": "",
     "chaves": [
      "L@dist/jspdf.min.js:62->R@dist/jspdf.min.js:54"

@@ -39,7 +39,7 @@ oop.inherits(CommandManager, MultiHashHandler);                                 
             return false;                                                                   // [R]
         }                                                                                   // [R]
                                                                                             // [R]
-        if (typeof command === "string")                                                    // [L=R]  ◀ #1 DF: consome (L) ← R 24  ◀ #2 DF: consome (L) ← R 52  ◀ #3 DF: consome (L) ← R 79  … (+2 conflitos nesta linha)
+        if (typeof command === "string")                                                    // [L=R]  ◀ #1 DF: consome (L) (linha igual nos dois lados: o mapa conta como L) ← R 24  ◀ #2 DF: consome (L) (linha igual nos dois lados: o mapa conta como L) ← R 52  ◀ #3 DF: consome (L) (linha igual nos dois lados: o mapa conta como L) ← R 79  … (+2 conflitos nesta linha)
             command = this.commands[command];
 
         if (!command)

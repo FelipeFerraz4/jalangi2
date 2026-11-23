@@ -75,6 +75,7 @@ function writeAnnotated(dir, r, m, pairs, mergeLines) {
     const notes = new Map();
     const add = (ln, text) => { if (!ln) return; (notes.get(ln) || notes.set(ln, []).get(ln)).push(text); };
     const origin = (ln, branch, stack) => {
+        if (both.has(ln)) return ' (linha igual nos dois lados: o mapa conta como L)';
         if (map[ln] === branch) return '';
         const via = (stack || []).filter(l => l !== ln && map[l] === branch);
         if (via.length) return ` (herdou ${branch} pela chamada na linha ${via[via.length - 1]})`;
