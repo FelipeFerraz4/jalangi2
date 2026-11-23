@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **A** (conflito direto, mesma função) |
-| Revisores | Felipe, Italo |
 | Projeto | [ajaxorg__ace](https://github.com/ajaxorg/ace) |
 | Merge | [`12ef5f9f6b`](https://github.com/ajaxorg/ace/commit/12ef5f9f6b9d5349252a7dd849ddc03ab0fd47a2) (2014-05-01T17:17:36+00:00) |
 | Base / Left / Right | [`993df16b`](https://github.com/ajaxorg/ace/blob/993df16bdb4cf80dac13f0fe8f449bb7adb05a65/lib/ace/lib/keys.js) / [`deb4013a`](https://github.com/ajaxorg/ace/blob/deb4013a13e4553a7ce8eefa5defdc391739a53c/lib/ace/lib/keys.js) / [`0155c67b`](https://github.com/ajaxorg/ace/blob/0155c67b1ff866752f96c2e779313dd966fa41d1/lib/ace/lib/keys.js) |
@@ -42,7 +41,7 @@ Pilha de chamadas no momento: keys.js:34 → keys.js:42 → keys.js:146 → keys
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [ajaxorg__ace](https://github.com/ajaxorg/ace) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

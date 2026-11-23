@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **A** (conflito direto, mesma função) |
-| Revisores | Priscila |
 | Projeto | [philc__vimium](https://github.com/philc/vimium) |
 | Merge | [`0370d60be8`](https://github.com/philc/vimium/commit/0370d60be82aead007f6b0804dd5b90e6fdb1b1c) (2010-09-24T06:38:53+00:00) |
 | Base / Left / Right | [`12413ec1`](https://github.com/philc/vimium/blob/12413ec1de1fc2a0fdc46c6e0ef3141d2a7193cf/commands.js) / [`0d15a8fb`](https://github.com/philc/vimium/blob/0d15a8fbdf78ab1a12783406bf678339882323a5/commands.js) / [`64b550a4`](https://github.com/philc/vimium/blob/64b550a4a7fa4af1d9c0996d6f66715dc479ccb5/commands.js) |
@@ -53,7 +52,7 @@ Pilha de chamadas no momento: commands.js:180
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [philc__vimium](https://github.com/philc/vimium) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

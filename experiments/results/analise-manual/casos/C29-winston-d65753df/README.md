@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **C** (só transitivo ou arquivo gerado: suspeito) |
-| Revisores | Felipe, Italo |
 | Projeto | [winstonjs__winston](https://github.com/winstonjs/winston) |
 | Merge | [`d65753dfb8`](https://github.com/winstonjs/winston/commit/d65753dfb87360ca301c73375a45f6538ffd5278) (2014-09-15T16:33:18+00:00) |
 | Base / Left / Right | [`65c423e6`](https://github.com/winstonjs/winston/blob/65c423e60f9139fb7df21e29c3346a1553e23023/lib/winston/transports/file.js) / [`f7d401ba`](https://github.com/winstonjs/winston/blob/f7d401ba5a1c319a3a363e1fc378c0b5a43ab651/lib/winston/transports/file.js) / [`e526bd25`](https://github.com/winstonjs/winston/blob/e526bd25ed9f59a06870b1934692df19983337e7/lib/winston/transports/file.js) |
@@ -100,7 +99,7 @@ Estado: `—` · registros: 1
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [winstonjs__winston](https://github.com/winstonjs/winston) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

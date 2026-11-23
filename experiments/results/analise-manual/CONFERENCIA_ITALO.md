@@ -1,6 +1,8 @@
 # Conferência da análise manual do Italo
 
-Conferência, feita em 23/11/2026, dos 15 casos que o Italo preencheu na aba *Análise - Italo* da `resultados.xlsx`. Para cada caso foram checados os diffs dos dois lados, as linhas do conflito, o código do `merge.js` e o mapa de linhas. É material para discussão: o veredito final de cada caso fica na aba *Concordância*, depois do debate.
+Conferência, feita em 23/11/2026, dos 15 casos que o Italo preencheu na primeira rodada da análise manual (por amostra, com três revisores). As respostas dele estão em [`historico/analise_italo_por_amostra_2026-11-23.csv`](historico/analise_italo_por_amostra_2026-11-23.csv). Para cada caso foram checados os diffs dos dois lados, as linhas do conflito, o código do `merge.js` e o mapa de linhas.
+
+**Situação:** essa rodada foi deixada de lado. A análise manual passou a ser feita por conflito (um conflito sorteado de cada amostra, aba *Conflitos sorteados*), por uma só pessoa. Este documento fica como material para a discussão com o Italo.
 
 **Resultado:** concordância em 14 dos 15 vereditos. A divergência é o C04. Em 4 casos o veredito está certo, mas o motivo pelo qual a ferramenta apontou o conflito é outro (veja "Mecanismos").
 

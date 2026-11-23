@@ -2,10 +2,6 @@
  {
   "id": "C01",
   "grupo": "A",
-  "revisores": [
-   "Felipe",
-   "Italo"
-  ],
   "pasta": "casos/C01-ace-12ef5f9f",
   "sample_id": "56d21790c20077419931850f178db5dd10c2a63e5e4a73d6518048ff5e5b30a8",
   "projeto": "ajaxorg__ace",
@@ -77,9 +73,6 @@
  {
   "id": "C02",
   "grupo": "A",
-  "revisores": [
-   "Priscila"
-  ],
   "pasta": "casos/C02-vimium-0370d60b",
   "sample_id": "56a71add5f8d386ec176cc7997b04b86a9a914847b9b4d0d769bb1b69abd6e46",
   "projeto": "philc__vimium",
@@ -173,10 +166,6 @@
  {
   "id": "C03",
   "grupo": "A",
-  "revisores": [
-   "Felipe",
-   "Priscila"
-  ],
   "pasta": "casos/C03-vimium-83be3670",
   "sample_id": "551253be6ce8b9864646552e242ba20059ffe4adb662a0394952168558d7b2d3",
   "projeto": "philc__vimium",
@@ -248,9 +237,6 @@
  {
   "id": "C04",
   "grupo": "A",
-  "revisores": [
-   "Italo"
-  ],
   "pasta": "casos/C04-nodemon-6af96ec4",
   "sample_id": "73986cf3eef88218407fc912ddb0b85f8e6d130c56f72036ee18000ffff9eba5",
   "projeto": "remy__nodemon",
@@ -366,10 +352,6 @@
  {
   "id": "C05",
   "grupo": "A",
-  "revisores": [
-   "Italo",
-   "Priscila"
-  ],
   "pasta": "casos/C05-request-5daa0b28",
   "sample_id": "f9e40df396d43f8d10df757af862df5064f6d91b3e393be0cd9b9731e34a3b3a",
   "projeto": "request__request",
@@ -925,9 +907,6 @@
  {
   "id": "C06",
   "grupo": "A",
-  "revisores": [
-   "Felipe"
-  ],
   "pasta": "casos/C06-request-a353f4ee",
   "sample_id": "9959dc84c7793b72797fc4b6b0c6a62803e4720924ba45733bdef5eb085e693f",
   "projeto": "request__request",
@@ -1021,10 +1000,6 @@
  {
   "id": "C07",
   "grupo": "A",
-  "revisores": [
-   "Felipe",
-   "Italo"
-  ],
   "pasta": "casos/C07-request-b11988e3",
   "sample_id": "4504e6453b954c0a64d62df18642392b9685196c858d14048960b12ff94049a1",
   "projeto": "request__request",
@@ -1074,9 +1049,6 @@
  {
   "id": "C08",
   "grupo": "A",
-  "revisores": [
-   "Priscila"
-  ],
   "pasta": "casos/C08-nprogress-fbddeec8",
   "sample_id": "f6b038fb30f2864946ec838d037fda5f24d010607a5493b7f467787675a8840d",
   "projeto": "rstacruz__nprogress",
@@ -1126,10 +1098,6 @@
  {
   "id": "C09",
   "grupo": "A",
-  "revisores": [
-   "Felipe",
-   "Priscila"
-  ],
   "pasta": "casos/C09-commander.js-6ccb6397",
   "sample_id": "7e0d62762708ec901d23f4d07bb604f232a5d776bf715082b2895d4bdb6c5b82",
   "projeto": "tj__commander.js",
@@ -3005,9 +2973,6 @@
  {
   "id": "C10",
   "grupo": "A",
-  "revisores": [
-   "Italo"
-  ],
   "pasta": "casos/C10-commander.js-7eaeaf3c",
   "sample_id": "1a6d49674c96b1f2903eea1d977185891f5e373d16dfff75ef9143e414cb567d",
   "projeto": "tj__commander.js",
@@ -3189,10 +3154,6 @@
  {
   "id": "C11",
   "grupo": "A",
-  "revisores": [
-   "Italo",
-   "Priscila"
-  ],
   "pasta": "casos/C11-commander.js-3242851d",
   "sample_id": "864d9c29a9e3b9fa2983abb5c48216b112323589cb3def5475f1b8455c12ea44",
   "projeto": "tj__commander.js",
@@ -3242,9 +3203,6 @@
  {
   "id": "C12",
   "grupo": "A",
-  "revisores": [
-   "Felipe"
-  ],
   "pasta": "casos/C12-winston-d5e6297f",
   "sample_id": "18270521833eb6429ad6e7791d1b3a8c5a864915b3f162bef376c767417f6e15",
   "projeto": "winstonjs__winston",
@@ -5516,10 +5474,6 @@
  {
   "id": "C13",
   "grupo": "B",
-  "revisores": [
-   "Felipe",
-   "Italo"
-  ],
   "pasta": "casos/C13-ace-bb827051",
   "sample_id": "eafe749ba9cb1d4355dbe82491b163459c24b77acb8f15ec0b8ed6cac5d592bc",
   "projeto": "ajaxorg__ace",
@@ -5657,9 +5611,6 @@
  {
   "id": "C14",
   "grupo": "B",
-  "revisores": [
-   "Priscila"
-  ],
   "pasta": "casos/C14-nodemon-38c881f0",
   "sample_id": "a386f6ba92142c5bfa581f7df9c6e271f4b60963eaa066d82f3da74c9dc3cf45",
   "projeto": "remy__nodemon",
@@ -5907,10 +5858,6 @@
  {
   "id": "C15",
   "grupo": "B",
-  "revisores": [
-   "Felipe",
-   "Priscila"
-  ],
   "pasta": "casos/C15-request-9863b272",
   "sample_id": "ecddc18a4edc79d3dec04d647d8121151bc831e55a04f3ba8517d9d14a33c30c",
   "projeto": "request__request",
@@ -7148,9 +7095,6 @@
  {
   "id": "C16",
   "grupo": "B",
-  "revisores": [
-   "Italo"
-  ],
   "pasta": "casos/C16-request-b827a436",
   "sample_id": "926a5b1273e74648407bc54184fefc888325a457d2e47aa596528d9ae35ea3d0",
   "projeto": "request__request",
@@ -7222,10 +7166,6 @@
  {
   "id": "C17",
   "grupo": "B",
-  "revisores": [
-   "Italo",
-   "Priscila"
-  ],
   "pasta": "casos/C17-commander.js-5091eacd",
   "sample_id": "35f3ec07a495dc1f74bbcef590408badbb61356534e9a28fa38cf26bb2ff177e",
   "projeto": "tj__commander.js",
@@ -7451,9 +7391,6 @@
  {
   "id": "C18",
   "grupo": "B",
-  "revisores": [
-   "Felipe"
-  ],
   "pasta": "casos/C18-commander.js-12adc90f",
   "sample_id": "6e635347b79927b0cf68b6ec75220e65797414727c07dbc432a3cdbec77a7aff",
   "projeto": "tj__commander.js",
@@ -7569,10 +7506,6 @@
  {
   "id": "C19",
   "grupo": "B",
-  "revisores": [
-   "Felipe",
-   "Italo"
-  ],
   "pasta": "casos/C19-commander.js-13333654",
   "sample_id": "dd19cabea5ae234088d8a991afd5c14001dc37067b24a31cd7d790dfa8dc66ac",
   "projeto": "tj__commander.js",
@@ -7644,9 +7577,6 @@
  {
   "id": "C20",
   "grupo": "B",
-  "revisores": [
-   "Priscila"
-  ],
   "pasta": "casos/C20-webtorrent-9400efe1",
   "sample_id": "bfa02bdfe97857f9eb0b68a00e240b97318ae0ca7733f7c713d7a94bff753d63",
   "projeto": "webtorrent__webtorrent",
@@ -7894,10 +7824,6 @@
  {
   "id": "C21",
   "grupo": "C",
-  "revisores": [
-   "Felipe",
-   "Priscila"
-  ],
   "pasta": "casos/C21-eslint-90239c00",
   "sample_id": "7e52753dfb32002c9ad98d8479ff9d8707194ebe39d96532dab1c7bee4d7f6f8",
   "projeto": "eslint__eslint",
@@ -7991,9 +7917,6 @@
  {
   "id": "C22",
   "grupo": "C",
-  "revisores": [
-   "Italo"
-  ],
   "pasta": "casos/C22-eslint-9398227a",
   "sample_id": "14ea7a96da6c06077de0c8aeed33cc055f996ec191b5b63e6f69001b216e2c24",
   "projeto": "eslint__eslint",
@@ -8065,10 +7988,6 @@
  {
   "id": "C23",
   "grupo": "C",
-  "revisores": [
-   "Italo",
-   "Priscila"
-  ],
   "pasta": "casos/C23-jsPDF-aa096114",
   "sample_id": "4e6d9ad8433c21a2d1d0274025641583348e2e649cc6ab24d74bb325727eea1b",
   "projeto": "parallax__jsPDF",
@@ -8404,9 +8323,6 @@
  {
   "id": "C24",
   "grupo": "C",
-  "revisores": [
-   "Felipe"
-  ],
   "pasta": "casos/C24-jsPDF-aa096114",
   "sample_id": "e9035214829e0b8acfddae7dbe2e30ba14e05c1a63444e4137f356bb98a04927",
   "projeto": "parallax__jsPDF",
@@ -8742,10 +8658,6 @@
  {
   "id": "C25",
   "grupo": "C",
-  "revisores": [
-   "Felipe",
-   "Italo"
-  ],
   "pasta": "casos/C25-request-92b2ac03",
   "sample_id": "a9106cb13796abb0492298975ca9ebb8dcdb215539498cdc626503639385f477",
   "projeto": "request__request",
@@ -8927,9 +8839,6 @@
  {
   "id": "C26",
   "grupo": "C",
-  "revisores": [
-   "Priscila"
-  ],
   "pasta": "casos/C26-request-7f1a804c",
   "sample_id": "9840533f3790b22070060e55ea0f657858e27ccfe35b7076abb4ea0ba8e8f064",
   "projeto": "request__request",
@@ -9023,10 +8932,6 @@
  {
   "id": "C27",
   "grupo": "C",
-  "revisores": [
-   "Felipe",
-   "Priscila"
-  ],
   "pasta": "casos/C27-request-7831b3b9",
   "sample_id": "30f7d82578373955fd7afa2bd6610570c8bf6a206a1afcf8199935e0afafaffb",
   "projeto": "request__request",
@@ -9076,10 +8981,6 @@
  {
   "id": "C28",
   "grupo": "C",
-  "revisores": [
-   "Italo",
-   "Priscila"
-  ],
   "pasta": "casos/C28-request-81e775c5",
   "sample_id": "fa6dcf1d3c563b12d5e654d8cda5f8ce10e621f554cbf64c568960b08c4c23cc",
   "projeto": "request__request",
@@ -9129,10 +9030,6 @@
  {
   "id": "C29",
   "grupo": "C",
-  "revisores": [
-   "Felipe",
-   "Italo"
-  ],
   "pasta": "casos/C29-winston-d65753df",
   "sample_id": "0ddf40e2bc701fe961b73d612d36d1a3bc9b4feb8c087af3dbb2090c2bf4c9a9",
   "projeto": "winstonjs__winston",

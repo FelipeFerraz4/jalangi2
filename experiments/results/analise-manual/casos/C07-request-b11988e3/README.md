@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **A** (conflito direto, mesma função) |
-| Revisores | Felipe, Italo |
 | Projeto | [request__request](https://github.com/request/request) |
 | Merge | [`b11988e33f`](https://github.com/request/request/commit/b11988e33fb96f25628eb55f89a2a11303860875) (2013-04-24T15:24:34+00:00) |
 | Base / Left / Right | [`9bc28bf9`](https://github.com/request/request/blob/9bc28bf912fb0afdd14b36b0ccbafb185a32546a/index.js) / [`5a120e87`](https://github.com/request/request/blob/5a120e875c48af045dde0c19aec1e12b435dbca3/index.js) / [`9a35cd22`](https://github.com/request/request/blob/9a35cd2248d9492b099c7ee46d68ca017b6a701c/index.js) |
@@ -31,7 +30,7 @@ Pilha de chamadas no momento: index.js:824 → index.js:873 → index.js:148 →
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [request__request](https://github.com/request/request) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

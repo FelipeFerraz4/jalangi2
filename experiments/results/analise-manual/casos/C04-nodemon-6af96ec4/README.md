@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **A** (conflito direto, mesma função) |
-| Revisores | Italo |
 | Projeto | [remy__nodemon](https://github.com/remy/nodemon) |
 | Merge | [`6af96ec4c4`](https://github.com/remy/nodemon/commit/6af96ec4c400578ab98f498eadbfe28d1cc0f6de) (2014-12-05T09:26:02+00:00) |
 | Base / Left / Right | [`01e6a5f7`](https://github.com/remy/nodemon/blob/01e6a5f78ea5e1f577cc3372be1282c160a9cc10/lib/monitor/watch.js) / [`f9e056b6`](https://github.com/remy/nodemon/blob/f9e056b6502801a707c3c2fa5d794550b42781c9/lib/monitor/watch.js) / [`e35a85ae`](https://github.com/remy/nodemon/blob/e35a85ae153b0b88303d83a0ef25e5a6d51ba335/lib/monitor/watch.js) |
@@ -64,7 +63,7 @@ Pilha de chamadas no momento: watch.js:249 → watch.js:141 → watch.js:36 → 
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [remy__nodemon](https://github.com/remy/nodemon) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

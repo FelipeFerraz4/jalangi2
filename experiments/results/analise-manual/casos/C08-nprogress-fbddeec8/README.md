@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **A** (conflito direto, mesma função) |
-| Revisores | Priscila |
 | Projeto | [rstacruz__nprogress](https://github.com/rstacruz/nprogress) |
 | Merge | [`fbddeec8c3`](https://github.com/rstacruz/nprogress/commit/fbddeec8c37f138da649cdb5a19a0c1a9d3c87cd) (2014-03-26T12:04:51+00:00) |
 | Base / Left / Right | [`a2e97888`](https://github.com/rstacruz/nprogress/blob/a2e978889e89fe150e54a1652a473832515d0470/nprogress.js) / [`596cc5ed`](https://github.com/rstacruz/nprogress/blob/596cc5ede695dbf6b7c5e9f35ad56b1b47e40d2c/nprogress.js) / [`538b3398`](https://github.com/rstacruz/nprogress/blob/538b33984892456c69a7917c1ffd2da91de30728/nprogress.js) |
@@ -31,7 +30,7 @@ Pilha de chamadas no momento: nprogress.js:4 → nprogress.js:11 → nprogress.j
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [rstacruz__nprogress](https://github.com/rstacruz/nprogress) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

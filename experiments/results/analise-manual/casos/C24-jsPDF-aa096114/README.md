@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **C** (só transitivo ou arquivo gerado: suspeito) |
-| Revisores | Felipe |
 | Projeto | [parallax__jsPDF](https://github.com/parallax/jsPDF) |
 | Merge | [`aa096114eb`](https://github.com/parallax/jsPDF/commit/aa096114eb8b151b9a069bec2dfa8cc9e2b93110) (2012-12-30T00:00:43+00:00) |
 | Base / Left / Right | [`9c0f72be`](https://github.com/parallax/jsPDF/blob/9c0f72be1b61e2cbd2f14b0b28d7ddbb6df4bbc9/dist/jspdf.min.js) / [`00bf48e4`](https://github.com/parallax/jsPDF/blob/00bf48e4c985485212e3474860084720c9275f9e/dist/jspdf.min.js) / [`c3974c93`](https://github.com/parallax/jsPDF/blob/c3974c93ded32cad93c226b8036a922b80b81f8b/dist/jspdf.min.js) |
@@ -203,7 +202,7 @@ Pilha de chamadas no momento: jspdf.min.js:54 → jspdf.min.js:62
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [parallax__jsPDF](https://github.com/parallax/jsPDF) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

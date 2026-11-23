@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **A** (conflito direto, mesma função) |
-| Revisores | Felipe, Priscila |
 | Projeto | [philc__vimium](https://github.com/philc/vimium) |
 | Merge | [`83be3670b2`](https://github.com/philc/vimium/commit/83be3670b293fa78a8c74d092be9f6c4cdb6d66b) (2010-12-31T03:18:01+00:00) |
 | Base / Left / Right | [`a1a09659`](https://github.com/philc/vimium/blob/a1a096592f47fc7f219e2c9ccd394c169063324d/linkHints.js) / [`489ff3f8`](https://github.com/philc/vimium/blob/489ff3f8f0f7b44817a09472b5b1e2fad46d7632/linkHints.js) / [`1fd0a389`](https://github.com/philc/vimium/blob/1fd0a389ffe7460ac1c658227f0627c050153632/linkHints.js) |
@@ -42,7 +41,7 @@ Pilha de chamadas no momento: linkHints.js:32
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [philc__vimium](https://github.com/philc/vimium) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

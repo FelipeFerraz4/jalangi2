@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **B** (conflito direto, funções diferentes ou sem correspondência) |
-| Revisores | Felipe, Italo |
 | Projeto | [ajaxorg__ace](https://github.com/ajaxorg/ace) |
 | Merge | [`bb827051a6`](https://github.com/ajaxorg/ace/commit/bb827051a618433411c7bc19c5586aa34f340ac9) (2014-10-17T15:25:02+00:00) |
 | Base / Left / Right | [`54e022fa`](https://github.com/ajaxorg/ace/blob/54e022fab25ae40f839e9df13ac5db75d79f98f7/lib/ace/commands/command_manager.js) / [`29023787`](https://github.com/ajaxorg/ace/blob/29023787e52e1d1b9490361448fa96352cdb7a49/lib/ace/commands/command_manager.js) / [`c9785870`](https://github.com/ajaxorg/ace/blob/c97858705db0652eb2e80be92e886730ce8556db/lib/ace/commands/command_manager.js) |
@@ -75,7 +74,7 @@ Pilha de chamadas no momento: command_manager.js:52 → command_manager.js:24 �
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [ajaxorg__ace](https://github.com/ajaxorg/ace) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

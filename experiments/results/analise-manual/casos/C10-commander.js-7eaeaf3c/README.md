@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **A** (conflito direto, mesma função) |
-| Revisores | Italo |
 | Projeto | [tj__commander.js](https://github.com/tj/commander.js) |
 | Merge | [`7eaeaf3c85`](https://github.com/tj/commander.js/commit/7eaeaf3c853f40432c977aa5e506ef31aec1fb10) (2015-06-22T02:39:58+00:00) |
 | Base / Left / Right | [`46f6628c`](https://github.com/tj/commander.js/blob/46f6628ced19c74a06c5557f548bc430d792fbdd/index.js) / [`f68ab32a`](https://github.com/tj/commander.js/blob/f68ab32a2fb6567bd9718286f4877cc2c0743d96/index.js) / [`3261f3e2`](https://github.com/tj/commander.js/blob/3261f3e20f30474f94dab7adadb4a91e03891283/index.js) |
@@ -85,7 +84,7 @@ Estado: `Command#17._name` · registros: 1
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [tj__commander.js](https://github.com/tj/commander.js) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

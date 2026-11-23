@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **C** (só transitivo ou arquivo gerado: suspeito) |
-| Revisores | Italo |
 | Projeto | [eslint__eslint](https://github.com/eslint/eslint) |
 | Merge | [`9398227ac4`](https://github.com/eslint/eslint/commit/9398227ac4be2e8892c3ae8fa023842e13486e61) (2015-02-07T21:09:15+00:00) |
 | Base / Left / Right | [`b3e709b7`](https://github.com/eslint/eslint/blob/b3e709b70863da080563f067ed5c3400d6a5340a/lib/eslint.js) / [`c217187e`](https://github.com/eslint/eslint/blob/c217187e9745bc11f47764e2f25304338fac9998/lib/eslint.js) / [`accca0b7`](https://github.com/eslint/eslint/blob/accca0b7d21d96e33fe542b87bf79ac17d541f08/lib/eslint.js) |
@@ -42,7 +41,7 @@ Pilha de chamadas no momento: eslint.js:666 → eslint.js:681
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [eslint__eslint](https://github.com/eslint/eslint) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

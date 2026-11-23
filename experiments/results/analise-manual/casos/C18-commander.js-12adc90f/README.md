@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **B** (conflito direto, funções diferentes ou sem correspondência) |
-| Revisores | Felipe |
 | Projeto | [tj__commander.js](https://github.com/tj/commander.js) |
 | Merge | [`12adc90fa9`](https://github.com/tj/commander.js/commit/12adc90fa9b47d39fc57d11095bf08a26ebe20d5) (2012-07-03T18:17:15+00:00) |
 | Base / Left / Right | [`df60805f`](https://github.com/tj/commander.js/blob/df60805f235f5d32989ff5f826ef5a40a1a718a2/lib/commander.js) / [`f4fd782a`](https://github.com/tj/commander.js/blob/f4fd782ade18bbe2ab759cd7febf41c06aba29aa/lib/commander.js) / [`31188715`](https://github.com/tj/commander.js/blob/31188715678e4436150e5196f34c608b82d63755/lib/commander.js) |
@@ -64,7 +63,7 @@ Pilha de chamadas no momento: commander.js:347 → commander.js:580 → commande
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [tj__commander.js](https://github.com/tj/commander.js) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

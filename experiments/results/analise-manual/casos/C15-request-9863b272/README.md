@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **B** (conflito direto, funções diferentes ou sem correspondência) |
-| Revisores | Felipe, Priscila |
 | Projeto | [request__request](https://github.com/request/request) |
 | Merge | [`9863b27238`](https://github.com/request/request/commit/9863b27238fef25ff86a37f39ff3a0666755d1d1) (2014-10-16T16:02:50+00:00) |
 | Base / Left / Right | [`105e74bd`](https://github.com/request/request/blob/105e74bd5cff49a03b672bb5f247ff3c810ded65/request.js) / [`3622e712`](https://github.com/request/request/blob/3622e7122075d6463c08d74c60144f2ca502c72c/request.js) / [`4deda9dd`](https://github.com/request/request/blob/4deda9dd127054ba523b7e6ab5289198957f781d/request.js) |
@@ -662,7 +661,7 @@ Pilha de chamadas no momento: request.js:1216
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [request__request](https://github.com/request/request) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

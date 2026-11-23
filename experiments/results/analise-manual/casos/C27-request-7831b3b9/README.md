@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **C** (só transitivo ou arquivo gerado: suspeito) |
-| Revisores | Felipe, Priscila |
 | Projeto | [request__request](https://github.com/request/request) |
 | Merge | [`7831b3b99b`](https://github.com/request/request/commit/7831b3b99b926790df657f6cb17da79d444452ea) (2014-10-01T16:16:07+00:00) |
 | Base / Left / Right | [`95569d55`](https://github.com/request/request/blob/95569d5509e9c25db678198cbc0183c86cd0c2d3/request.js) / [`4ed9789f`](https://github.com/request/request/blob/4ed9789f296f438c2d4d013da60c61a9e20cf273/request.js) / [`cc0c6a98`](https://github.com/request/request/blob/cc0c6a9804ee03eb1530c752a59c0d3a53527f6b/request.js) |
@@ -29,7 +28,7 @@ Estado: `Object#85.error_connecting`, `Object#91.error_connecting`, `Object#107.
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [request__request](https://github.com/request/request) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

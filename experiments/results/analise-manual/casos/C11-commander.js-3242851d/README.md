@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **A** (conflito direto, mesma função) |
-| Revisores | Italo, Priscila |
 | Projeto | [tj__commander.js](https://github.com/tj/commander.js) |
 | Merge | [`3242851db8`](https://github.com/tj/commander.js/commit/3242851db882cf844991e2deca0d303b45295fe0) (2014-07-28T23:26:47+00:00) |
 | Base / Left / Right | [`fa2ce5cc`](https://github.com/tj/commander.js/blob/fa2ce5cce27e85f736b0c41d9b7dafe209cdb4d7/index.js) / [`4e839c2f`](https://github.com/tj/commander.js/blob/4e839c2fc58f7356c3e63894226f7d9b72abafc0/index.js) / [`fa3aa3fc`](https://github.com/tj/commander.js/blob/fa3aa3fc008df846e19ea90746b10c176abff254/index.js) |
@@ -31,7 +30,7 @@ Pilha de chamadas no momento: index.js:373
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [tj__commander.js](https://github.com/tj/commander.js) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

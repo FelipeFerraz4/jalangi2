@@ -1,9 +1,9 @@
 """Gera experiments/results/resultados.xlsx, que concentra todos os resultados do trabalho.
 
 Abas: Leia-me, Funil, Resultado consolidado, Projetos, Amostras, Conflitos, Mesma função, Casos (29),
-Análise - <revisor> (uma por pessoa), Concordância, Amanda (OA), DF-CF (13), Traduções (Italo), Toys.
+Conflitos sorteados, Amanda (OA), DF-CF (13), Traduções (Italo), Toys.
 
-Se o arquivo já existir, o que foi preenchido nas abas "Análise - <revisor>" é lido e mantido (casado pelo
+Se o arquivo já existir, o que foi preenchido na aba "Conflitos sorteados" é lido e mantido (casado pelo
 número do caso), então a planilha pode ser regenerada depois de a análise manual começar.
 
 Entradas:
@@ -32,7 +32,6 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
-REVIEWERS = ['Felipe', 'Italo', 'Priscila']
 GITHUB = 'https://github.com/FelipeFerraz4/jalangi2/tree/{branch}/experiments/results/analise-manual/'
 GENERATED = re.compile(r'(^|/)(dist|build|out|vendor)/|\.min\.js$|(^|/)bundle')
 
@@ -56,13 +55,9 @@ FILL_COLUMNS = [
     ('Tempo gasto (min)', 10, None),
     ('Observações', 40, None),
 ]
-FINAL_COLUMNS = ['Veredito final (após discussão)', 'Tipo final']
 SAMPLE_SHEET = 'Conflitos sorteados'
 SAMPLE_SEED = 20261123  # 1 conflito sorteado por amostra; semente fixa para o sorteio ser reproduzível
 SAMPLE_FILL = [FILL_COLUMNS[0], FILL_COLUMNS[2], FILL_COLUMNS[4], FILL_COLUMNS[5], FILL_COLUMNS[6], FILL_COLUMNS[7]]
-INFO_COLUMNS = [('Caso', 7), ('Grupo', 7), ('Revisores', 16), ('Projeto', 22), ('Arquivo', 30), ('Pasta no GitHub', 18),
-                ('Executado por', 12), ('OA', 5), ('DF', 5), ('CF', 5), ('Pares de linhas', 8), ('Diretos', 8), ('Transitivos', 10),
-                ('Via parâmetro', 10), ('Mesma função? (Newminerjs)', 16), ('Conflitos detectados (resumo)', 50)]
 
 
 def read_csv(path, sep=';'):
@@ -127,22 +122,6 @@ def keep_manual(path):
         wb = load_workbook(path)
     except Exception:
         return kept
-    names = [h for h, _, _ in FILL_COLUMNS]
-    for who in REVIEWERS:
-        name = f'Análise - {who}'
-        if name not in wb.sheetnames:
-            continue
-        ws = wb[name]
-        heads = [c.value for c in ws[1]]
-        if 'Caso' not in heads:
-            continue
-        ci = heads.index('Caso')
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row or not row[ci]:
-                continue
-            vals = {h: row[heads.index(h)] for h in names if h in heads and row[heads.index(h)] not in (None, '')}
-            if vals:
-                kept.setdefault(who, {})[row[ci]] = vals
     if SAMPLE_SHEET in wb.sheetnames:
         ws = wb[SAMPLE_SHEET]
         heads = [c.value for c in ws[1]]
@@ -155,17 +134,6 @@ def keep_manual(path):
                 vals = {h: row[heads.index(h)] for h in names if h in heads and row[heads.index(h)] not in (None, '')}
                 if vals:
                     kept.setdefault('_sorteio', {})[row[ci]] = vals
-    if 'Concordância' in wb.sheetnames:
-        ws = wb['Concordância']
-        heads = [c.value for c in ws[1]]
-        if 'Caso' in heads:
-            ci = heads.index('Caso')
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                if not row or not row[ci] or not str(row[ci]).startswith('C'):
-                    continue
-                vals = {h: row[heads.index(h)] for h in FINAL_COLUMNS if h in heads and row[heads.index(h)] not in (None, '')}
-                if vals:
-                    kept.setdefault('_final', {})[row[ci]] = vals
     return kept
 
 
@@ -204,7 +172,7 @@ def main():
     ws.column_dimensions['B'].width = 110
     title(ws, 'Resultados: análise dinâmica de conflitos de merge (OA, DF, CF) com Jalangi2')
     lines = [
-        ('Gerada por', 'experiments/results/gerar_planilha.py (não edite as abas de dados à mão: regenere). As abas "Análise - <nome>" podem ser preenchidas e são mantidas ao regenerar.'),
+        ('Gerada por', 'experiments/results/gerar_planilha.py (não edite as abas de dados à mão: regenere). A aba "Conflitos sorteados" pode ser preenchida e é mantida ao regenerar.'),
         ('Suítes', f'commit {suites["commit"]}, coletadas em {suites["gerado_em"][:10]} (experiments/results/coletar_suites.js)'),
         ('', ''),
         ('Funil', 'Da coleta Newminerjs (merges até 2015) até as amostras com conflito.'),
@@ -213,18 +181,15 @@ def main():
         ('Amostras', 'Uma linha por amostra do lote (976): execução, erro, cobertura de L e R, OA/DF/CF.'),
         ('Conflitos', 'Um registro de conflito por linha (375), com a direção e o caso da análise manual.'),
         ('Mesma função', 'Cruzamento com a análise estática do Newminerjs ("Left e Right alteraram a mesma função?").'),
-        ('Casos (29)', 'As 29 amostras com conflito, com grupo, revisores e link da pasta no GitHub.'),
-        ('Análise - <nome>', 'A análise manual de cada revisor: 15 casos por pessoa. Preencha só as colunas amarelas.'),
+        ('Casos (29)', 'As 29 amostras com conflito, com grupo e link da pasta no GitHub.'),
         ('Conflitos sorteados', 'Um conflito sorteado de cada amostra (29), com as duas linhas, o código e de onde veio a branch, para avaliar conflito a conflito. Preencha só as colunas amarelas.'),
-        ('Concordância', 'Junta automaticamente as respostas dos três revisores; nos casos com dois revisores mostra se concordam. A coluna "Veredito final" é preenchida depois da discussão.'),
         ('Amanda (OA)', '72 casos de Overriding Assignment do SCAz.js (Moraes et al., SBLP 2024).'),
         ('DF-CF (13)', '13 testes de DF e CF do conflict-static-analysis (Santos et al., 2023), traduções do Italo.'),
         ('Traduções (Italo)', 'Os mesmos casos nas traduções A (JSweet), B (JSweet + IA) e C (só IA), mais 6 testes de confluência SVFA.'),
         ('Toys', '33 programas pequenos que exercitam cada regra da análise (sem gabarito).'),
         ('', ''),
-        ('Como fazer a análise manual', '1. Abra a sua aba. 2. Para cada caso, abra a pasta no GitHub (coluna "Pasta no GitHub"): o README.md mostra cada conflito com o código das linhas de L, R e base; base.js, left.js, right.js e merge.js são as quatro versões e diff_left/diff_right o que cada lado mudou. 3. Decida se a interferência é real: o comportamento do merge depende das duas mudanças juntas de um jeito que nenhuma das duas produz sozinha? 4. Preencha as colunas amarelas.'),
+        ('Como fazer a análise manual', '1. Abra a aba "Conflitos sorteados": uma linha por caso, com um conflito sorteado. 2. Abra a pasta do caso (coluna "Pasta no GitHub"): merge_anotado.js mostra [L], [R] e o papel de cada linha nos conflitos (◀ #n, o mesmo número da aba); diff_left/diff_right mostram o que cada lado mudou. 3. Se uma linha "herdou" a branch, julgue a linha indicada. Compare base + só L, base + só R e o merge: o merge tem um comportamento que nenhum dos dois produz sozinho, ou quebra o que um lado queria? 4. Preencha as colunas amarelas.'),
         ('Grupos', 'A: conflito direto e mesma função (candidatos mais fortes). B: conflito direto em funções diferentes (interferência indireta). C: só transitivo ou arquivo gerado (suspeitos de falso positivo).'),
-        ('Divisão', '29 casos, 15 por pessoa: 16 casos têm dois revisores (para medir a concordância; 6, 5 e 5 por dupla) e 13 têm um.'),
         ('Leitura de DF/OA/CF', 'DF: a linha de um lado produz um valor que a linha do outro lado consome. OA: a escrita de um lado sobrescreve a do outro com valor diferente. CF: valores de L e de R se encontram num comando da base. Direto: o valor vai da escrita ao uso; transitivo: passa por outros valores; via parâmetro: entrou numa função por parâmetro.'),
     ]
     for i, (k, v) in enumerate(lines, 3):
@@ -370,108 +335,23 @@ def main():
 
     # ---------------- Casos (29) ----------------
     ws = wb.create_sheet('Casos (29)')
-    cols = ['Caso', 'Grupo', 'Revisores', 'Projeto', 'Arquivo', 'Pasta no GitHub', 'Merge', 'Executado por', 'OA', 'DF', 'CF', 'Registros',
+    cols = ['Caso', 'Grupo', 'Projeto', 'Arquivo', 'Pasta no GitHub', 'Merge', 'Executado por', 'OA', 'DF', 'CF', 'Registros',
             'Pares de linhas', 'Diretos', 'Transitivos', 'Via parâmetro', 'Mesma função? (Newminerjs)', 'Conflitos detectados (resumo)']
-    header(ws, 1, cols, [7, 7, 16, 22, 30, 18, 12, 12, 5, 5, 5, 9, 8, 8, 10, 10, 30, 60])
+    header(ws, 1, cols, [7, 7, 22, 30, 18, 12, 12, 5, 5, 5, 9, 8, 8, 10, 10, 30, 60])
     for i, c in enumerate(casos, 2):
-        vals = [c['id'], c['grupo'], ' + '.join(c['revisores']), c['projeto'], c['arquivo'], None, c['merge'][:10],
+        vals = [c['id'], c['grupo'], c['projeto'], c['arquivo'], None, c['merge'][:10],
                 'testes' if c['modo'] == 'testes' else 'arquivo', c['OA'], c['DF'], c['CF'], c['registros'], c['pares'], c['diretos'],
                 c['transitivos'], c['via_parametro'], c['mesma_funcao_detalhe'], c['pares_resumo']]
         for k, v in enumerate(vals, 1):
             cell = ws.cell(row=i, column=k, value=v)
             cell.alignment = WRAP
-        link = ws.cell(row=i, column=6, value=c['pasta'].split('/')[-1])
+        link = ws.cell(row=i, column=5, value=c['pasta'].split('/')[-1])
         link.hyperlink = gh + c['pasta']
         link.font = Font(color='0563C1', underline='single')
-        ws.cell(row=i, column=7).hyperlink = c['url']
+        ws.cell(row=i, column=6).hyperlink = c['url']
         ws.cell(row=i, column=2).fill = GROUP[c['grupo']]
     ws.freeze_panes = 'B2'
     ws.auto_filter.ref = f'A1:{get_column_letter(len(cols))}{len(casos) + 1}'
-
-    # ---------------- Análise - <revisor> ----------------
-    info_heads = [h for h, _ in INFO_COLUMNS]
-    fill_heads = [h for h, _, _ in FILL_COLUMNS]
-    for who in REVIEWERS:
-        ws = wb.create_sheet(f'Análise - {who}')
-        mine = [c for c in casos if who in c['revisores']]
-        header(ws, 1, info_heads + fill_heads, [w for _, w in INFO_COLUMNS] + [w for _, w, _ in FILL_COLUMNS])
-        for k in range(len(info_heads) + 1, len(info_heads) + len(fill_heads) + 1):
-            ws.cell(row=1, column=k).fill = PatternFill('solid', fgColor='B7791F')
-        for i, c in enumerate(mine, 2):
-            other = [p for p in c['revisores'] if p != who]
-            vals = [c['id'], c['grupo'], ('com ' + other[0]) if other else 'só você', c['projeto'], c['arquivo'], None,
-                    'testes' if c['modo'] == 'testes' else 'arquivo', c['OA'], c['DF'], c['CF'], c['pares'], c['diretos'], c['transitivos'],
-                    c['via_parametro'], c['mesma_funcao'], c['pares_resumo']]
-            for k, v in enumerate(vals, 1):
-                ws.cell(row=i, column=k, value=v).alignment = WRAP
-            link = ws.cell(row=i, column=6, value='abrir pasta')
-            link.hyperlink = gh + c['pasta']
-            link.font = Font(color='0563C1', underline='single')
-            ws.cell(row=i, column=2).fill = GROUP[c['grupo']]
-            for k, h in enumerate(fill_heads, len(info_heads) + 1):
-                cell = ws.cell(row=i, column=k, value=kept.get(who, {}).get(c['id'], {}).get(h))
-                cell.fill = FILL_IN
-                cell.alignment = WRAP
-            ws.row_dimensions[i].height = 45
-        last = len(mine) + 1
-        for k, (h, _, options) in enumerate(FILL_COLUMNS, len(info_heads) + 1):
-            if options:
-                dv = DataValidation(type='list', formula1='"' + ','.join(options) + '"', allow_blank=True)
-                dv.error = 'Escolha uma opção da lista'
-                ws.add_data_validation(dv)
-                dv.add(f'{get_column_letter(k)}2:{get_column_letter(k)}{last}')
-        ws.freeze_panes = 'C2'
-        ws.auto_filter.ref = f'A1:{get_column_letter(len(info_heads) + len(fill_heads))}{last}'
-
-    # ---------------- Concordância ----------------
-    ws = wb.create_sheet('Concordância')
-    verdict_col = get_column_letter(len(info_heads) + 1)
-    type_col = get_column_letter(len(info_heads) + 2)
-    cols = ['Caso', 'Grupo', 'Revisores'] + [f'{p}: interferência' for p in REVIEWERS] + [f'{p}: tipo' for p in REVIEWERS] + ['Concordam?', 'Veredito final (após discussão)', 'Tipo final']
-    header(ws, 1, cols, [7, 7, 18, 14, 14, 14, 11, 11, 11, 13, 22, 12])
-    for i, c in enumerate(casos, 2):
-        ws.cell(row=i, column=1, value=c['id'])
-        ws.cell(row=i, column=2, value=c['grupo']).fill = GROUP[c['grupo']]
-        ws.cell(row=i, column=3, value=' + '.join(c['revisores']))
-        for k, p in enumerate(REVIEWERS):
-            for off, col in ((4, verdict_col), (7, type_col)):
-                ref = f"'Análise - {p}'"
-                f = f'=IF(ISNUMBER(SEARCH("{p}",$C{i})),IFERROR(INDEX({ref}!${col}:${col},MATCH($A{i},{ref}!$A:$A,0))&"",""),"—")'
-                ws.cell(row=i, column=off + k, value=f)
-        if len(c['revisores']) == 2:
-            a_, b_ = [get_column_letter(4 + REVIEWERS.index(p)) for p in c['revisores']]
-            ws.cell(row=i, column=10, value=f'=IF(OR({a_}{i}="",{b_}{i}=""),"pendente",IF({a_}{i}={b_}{i},"sim","não"))')
-        else:
-            ws.cell(row=i, column=10, value='um revisor')
-        for k, h in ((11, FINAL_COLUMNS[0]), (12, FINAL_COLUMNS[1])):
-            ws.cell(row=i, column=k, value=kept.get('_final', {}).get(c['id'], {}).get(h)).fill = FILL_IN
-    last = len(casos) + 1
-    ws.conditional_formatting.add(f'J2:J{last}', CellIsRule(operator='equal', formula=['"não"'], fill=PatternFill('solid', fgColor='F4CCCC')))
-    ws.conditional_formatting.add(f'J2:J{last}', CellIsRule(operator='equal', formula=['"sim"'], fill=PatternFill('solid', fgColor='D9EAD3')))
-    dv = DataValidation(type='list', formula1='"Sim,Não,Dúvida"', allow_blank=True)
-    ws.add_data_validation(dv)
-    dv.add(f'K2:K{last}')
-    dv2 = DataValidation(type='list', formula1='"OA,DF,CF,Mais de um,Nenhum"', allow_blank=True)
-    ws.add_data_validation(dv2)
-    dv2.add(f'L2:L{last}')
-    s = last + 2
-    ws.cell(row=s, column=1, value='Resumo').font = Font(bold=True, size=12)
-    summary = [
-        ('Casos com dois revisores', f'=COUNTIF(J2:J{last},"sim")+COUNTIF(J2:J{last},"não")+COUNTIF(J2:J{last},"pendente")'),
-        ('Já avaliados pelos dois', f'=COUNTIF(J2:J{last},"sim")+COUNTIF(J2:J{last},"não")'),
-        ('Concordam', f'=COUNTIF(J2:J{last},"sim")'),
-        ('Concordância (%)', f'=IFERROR(C{s + 3}/C{s + 2},"")'),
-        ('Veredito final: interferência real', f'=COUNTIF(K2:K{last},"Sim")'),
-        ('Veredito final: falso positivo', f'=COUNTIF(K2:K{last},"Não")'),
-        ('Veredito final: dúvida', f'=COUNTIF(K2:K{last},"Dúvida")'),
-    ]
-    for j, (k, f) in enumerate(summary, s + 1):
-        ws.cell(row=j, column=1, value=k)
-        ws.merge_cells(start_row=j, start_column=1, end_row=j, end_column=2)
-        c = ws.cell(row=j, column=3, value=f)
-        if '%' in k:
-            c.number_format = '0%'
-    ws.freeze_panes = 'D2'
 
     # ---------------- Conflitos sorteados ----------------
     ws = wb.create_sheet(SAMPLE_SHEET)

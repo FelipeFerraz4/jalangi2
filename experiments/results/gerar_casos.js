@@ -3,7 +3,7 @@
 //
 //   analise-manual/casos/<Cnn>-<projeto>-<merge8>/
 //     README.md      o caso: merge, arquivo, como foi executado, conflitos agrupados por par de linhas
-//                    (com o código de L, R e base e a pilha de chamadas), grupo e revisores
+//                    (com o código de L, R e base e a pilha de chamadas) e grupo
 //     base.js left.js right.js merge.js   as quatro versões do arquivo (ancestral, pais e merge)
 //     diff_left.diff diff_right.diff      base → left e base → right
 //   analise-manual/casos.json             metadados de todos os casos (usado pela planilha)
@@ -12,8 +12,7 @@
 //   A  conflito direto (ou OA) e Left e Right alteraram a mesma função (Newminerjs): candidato mais forte
 //   B  conflito direto, em funções diferentes ou sem correspondência estática: interferência indireta
 //   C  só conflitos transitivos, ou arquivo gerado/minificado: suspeito de falso positivo
-// Revisores: 3 pessoas, 15 casos cada (45 revisões para 29 casos): 16 casos têm dois revisores, para medir
-// a concordância, e 13 têm um. Os casos duplos são escolhidos alternando dentro de cada grupo.
+// A análise manual é feita por conflito: a planilha sorteia um conflito de cada caso (aba "Conflitos sorteados").
 //
 // Uso: node experiments/results/gerar_casos.js [--wild ~/Documentos/wild] [--run lote]
 const fs = require('fs');
@@ -28,7 +27,6 @@ const opt = (n, d) => { const i = args.indexOf(n); return i === -1 ? d : args[i 
 const W = opt('--wild', process.env.WILD_HOME || path.join(os.homedir(), 'Documentos', 'wild'));
 const RUN = path.join(W, 'execucoes', opt('--run', 'lote'));
 const OUT = path.join(__dirname, 'analise-manual');
-const REVIEWERS = ['Felipe', 'Italo', 'Priscila'];
 const GENERATED = /(^|\/)(dist|build|out|vendor)\/|\.min\.js$|(^|\/)bundle/;
 const n = x => parseInt(x || '0', 10) || 0;
 
@@ -38,23 +36,6 @@ function groupOf(r, conflicts, sameFn) {
     const strong = conflicts.some(c => c.natureza === 'direto' || c.tipo === 'OA');
     if (!strong || GENERATED.test(r.arquivo)) return 'C';
     return sameFn === 'Sim' ? 'A' : 'B';
-}
-
-// 15 casos por pessoa: um caso sim, outro não (e os últimos, se faltar) recebe dois revisores, até 16 duplos.
-// Os duplos giram entre os três pares (6, 5 e 5 casos por par), para a concordância poder ser medida entre
-// todas as duplas; os simples vão para quem estiver com menos casos
-function assignReviewers(cases) {
-    const load = Object.fromEntries(REVIEWERS.map(p => [p, 0]));
-    const PAIRS = [[0, 1], [0, 2], [1, 2]].map(([a, b]) => [REVIEWERS[a], REVIEWERS[b]]);
-    let doubles = 0;
-    cases.forEach((c, i) => {
-        const needDoubles = 16 - doubles;
-        const two = needDoubles > 0 && (i % 2 === 0 || needDoubles >= cases.length - i);
-        const who = two ? PAIRS[doubles++ % 3] : [REVIEWERS.slice().sort((a, b) => load[a] - load[b] || REVIEWERS.indexOf(b) - REVIEWERS.indexOf(a))[0]];
-        who.forEach(p => load[p]++);
-        c.revisores = who;
-    });
-    return load;
 }
 
 // Direção de cada registro, a partir da chave (o CSV só traz a linha de L e a de R):
@@ -149,7 +130,6 @@ function main() {
         return { r, cs, x, grupo: groupOf(r, cs, x.mesma_funcao) };
     }).sort((a, b) => order[a.grupo] - order[b.grupo] || (a.r.projeto < b.r.projeto ? -1 : a.r.projeto > b.r.projeto ? 1 : 0) || b.cs.length - a.cs.length);
     cases.forEach((c, i) => { c.id = 'C' + String(i + 1).padStart(2, '0'); });
-    const load = assignReviewers(cases);
 
     fs.rmSync(path.join(OUT, 'casos'), { recursive: true, force: true });
     const meta = [];
@@ -200,7 +180,6 @@ function main() {
         md.push(`# ${c.id}: ${short}, \`${r.arquivo}\``, '');
         md.push(`| | |`, `|---|---|`);
         md.push(`| Grupo | **${c.grupo}** (${{ A: 'conflito direto, mesma função', B: 'conflito direto, funções diferentes ou sem correspondência', C: 'só transitivo ou arquivo gerado: suspeito' }[c.grupo]}) |`);
-        md.push(`| Revisores | ${c.revisores.join(', ')} |`);
         md.push(`| Projeto | [${r.projeto}](${url}) |`);
         md.push(`| Merge | [\`${m.merge_commit.slice(0, 10)}\`](${url}/commit/${m.merge_commit}) (${m.merge_date}) |`);
         md.push(`| Base / Left / Right | [\`${m.ancestor_commit.slice(0, 8)}\`](${url}/blob/${m.ancestor_commit}/${r.arquivo}) / [\`${m.left_commit.slice(0, 8)}\`](${url}/blob/${m.left_commit}/${r.arquivo}) / [\`${m.right_commit.slice(0, 8)}\`](${url}/blob/${m.right_commit}/${r.arquivo}) |`);
@@ -232,12 +211,12 @@ function main() {
             md.push('');
         }
         writeAnnotated(dir, r, m, pairs, mergeLines);
-        md.push('## Para preencher', '', 'Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.', '');
+        md.push('## Para preencher', '', 'Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.', '');
         md.push(`---`, `Arquivos de código copiados de [${r.projeto}](${url}) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.`);
         fs.writeFileSync(path.join(dir, 'README.md'), md.join('\n') + '\n');
 
         meta.push({
-            id: c.id, grupo: c.grupo, revisores: c.revisores, pasta: path.relative(OUT, dir), sample_id: r.sample_id, projeto: r.projeto, arquivo: r.arquivo,
+            id: c.id, grupo: c.grupo, pasta: path.relative(OUT, dir), sample_id: r.sample_id, projeto: r.projeto, arquivo: r.arquivo,
             merge: m.merge_commit, url: `${url}/commit/${m.merge_commit}`, modo: r.modo, comando_testes: testCmd,
             OA: n(r.OA), DF: n(r.DF), CF: n(r.CF), registros: cs.length, pares: pairs.length,
             diretos: cs.filter(k => k.natureza === 'direto').length, transitivos: cs.filter(k => k.natureza === 'transitivo').length,
@@ -261,23 +240,21 @@ function main() {
     idx.push('# Análise manual dos conflitos do lote', '');
     idx.push(`As ${meta.length} amostras em que a análise dinâmica detectou conflito no lote completo (976 amostras de merges reais, coleta Newminerjs). Cada pasta tem tudo o que é preciso para julgar o caso sem rodar nada.`, '');
     idx.push('## Como fazer', '');
-    idx.push('1. Abra a planilha [`../resultados.xlsx`](../resultados.xlsx) (ou a cópia no Google Sheets), aba **Análise - \\<seu nome\\>**: lá estão os seus 15 casos.');
-    idx.push('2. Para cada caso, abra a pasta abaixo. O `README.md` mostra cada conflito com o código das linhas de L, R e base (linhas do `merge.js`, a versão executada). `base.js`, `left.js`, `right.js` e `merge.js` são as quatro versões do arquivo; `diff_left.diff` e `diff_right.diff` mostram o que cada lado mudou.');
-    idx.push('3. Decida se a interferência é **real**: o comportamento do merge depende das duas mudanças juntas de um jeito que nenhuma delas produz sozinha? Ou é um falso positivo (por exemplo, uma refatoração que não muda o valor, um fluxo transitivo que não carrega a mudança, um arquivo gerado)?');
-    idx.push('4. Preencha as colunas amarelas da sua aba. Não precisa conversar antes: nos casos com dois revisores, a aba **Concordância** compara as respostas, e só os desacordos são discutidos.', '');
+    idx.push('A análise é **por conflito**: um conflito foi sorteado de cada caso (29 no total, semente fixa), e cada um é julgado como interferência real ou falso positivo.', '');
+    idx.push('1. Abra a planilha [`../resultados.xlsx`](../resultados.xlsx), aba **Conflitos sorteados**: uma linha por caso, com o conflito sorteado (o número # é o do README do caso), as duas linhas, o código e de onde veio a branch de cada linha.');
+    idx.push('2. Abra a pasta do caso. `merge_anotado.js` é o `merge.js` com `[L]`, `[R]` e o papel de cada linha nos conflitos (`◀ #n`); o `README.md` lista os conflitos; `diff_left.diff` e `diff_right.diff` mostram o que cada lado mudou; `base.js`, `left.js`, `right.js` e `merge.js` são as quatro versões.');
+    idx.push('3. Se uma linha do conflito não foi alterada por aquele lado ("herdou"), julgue a mudança verdadeira, isto é, a linha indicada. Compare base + só L, base + só R e o merge: o merge tem um comportamento que nenhum dos dois produz sozinho, ou quebra o que um dos lados queria?');
+    idx.push('4. Preencha as colunas amarelas da linha do caso.', '');
     idx.push('**Grupos.** A: conflito direto e Left e Right alteraram a mesma função (candidatos mais fortes). B: conflito direto em funções diferentes ou sem correspondência estática (interferência indireta: o que distingue a análise dinâmica). C: só conflitos transitivos, ou arquivo gerado/minificado (suspeitos de falso positivo).', '');
-    idx.push('**Divisão.** 15 casos por pessoa: 16 casos têm dois revisores (6, 5 e 5 por dupla), para medir a concordância, e 13 têm um.', '');
-    idx.push('| Caso | Grupo | Revisores | Projeto | Arquivo | Executado por | OA/DF/CF | Pares | Mesma função? |', '|---|:-:|---|---|---|---|---|--:|---|');
+    idx.push('| Caso | Grupo | Projeto | Arquivo | Executado por | OA/DF/CF | Conflitos | Mesma função? |', '|---|:-:|---|---|---|---|--:|---|');
     for (const c of meta) {
-        idx.push(`| [${c.id}](${c.pasta.replace(/^casos\//, 'casos/')}) | ${c.grupo} | ${c.revisores.join(' + ')} | ${c.projeto.split('__')[1]} | \`${c.arquivo}\` | ${c.modo === 'testes' ? 'testes' : 'arquivo'} | ${c.OA}/${c.DF}/${c.CF} | ${c.pares} | ${c.mesma_funcao || '—'} |`);
+        idx.push(`| [${c.id}](${c.pasta.replace(/^casos\//, 'casos/')}) | ${c.grupo} | ${c.projeto.split('__')[1]} | \`${c.arquivo}\` | ${c.modo === 'testes' ? 'testes' : 'arquivo'} | ${c.OA}/${c.DF}/${c.CF} | ${c.pares} | ${c.mesma_funcao || '—'} |`);
     }
-    idx.push('', '| Revisor | Casos |', '|---|---|');
-    for (const p of REVIEWERS) idx.push(`| ${p} | ${meta.filter(c => c.revisores.includes(p)).map(c => c.id).join(', ')} |`);
+    idx.push('', 'Histórico: uma primeira rodada por amostra, com três revisores, foi deixada de lado; as respostas preenchidas nela (Italo, 15 casos) estão em [`historico/`](historico/) e a conferência em [`CONFERENCIA_ITALO.md`](CONFERENCIA_ITALO.md).');
     idx.push('', 'Gerado por `experiments/results/gerar_casos.js` a partir do lote. Os arquivos de código pertencem aos autores de cada projeto e seguem a licença dele; estão aqui só para a pesquisa.');
     fs.writeFileSync(path.join(OUT, 'README.md'), idx.join('\n') + '\n');
     console.log(`${meta.length} casos em ${path.relative(process.cwd(), path.join(OUT, 'casos'))}`);
-    console.log('grupos:', meta.reduce((a, c) => (a[c.grupo] = (a[c.grupo] || 0) + 1, a), {}), '| casos por revisor:', load,
-        '| com dois revisores:', meta.filter(c => c.revisores.length === 2).length);
+    console.log('grupos:', meta.reduce((a, c) => (a[c.grupo] = (a[c.grupo] || 0) + 1, a), {}));
 }
 
 main();

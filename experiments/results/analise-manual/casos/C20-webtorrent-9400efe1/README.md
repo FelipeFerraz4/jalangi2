@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **B** (conflito direto, funções diferentes ou sem correspondência) |
-| Revisores | Priscila |
 | Projeto | [webtorrent__webtorrent](https://github.com/webtorrent/webtorrent) |
 | Merge | [`9400efe10f`](https://github.com/webtorrent/webtorrent/commit/9400efe10f02b36c6bb10862bacbbc88b932cddb) (2015-07-03T02:20:33+00:00) |
 | Base / Left / Right | [`513e6fa1`](https://github.com/webtorrent/webtorrent/blob/513e6fa11de121d083da60ed3cb959dad2257b23/lib/torrent.js) / [`05932cd6`](https://github.com/webtorrent/webtorrent/blob/05932cd6f9bed3c908a9c318824bb66f5039bf84/lib/torrent.js) / [`9df26f6f`](https://github.com/webtorrent/webtorrent/blob/9df26f6fcd8e6fb32a81127cfd6bb84192604fa5/lib/torrent.js) |
@@ -110,7 +109,7 @@ Estado: `Torrent#545.parsedTorrent`, `Torrent#661.parsedTorrent`, `Torrent#711.p
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [webtorrent__webtorrent](https://github.com/webtorrent/webtorrent) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.

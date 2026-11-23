@@ -3,7 +3,6 @@
 | | |
 |---|---|
 | Grupo | **A** (conflito direto, mesma função) |
-| Revisores | Felipe |
 | Projeto | [winstonjs__winston](https://github.com/winstonjs/winston) |
 | Merge | [`d5e6297f73`](https://github.com/winstonjs/winston/commit/d5e6297f7373964236c8138e36cbb55a5e6038a9) (2014-12-30T18:56:09+00:00) |
 | Base / Left / Right | [`9004938e`](https://github.com/winstonjs/winston/blob/9004938e842ea315aae6b32eca3c80a98ffa95ae/lib/winston/common.js) / [`8295982d`](https://github.com/winstonjs/winston/blob/8295982d0d7680a3378acfcb93d8c0a42273ddab/lib/winston/common.js) / [`39ea9901`](https://github.com/winstonjs/winston/blob/39ea990176e884ef00dd115eaede9a22d55d1f4f/lib/winston/common.js) |
@@ -1139,7 +1138,7 @@ Pilha de chamadas no momento: common.js:214
 
 ## Para preencher
 
-Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.
+Na planilha `experiments/results/resultados.xlsx`, aba **Conflitos sorteados**, linha deste caso: um destes conflitos foi sorteado para a análise manual.
 
 ---
 Arquivos de código copiados de [winstonjs__winston](https://github.com/winstonjs/winston) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.
