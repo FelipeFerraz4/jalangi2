@@ -5,6 +5,7 @@ Limitações da análise que já têm causa conhecida e opções de correção, 
 | # | Item | Registrado em | Estado |
 |---|---|---|---|
 | 1 | [Confluência interprocedural através de estado que sobrevive à chamada](#1-confluência-interprocedural-através-de-estado-que-sobrevive-à-chamada) | 21/11/2026 | **aguardando decisão** |
+| 2 | [Falsos positivos sistemáticos: pilha de chamadas, comandos de várias linhas e linhas iguais nos dois lados](#2-falsos-positivos-sistemáticos-pilha-de-chamadas-comandos-de-várias-linhas-e-linhas-iguais-nos-dois-lados) | 23/11/2026 | **aguardando decisão** |
 
 ---
 
@@ -82,3 +83,42 @@ Com a opção C implementada:
 ### Decisão
 
 *A ser tomada.* Para a apresentação e o texto, o caso entra como **limitação conhecida da análise**, com a observação de que o teste correspondente está desligado (`@Ignore`) no `conflict-static-analysis` desde 2021, sem motivo registrado. Não se deve afirmar que é uma limitação também do Java antes de rodar o teste (veja "Situação de referência").
+
+---
+
+## 2. Falsos positivos sistemáticos: pilha de chamadas, comandos de várias linhas e linhas iguais nos dois lados
+
+### Origem
+
+A conferência da análise manual do Italo (`results/analise-manual/CONFERENCIA_ITALO.md`) mostrou que, em parte dos falsos positivos, o problema não é só "a mudança preserva o valor": são três regras da análise e do mapa que atribuem a uma branch código que ela não mudou de verdade.
+
+### Os três mecanismos
+
+| # | Mecanismo | Onde está | Casos | O que acontece |
+|---|---|---|---|---|
+| a | **Pilha de chamadas** | `effectiveBranch` / `stackBranch` em `analysis_dataflow.js` (regra interprocedural de Moraes et al.) | C16, C19 (e C17, que é real) | Uma operação numa linha da base, executada dentro de uma chamada feita numa linha alterada, herda a branch dessa linha. Se a alteração da linha da chamada é cosmética (no C16, só um `;` em `self.end()`), toda a função chamada vira "do R" ou "do L". |
+| b | **Comando de várias linhas** | `getBranch` varre todas as linhas do intervalo da operação, e a última linha mapeada vence | C01 | `var ret = { ... }` vai da linha 43 à 108; uma vírgula removida na linha 106 faz a escrita de `ret` ser "do L". |
+| c | **Linha igual nos dois lados vale L** | `experiments/tools/line-map.js:104` (convenção do SCAz.js) | C13, C23 | Uma linha que os dois lados introduziram igual é marcada como L e entra em conflito com linhas do R. |
+
+### Opções
+
+| Mecanismo | Opção | Ganho | Risco |
+|---|---|---|---|
+| a | Na pilha, ignorar linhas cuja mudança é só de espaços ou pontuação (comparar a linha com a da base sem espaços e sem `;` e `,` no fim) | remove a amplificação de mudanças cosméticas | precisa do texto da base no mapa (hoje o mapa só tem a branch de cada linha) |
+| a | Limitar a herança pela pilha à chamada direta (profundidade 1) | menos atribuição em cadeia | perde interferência real em chamadas profundas (o C17 usa profundidade 2) |
+| b | Atribuir a operação pela linha onde ela começa (ou pela do nó que escreve), e não por qualquer linha do intervalo | um literal grande deixa de herdar a branch de uma linha interna | perde o caso em que a linha alterada é de fato o valor escrito (por exemplo, um argumento numa chamada de várias linhas; veja o toy 28) |
+| c | Marcar linhas iguais nos dois lados como de nenhuma branch (ou "ambas", sem conflito entre elas) | remove conflitos entre mudanças idênticas | sai da convenção do SCAz.js (os 72 casos de OA usam o mapa da Amanda, então não são afetados, mas o lote precisa ser reconsolidado) |
+
+### Como medir antes de decidir
+
+Para cada um dos 384 registros do lote (`conflitos.csv`), classificar se depende de cada mecanismo:
+- (a) a linha de alguma das branches foi atribuída pela pilha, e não pelo mapa (o relatório guarda a pilha de cada conflito);
+- (b) a linha da operação não é a linha mapeada (comando de várias linhas);
+- (c) a linha está entre as "iguais nos dois lados" do mapa.
+
+Depois, contar quantas das 29 amostras deixam de ter conflito sem os registros de cada mecanismo, e comparar com o veredito da análise manual. Se os mecanismos explicam a maior parte dos falsos positivos, a correção melhora a precisão sem perder os casos reais (C17 e os que a análise manual confirmar).
+
+### Decisão
+
+*A ser tomada*, depois da análise manual dos três revisores e da medição acima.
+
