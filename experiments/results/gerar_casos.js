@@ -21,6 +21,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { readCsv } = require('../wild/lib/csv');
+const { buildLineMap } = require('../tools/line-map');
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(n); return i === -1 ? d : args[i + 1]; };
@@ -75,6 +76,57 @@ function direction(k) {
     return { first: 'L', firstLine: L, second: 'R', secondLine: R };
 }
 const VERB = { DF: ['produz', 'consome'], OA: ['sobrescreve', 'foi sobrescrita'], CF: ['', ''] };
+
+// merge_anotado.js: o merge.js com um comentário no fim de cada linha que importa (a numeração não muda):
+//   [L] [R]        linha alterada por aquele lado (mapa usado na execução)
+//   [L=R]          linha igual nos dois lados (o mapa conta como L)
+//   ◀ #n papel     papel da linha no conflito n do README (produz, consome, sobrescreve, ...), e de onde veio a
+//                  branch quando a linha não foi alterada por aquele lado (chamada numa linha alterada, ou comando de
+//                  várias linhas)
+function writeAnnotated(dir, r, m, pairs, mergeLines) {
+    let map = {};
+    try { map = JSON.parse(fs.readFileSync(path.join(W, 'dados', 'maps', 'por-merge', `${r.projeto}__${m.merge_commit}.json`), 'utf-8')).files[r.arquivo] || {}; } catch (e) { }
+    let both = new Set();
+    try {
+        const f = k => path.join(dir, k + '.js');
+        both = new Set(buildLineMap({ base: f('base'), left: f('left'), right: f('right'), merge: f('merge') }).bothLines);
+    } catch (e) { }
+    const notes = new Map();
+    const add = (ln, text) => { if (!ln) return; (notes.get(ln) || notes.set(ln, []).get(ln)).push(text); };
+    const origin = (ln, branch, stack) => {
+        if (map[ln] === branch) return '';
+        const via = (stack || []).filter(l => l !== ln && map[l] === branch);
+        if (via.length) return ` (herdou ${branch} pela chamada na linha ${via[via.length - 1]})`;
+        return ` (linha não alterada por ${branch}: provável comando de várias linhas; veja as linhas [${branch}] logo abaixo)`;
+    };
+    pairs.forEach((g, i) => {
+        const n_ = `#${i + 1} ${g.tipo}`;
+        if (g.tipo === 'CF') {
+            add(g.L, `◀ ${n_}: valor de L${origin(g.L, 'L', g.stack)}`);
+            add(g.R, `◀ ${n_}: valor de R${origin(g.R, 'R', g.stack)}`);
+            add(g.base, `◀ ${n_}: confluência (L ${g.L} + R ${g.R})`);
+        } else {
+            add(g.firstLine, `◀ ${n_}: ${VERB[g.tipo][0]} (${g.first})${origin(g.firstLine, g.first, g.stack)} → ${g.second} ${g.secondLine}`);
+            add(g.secondLine, `◀ ${n_}: ${VERB[g.tipo][1]} (${g.second})${origin(g.secondLine, g.second, g.stack)} ← ${g.first} ${g.firstLine}`);
+        }
+    });
+    const width = Math.min(100, Math.max(40, ...mergeLines.map(l => l.length).filter(x => x <= 100)));
+    const out = mergeLines.map((line, i) => {
+        const ln = i + 1;
+        const tag = both.has(ln) ? '[L=R]' : map[ln] ? `[${map[ln]}]` : '';
+        const extra = notes.get(ln) || [];
+        if (!tag && !extra.length) return line;
+        const roles = extra.length > 3 ? [...extra.slice(0, 3), `… (+${extra.length - 3} conflitos nesta linha)`] : extra;
+        return (line.length < width ? line.padEnd(width) : line) + '  // ' + [tag, ...roles].filter(Boolean).join('  ');
+    });
+    if (out.length && out[out.length - 1] === '') out.pop();
+    out.push('', '// ─────────────────────────────────────────────────────────────────────────────',
+        '// Legenda (merge_anotado.js; a numeração das linhas é a mesma do merge.js e do README):',
+        '//   [L] / [R]   linha alterada por aquele lado        [L=R]  igual nos dois lados (o mapa conta como L)',
+        '//   ◀ #n        papel da linha no conflito n do README.md; "herdou" = a linha não foi alterada por aquele',
+        '//               lado e pegou a branch da chamada indicada (regra interprocedural da análise)');
+    fs.writeFileSync(path.join(dir, 'merge_anotado.js'), out.join('\n') + '\n');
+}
 
 function codeAt(lines, ln) { const s = lines[ln - 1]; return s === undefined ? '' : s.trim().slice(0, 160); }
 
@@ -154,7 +206,7 @@ function main() {
         md.push(`| Detectado | OA ${n(r.OA)}, DF ${n(r.DF)}, CF ${n(r.CF)} (${cs.length} registros em ${pairs.length} pares de linhas) |`);
         md.push(`| Newminerjs (mesma função?) | ${x.mesma_funcao_detalhe || '—'}${x.funcoes_em_comum && x.funcoes_em_comum !== 'Nenhuma identificada' ? `: ${x.funcoes_em_comum}` : ''} |`);
         md.push('', 'Como ler: **DF** a linha de um lado produz um valor que a linha do outro lado consome; **OA** a escrita de um lado sobrescreve a do outro com valor diferente; **CF** valores de L e de R se encontram num comando da base. *Direto*: o valor vai da escrita ao uso sem passar por outros valores; *transitivo*: passa (x → y → uso); *via parâmetro*: entrou numa função por parâmetro (mais sujeito a falso positivo).');
-        md.push('', 'Arquivos: `base.js`, `left.js`, `right.js` e `merge.js` são as quatro versões; `diff_left.diff` e `diff_right.diff` mostram o que cada lado mudou em relação à base. **As linhas abaixo são do `merge.js`**, que é a versão executada.', '');
+        md.push('', 'Arquivos: `base.js`, `left.js`, `right.js` e `merge.js` são as quatro versões; `diff_left.diff` e `diff_right.diff` mostram o que cada lado mudou em relação à base. **As linhas abaixo são do `merge.js`**, que é a versão executada. **`merge_anotado.js`** é o mesmo `merge.js` com `// [L]`, `// [R]` e a participação em cada conflito no fim das linhas (a numeração não muda; legenda no fim do arquivo).', '');
         md.push('## Conflitos (por par de linhas)', '');
         for (const [i, g] of pairs.entries()) {
             md.push(`### ${i + 1}. ${g.tipo}${g.naturezas.size ? ' ' + [...g.naturezas].join('/') : ''}: ${title(g)}`, '');
@@ -172,9 +224,11 @@ function main() {
             const kind = g.tipo.toLowerCase();
             const st = [...stacks.entries()].find(([k]) => g.chaves.includes(k.slice(kind.length + 1)) && k.startsWith(kind + '|'))
                 || [...stacks.entries()].find(([k]) => k.startsWith(kind + '|') && k.includes(`${g.L}|`) && k.includes(`${g.R}@`));
+            g.stack = st ? st[1].map(s => s.line) : [];
             if (st && st[1].length) md.push('', `Pilha de chamadas no momento: ${st[1].map(s => `${path.basename(s.file)}:${s.line}`).join(' → ')}`);
             md.push('');
         }
+        writeAnnotated(dir, r, m, pairs, mergeLines);
         md.push('## Para preencher', '', 'Na planilha `experiments/results/resultados.xlsx`, aba do seu nome, linha deste caso.', '');
         md.push(`---`, `Arquivos de código copiados de [${r.projeto}](${url}) para fins de pesquisa; pertencem aos autores do projeto e seguem a licença dele.`);
         fs.writeFileSync(path.join(dir, 'README.md'), md.join('\n') + '\n');

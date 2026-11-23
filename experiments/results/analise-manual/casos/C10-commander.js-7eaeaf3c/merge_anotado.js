@@ -1,0 +1,1109 @@
+
+/**
+ * Module dependencies.
+ */
+
+var EventEmitter = require('events').EventEmitter;                                         // [L]
+var spawn = require('child_process').spawn;                                                // [L]
+var readlink = require('graceful-readlink').readlinkSync;                                  // [L]
+var path = require('path');                                                                // [L]
+var dirname = path.dirname;                                                                // [L]
+var basename = path.basename;                                                              // [L]
+var fs = require('fs');                                                                    // [L]
+
+/**
+ * Expose the root command.
+ */
+
+exports = module.exports = new Command();                                                  // [L]  ◀ #1 DF: produz (L) → R 89
+
+/**
+ * Expose `Command`.
+ */
+
+exports.Command = Command;
+
+/**
+ * Expose `Option`.
+ */
+
+exports.Option = Option;
+
+/**
+ * Initialize a new `Option` with the given `flags` and `description`.
+ *
+ * @param {String} flags
+ * @param {String} description
+ * @api public
+ */
+
+function Option(flags, description) {
+  this.flags = flags;
+  this.required = ~flags.indexOf('<');
+  this.optional = ~flags.indexOf('[');
+  this.bool = !~flags.indexOf('-no-');
+  flags = flags.split(/[ ,|]+/);
+  if (flags.length > 1 && !/^[[<]/.test(flags[1])) this.short = flags.shift();
+  this.long = flags.shift();
+  this.description = description || '';
+}
+
+/**
+ * Return option name.
+ *
+ * @return {String}
+ * @api private
+ */
+
+Option.prototype.name = function() {
+  return this.long
+    .replace('--', '')
+    .replace('no-', '');
+};
+
+/**
+ * Check if `arg` matches the short or long flag.
+ *
+ * @param {String} arg
+ * @return {Boolean}
+ * @api private
+ */
+
+Option.prototype.is = function(arg) {
+  return arg == this.short || arg == this.long;                                            // [L]
+};
+
+/**
+ * Initialize a new `Command`.
+ *
+ * @param {String} name
+ * @api public
+ */
+
+function Command(name) {
+  this.commands = [];
+  this.options = [];
+  this._execs = {};                                                                        // [L]
+  this._allowUnknownOption = false;                                                        // [L]
+  this._args = [];
+  this._name = name || '';                                                                 // [R]  ◀ #1 DF: consome (R) ← L 18  ◀ #2 DF: produz (R) → L 167  ◀ #3 DF: produz (R) → L 304  … (+4 conflitos nesta linha)
+}
+
+/**
+ * Inherit from `EventEmitter.prototype`.
+ */
+
+Command.prototype.__proto__ = EventEmitter.prototype;
+
+/**
+ * Add command `name`.
+ *
+ * The `.action()` callback is invoked when the
+ * command `name` is specified via __ARGV__,
+ * and the remaining arguments are applied to the
+ * function for access.
+ *
+ * When the `name` is "*" an un-matched command
+ * will be passed as the first arg, followed by
+ * the rest of __ARGV__ remaining.
+ *
+ * Examples:
+ *
+ *      program
+ *        .version('0.0.1')
+ *        .option('-C, --chdir <path>', 'change the working directory')
+ *        .option('-c, --config <path>', 'set config path. defaults to ./deploy.conf')
+ *        .option('-T, --no-tests', 'ignore test hook')
+ *
+ *      program
+ *        .command('setup')
+ *        .description('run remote setup commands')
+ *        .action(function() {
+ *          console.log('setup');
+ *        });
+ *
+ *      program
+ *        .command('exec <cmd>')
+ *        .description('run the given remote command')
+ *        .action(function(cmd) {
+ *          console.log('exec "%s"', cmd);
+ *        });
+ *
+ *      program
+ *        .command('teardown <dir> [otherDirs...]')                                        // [L]
+ *        .description('run teardown commands')                                            // [L]
+ *        .action(function(dir, otherDirs) {                                               // [L]
+ *          console.log('dir "%s"', dir);                                                  // [L]
+ *          if (otherDirs) {                                                               // [L]
+ *            otherDirs.forEach(function (oDir) {                                          // [L]
+ *              console.log('dir "%s"', oDir);                                             // [L]
+ *            });                                                                          // [L]
+ *          }                                                                              // [L]
+ *        });                                                                              // [L]
+ *                                                                                         // [L]
+ *      program                                                                            // [L]
+ *        .command('*')
+ *        .description('deploy the given env')
+ *        .action(function(env) {
+ *          console.log('deploying "%s"', env);
+ *        });
+ *
+ *      program.parse(process.argv);
+  *
+ * @param {String} name
+ * @param {String} [desc] for git-style sub-commands                                       // [L]
+ * @return {Command} the new command
+ * @api public
+ */
+
+Command.prototype.command = function(name, desc, opts) {                                   // [L]
+  opts = opts || {};                                                                       // [L]
+  var args = name.split(/ +/);
+  var cmd = new Command(args.shift());
+                                                                                           // [L]
+  if (desc) {                                                                              // [L]
+    cmd.description(desc);                                                                 // [L]
+    this.executables = true;                                                               // [L]
+    this._execs[cmd._name] = true;                                                         // [L]  ◀ #2 DF: consome (L) ← R 89
+  }                                                                                        // [L]
+                                                                                           // [L]
+  cmd._noHelp = !!opts.noHelp;                                                             // [L]
+  this.commands.push(cmd);
+  cmd.parseExpectedArgs(args);
+  cmd.parent = this;
+                                                                                           // [L]
+  if (desc) return this;
+  return cmd;
+};
+
+/**                                                                                        // [L]
+ * Define argument syntax for the top-level command.                                       // [L]
+ *                                                                                         // [L]
+ * @api public                                                                             // [L]
+ */                                                                                        // [L]
+                                                                                           // [L]
+Command.prototype.arguments = function (desc) {                                            // [L]
+  return this.parseExpectedArgs(desc.split(/ +/));                                         // [L]
+}                                                                                          // [L]
+                                                                                           // [L]
+/**
+ * Add an implicit `help [cmd]` subcommand
+ * which invokes `--help` for the given command.
+ *
+ * @api private
+ */
+
+Command.prototype.addImplicitHelpCommand = function() {
+  this.command('help [cmd]', 'display help for [cmd]');
+};
+
+/**
+ * Parse expected `args`.
+ *
+ * For example `["[type]"]` becomes `[{ required: false, name: 'type' }]`.
+ *
+ * @param {Array} args
+ * @return {Command} for chaining
+ * @api public
+ */
+
+Command.prototype.parseExpectedArgs = function(args) {
+  if (!args.length) return;
+  var self = this;
+  args.forEach(function(arg) {
+    var argDetails = {                                                                     // [L]
+      required: false,                                                                     // [L]
+      name: '',                                                                            // [L]
+      variadic: false                                                                      // [L]
+    };                                                                                     // [L]
+                                                                                           // [L]
+    switch (arg[0]) {
+      case '<':
+        argDetails.required = true;                                                        // [L]
+        argDetails.name = arg.slice(1, -1);                                                // [L]
+        break;
+      case '[':
+        argDetails.name = arg.slice(1, -1);                                                // [L]
+        break;
+    }
+                                                                                           // [L]
+    if (argDetails.name.length > 3 && argDetails.name.slice(-3) === '...') {               // [L]
+      argDetails.variadic = true;                                                          // [L]
+      argDetails.name = argDetails.name.slice(0, -3);                                      // [L]
+    }                                                                                      // [L]
+    if (argDetails.name) {                                                                 // [L]
+      self._args.push(argDetails);                                                         // [L]
+    }                                                                                      // [L]
+  });
+  return this;
+};
+
+/**
+ * Register callback `fn` for the command.
+ *
+ * Examples:
+ *
+ *      program
+ *        .command('help')
+ *        .description('display verbose help')
+ *        .action(function() {
+ *           // output help here
+ *        });
+ *
+ * @param {Function} fn
+ * @return {Command} for chaining
+ * @api public
+ */
+
+Command.prototype.action = function(fn) {
+  var self = this;
+  var listener = function(args, unknown) {                                                 // [L]
+    // Parse any so-far unknown options
+    args = args || [];                                                                     // [L]
+    unknown = unknown || [];
+                                                                                           // [L]
+    var parsed = self.parseOptions(unknown);
+
+    // Output help if necessary
+    outputHelpIfNecessary(self, parsed.unknown);
+
+    // If there are still any unknown options, then we simply
+    // die, unless someone asked for help, in which case we give it
+    // to them, and then we die.
+    if (parsed.unknown.length > 0) {
+      self.unknownOption(parsed.unknown[0]);
+    }
+
+    // Leftover arguments need to be pushed back. Fixes issue #56
+    if (parsed.args.length) args = parsed.args.concat(args);
+
+    self._args.forEach(function(arg, i) {
+      if (arg.required && null == args[i]) {
+        self.missingArgument(arg.name);
+      } else if (arg.variadic) {                                                           // [L]
+        if (i !== self._args.length - 1) {                                                 // [L]
+          self.variadicArgNotLast(arg.name);                                               // [L]
+        }                                                                                  // [L]
+                                                                                           // [L]
+        args[i] = args.splice(i);                                                          // [L]
+      }
+    });
+
+    // Always append ourselves to the end of the arguments,
+    // to make sure we match the number of arguments the user
+    // expects
+    if (self._args.length) {
+      args[self._args.length] = self;
+    } else {
+      args.push(self);
+    }
+
+    fn.apply(self, args);                                                                  // [L]
+  };                                                                                       // [L]
+  var parent = this.parent || this;                                                        // [L]
+  var name = parent === this ? '*' : this._name;                                           // [L]  ◀ #3 DF: consome (L) ← R 89
+  parent.on(name, listener);                                                               // [L]  ◀ #4 DF: consome (L) ← R 89
+  if (this._alias) parent.on(this._alias, listener);                                       // [L]
+  return this;
+};
+
+/**
+ * Define option with `flags`, `description` and optional
+ * coercion `fn`.
+ *
+ * The `flags` string should contain both the short and long flags,
+ * separated by comma, a pipe or space. The following are all valid
+ * all will output this way when `--help` is used.
+ *
+ *    "-p, --pepper"
+ *    "-p|--pepper"
+ *    "-p --pepper"
+ *
+ * Examples:
+ *
+ *     // simple boolean defaulting to false
+ *     program.option('-p, --pepper', 'add pepper');
+ *
+ *     --pepper
+ *     program.pepper
+ *     // => Boolean
+ *
+ *     // simple boolean defaulting to true                                                // [L]
+ *     program.option('-C, --no-cheese', 'remove cheese');
+ *
+ *     program.cheese
+ *     // => true
+ *
+ *     --no-cheese
+ *     program.cheese
+ *     // => false                                                                         // [L]
+ *
+ *     // required argument
+ *     program.option('-C, --chdir <path>', 'change the working directory');
+ *
+ *     --chdir /tmp
+ *     program.chdir
+ *     // => "/tmp"
+ *
+ *     // optional argument
+ *     program.option('-c, --cheese [type]', 'add cheese [marble]');
+ *
+ * @param {String} flags
+ * @param {String} description
+ * @param {Function|Mixed} fn or default
+ * @param {Mixed} defaultValue
+ * @return {Command} for chaining
+ * @api public
+ */
+
+Command.prototype.option = function(flags, description, fn, defaultValue) {
+  var self = this
+    , option = new Option(flags, description)
+    , oname = option.name()
+    , name = camelcase(oname);
+
+  // default as 3rd arg
+  if (typeof fn != 'function') {                                                           // [L]
+    if (fn instanceof RegExp) {                                                            // [L]
+      var regex = fn;                                                                      // [L]
+      fn = function(val, def) {                                                            // [L]
+        var m = regex.exec(val);                                                           // [L]
+        return m ? m[0] : def;                                                             // [L]
+      }                                                                                    // [L]
+    }                                                                                      // [L]
+    else {                                                                                 // [L]
+      defaultValue = fn;                                                                   // [L]
+      fn = null;                                                                           // [L]
+    }                                                                                      // [L]
+  }                                                                                        // [L]
+
+  // preassign default value only for --no-*, [optional], or <required>
+  if (false == option.bool || option.optional || option.required) {
+    // when --no-* we make sure default is true
+    if (false == option.bool) defaultValue = true;
+    // preassign only if we have a default
+    if (undefined !== defaultValue) self[name] = defaultValue;
+  }
+
+  // register the option
+  this.options.push(option);
+
+  // when it's passed assign the value
+  // and conditionally invoke the callback
+  this.on(oname, function(val) {
+    // coercion
+    if (null !== val && fn) val = fn(val, undefined === self[name]                         // [L]
+      ? defaultValue                                                                       // [L]
+      : self[name]);                                                                       // [L]
+
+    // unassigned or bool
+    if ('boolean' == typeof self[name] || 'undefined' == typeof self[name]) {
+      // if no value, bool true, and we have a default, then use it!
+      if (null == val) {
+        self[name] = option.bool
+          ? defaultValue || true
+          : false;
+      } else {
+        self[name] = val;
+      }
+    } else if (null !== val) {
+      // reassign
+      self[name] = val;
+    }
+  });
+
+  return this;
+};
+
+/**                                                                                        // [L]
+ * Allow unknown options on the command line.                                              // [L]
+ *                                                                                         // [L]
+ * @param {Boolean} arg if `true` or omitted, no error will be thrown                      // [L]
+ * for unknown options.                                                                    // [L]
+ * @api public                                                                             // [L]
+ */                                                                                        // [L]
+Command.prototype.allowUnknownOption = function(arg) {                                     // [L]
+    this._allowUnknownOption = arguments.length === 0 || arg;                              // [L]
+    return this;                                                                           // [L]
+};                                                                                         // [L]
+                                                                                           // [L]
+/**
+ * Parse `argv`, settings options and invoking commands when defined.
+ *
+ * @param {Array} argv
+ * @return {Command} for chaining
+ * @api public
+ */
+
+Command.prototype.parse = function(argv) {
+  // implicit help
+  if (this.executables) this.addImplicitHelpCommand();
+
+  // store raw args
+  this.rawArgs = argv;
+
+  // guess name
+  this._name = this._name || basename(argv[1], '.js');                                     // [L]  ◀ #5 DF: consome (L) ← R 89  ◀ #7 OA: sobrescreve (L) → R 89
+                                                                                           // [L]
+  // github-style sub-commands with no sub-command                                         // [L]
+  if (this.executables && argv.length < 3) {                                               // [L]
+    // this user needs help                                                                // [L]
+    argv.push('--help');                                                                   // [L]
+  }                                                                                        // [L]
+
+  // process argv
+  var parsed = this.parseOptions(this.normalize(argv.slice(2)));
+  var args = this.args = parsed.args;
+
+  var result = this.parseArgs(this.args, parsed.unknown);                                  // [L]
+
+  // executable sub-commands                                                               // [L]
+  var name = result.args[0];                                                               // [L]
+  if (this._execs[name] && typeof this._execs[name] != "function") {                       // [L]  ◀ #6 DF: consome (L) ← R 89
+    return this.executeSubCommand(argv, args, parsed.unknown);                             // [L]
+  }                                                                                        // [L]
+                                                                                           // [L]
+  return result;                                                                           // [L]
+};
+
+/**
+ * Execute a sub-command executable.
+ *
+ * @param {Array} argv
+ * @param {Array} args
+ * @param {Array} unknown
+ * @api private
+ */
+
+Command.prototype.executeSubCommand = function(argv, args, unknown) {
+  args = args.concat(unknown);
+
+  if (!args.length) this.help();
+  if ('help' == args[0] && 1 == args.length) this.help();
+
+  // <cmd> --help
+  if ('help' == args[0]) {
+    args[0] = args[1];
+    args[1] = '--help';
+  }
+
+  // executable
+  var f = argv[1];                                                                         // [L]
+  // name of the subcommand, link `pm-install`                                             // [L]
+  var bin = basename(f, '.js') + '-' + args[0];                                            // [L]
+
+
+  // In case of globally installed, get the base dir where executable                      // [L]
+  //  subcommand file should be located at                                                 // [L]
+  var baseDir                                                                              // [L]
+    , link = readlink(f);                                                                  // [L]
+                                                                                           // [L]
+  // when symbolink is relative path                                                       // [L]
+  if (link !== f && link.charAt(0) !== '/') {                                              // [L]
+    link = path.join(dirname(f), link)                                                     // [L]
+  }
+  baseDir = dirname(link);                                                                 // [L]
+                                                                                           // [L]
+  // prefer local `./<bin>` to bin in the $PATH                                            // [L]
+  var localBin = path.join(baseDir, bin);                                                  // [L]
+                                                                                           // [L]
+  // whether bin file is a js script with explicit `.js` extension                         // [L]
+  var isExplicitJS = false;                                                                // [L]
+  if (exists(localBin + '.js')) {                                                          // [L]
+    bin = localBin + '.js';                                                                // [L]
+    isExplicitJS = true;                                                                   // [L]
+  } else if (exists(localBin)) {                                                           // [L]
+    bin = localBin;                                                                        // [L]
+  }                                                                                        // [L]
+                                                                                           // [L]
+  args = args.slice(1);                                                                    // [L]
+                                                                                           // [L]
+  var proc;                                                                                // [L]
+  if (process.platform !== 'win32') {                                                      // [L]
+    if (isExplicitJS) {                                                                    // [L]
+      args.unshift(localBin);                                                              // [L]
+      // add executable arguments to spawn                                                 // [L]
+      args = (process.execArgv || []).concat(args);                                        // [L]
+                                                                                           // [L]
+      proc = spawn('node', args, { stdio: 'inherit', customFds: [0, 1, 2] });              // [L]
+    } else {                                                                               // [L]
+      proc = spawn(bin, args, { stdio: 'inherit', customFds: [0, 1, 2] });                 // [L]
+    }                                                                                      // [L]
+  } else {                                                                                 // [L]
+    args.unshift(localBin);                                                                // [L]
+    proc = spawn(process.execPath, args, { stdio: 'inherit'});                             // [L]
+  }                                                                                        // [L]
+                                                                                           // [L]
+  proc.on('close', process.exit.bind(process));                                            // [L]
+  proc.on('error', function(err) {                                                         // [L]
+    if (err.code == "ENOENT") {                                                            // [L]
+      console.error('\n  %s(1) does not exist, try --help\n', bin);                        // [L]
+    } else if (err.code == "EACCES") {                                                     // [L]
+      console.error('\n  %s(1) not executable. try chmod or run with root\n', bin);        // [L]
+    }                                                                                      // [L]
+    process.exit(1);                                                                       // [L]
+  });
+                                                                                           // [L]
+  this.runningCommand = proc;                                                              // [L]
+};
+
+/**
+ * Normalize `args`, splitting joined short flags. For example
+ * the arg "-abc" is equivalent to "-a -b -c".
+ * This also normalizes equal sign and splits "--abc=def" into "--abc def".
+ *
+ * @param {Array} args
+ * @return {Array}
+ * @api private
+ */
+
+Command.prototype.normalize = function(args) {
+  var ret = []
+    , arg
+    , lastOpt                                                                              // [L]
+    , index;
+
+  for (var i = 0, len = args.length; i < len; ++i) {
+    arg = args[i];
+    if (i > 0) {                                                                           // [L]
+      lastOpt = this.optionFor(args[i-1]);                                                 // [L]
+    }                                                                                      // [L]
+                                                                                           // [L]
+    if (arg === '--') {                                                                    // [L]
+      // Honor option terminator                                                           // [L]
+      ret = ret.concat(args.slice(i));                                                     // [L]
+      break;                                                                               // [L]
+    } else if (lastOpt && lastOpt.required) {                                              // [L]
+      ret.push(arg);                                                                       // [L]
+    } else if (arg.length > 1 && '-' == arg[0] && '-' != arg[1]) {                         // [L]
+      arg.slice(1).split('').forEach(function(c) {
+        ret.push('-' + c);
+      });
+    } else if (/^--/.test(arg) && ~(index = arg.indexOf('='))) {
+      ret.push(arg.slice(0, index), arg.slice(index + 1));
+    } else {
+      ret.push(arg);
+    }
+  }
+
+  return ret;
+};
+
+/**
+ * Parse command `args`.
+ *
+ * When listener(s) are available those
+ * callbacks are invoked, otherwise the "*"
+ * event is emitted and those actions are invoked.
+ *
+ * @param {Array} args
+ * @return {Command} for chaining
+ * @api private
+ */
+
+Command.prototype.parseArgs = function(args, unknown) {
+  var name;                                                                                // [L]
+
+  if (args.length) {
+    name = args[0];
+    if (this.listeners(name).length) {
+      this.emit(args.shift(), args, unknown);
+    } else {
+      this.emit('*', args);
+    }
+  } else {
+    outputHelpIfNecessary(this, unknown);
+
+    // If there were no args and we have unknown options,
+    // then they are extraneous and we need to error.
+    if (unknown.length > 0) {
+      this.unknownOption(unknown[0]);
+    }
+  }
+
+  return this;
+};
+
+/**
+ * Return an option matching `arg` if any.
+ *
+ * @param {String} arg
+ * @return {Option}
+ * @api private
+ */
+
+Command.prototype.optionFor = function(arg) {
+  for (var i = 0, len = this.options.length; i < len; ++i) {
+    if (this.options[i].is(arg)) {
+      return this.options[i];
+    }
+  }
+};
+
+/**
+ * Parse options from `argv` returning `argv`
+ * void of these options.
+ *
+ * @param {Array} argv
+ * @return {Array}
+ * @api public
+ */
+
+Command.prototype.parseOptions = function(argv) {
+  var args = []
+    , len = argv.length
+    , literal
+    , option
+    , arg;
+
+  var unknownOptions = [];
+
+  // parse options
+  for (var i = 0; i < len; ++i) {
+    arg = argv[i];
+
+    // literal args after --
+    if ('--' == arg) {
+      literal = true;
+      continue;
+    }
+
+    if (literal) {
+      args.push(arg);
+      continue;
+    }
+
+    // find matching Option
+    option = this.optionFor(arg);
+
+    // option is defined
+    if (option) {
+      // requires arg
+      if (option.required) {
+        arg = argv[++i];
+        if (null == arg) return this.optionMissingArgument(option);
+        this.emit(option.name(), arg);
+      // optional arg
+      } else if (option.optional) {
+        arg = argv[i+1];
+        if (null == arg || ('-' == arg[0] && '-' != arg)) {                                // [L]
+          arg = null;
+        } else {
+          ++i;
+        }
+        this.emit(option.name(), arg);
+      // bool
+      } else {
+        this.emit(option.name());
+      }
+      continue;
+    }
+
+    // looks like an option
+    if (arg.length > 1 && '-' == arg[0]) {
+      unknownOptions.push(arg);
+
+      // If the next argument looks like it might be
+      // an argument for this option, we pass it on.
+      // If it isn't, then it'll simply be ignored
+      if (argv[i+1] && '-' != argv[i+1][0]) {
+        unknownOptions.push(argv[++i]);
+      }
+      continue;
+    }
+
+    // arg
+    args.push(arg);
+  }
+
+  return { args: args, unknown: unknownOptions };
+};
+
+/**                                                                                        // [L]
+ * Return an object containing options as key-value pairs                                  // [L]
+ *                                                                                         // [L]
+ * @return {Object}                                                                        // [L]
+ * @api public                                                                             // [L]
+ */                                                                                        // [L]
+Command.prototype.opts = function() {                                                      // [L]
+  var result = {}                                                                          // [L]
+    , len = this.options.length;                                                           // [L]
+                                                                                           // [L]
+  for (var i = 0 ; i < len; i++) {                                                         // [L]
+    var key = camelcase(this.options[i].name());                                           // [L]
+    result[key] = key === 'version' ? this._version : this[key];                           // [L]
+  }                                                                                        // [L]
+  return result;                                                                           // [L]
+};                                                                                         // [L]
+                                                                                           // [L]
+/**
+ * Argument `name` is missing.
+ *
+ * @param {String} name
+ * @api private
+ */
+
+Command.prototype.missingArgument = function(name) {
+  console.error();
+  console.error("  error: missing required argument `%s'", name);
+  console.error();
+  process.exit(1);
+};
+
+/**
+ * `Option` is missing an argument, but received `flag` or nothing.
+ *
+ * @param {String} option
+ * @param {String} flag
+ * @api private
+ */
+
+Command.prototype.optionMissingArgument = function(option, flag) {
+  console.error();
+  if (flag) {
+    console.error("  error: option `%s' argument missing, got `%s'", option.flags, flag);
+  } else {
+    console.error("  error: option `%s' argument missing", option.flags);
+  }
+  console.error();
+  process.exit(1);
+};
+
+/**
+ * Unknown option `flag`.
+ *
+ * @param {String} flag
+ * @api private
+ */
+
+Command.prototype.unknownOption = function(flag) {
+  if (this._allowUnknownOption) return;                                                    // [L]
+  console.error();
+  console.error("  error: unknown option `%s'", flag);
+  console.error();
+  process.exit(1);
+};
+
+/**                                                                                        // [L]
+ * Variadic argument with `name` is not the last argument as required.                     // [L]
+ *                                                                                         // [L]
+ * @param {String} name                                                                    // [L]
+ * @api private                                                                            // [L]
+ */                                                                                        // [L]
+                                                                                           // [L]
+Command.prototype.variadicArgNotLast = function(name) {                                    // [L]
+  console.error();                                                                         // [L]
+  console.error("  error: variadic arguments must be last `%s'", name);                    // [L]
+  console.error();                                                                         // [L]
+  process.exit(1);                                                                         // [L]
+};                                                                                         // [L]
+
+/**
+ * Set the program version to `str`.
+ *
+ * This method auto-registers the "-V, --version" flag
+ * which will print the version number when passed.
+ *
+ * @param {String} str
+ * @param {String} flags
+ * @return {Command} for chaining
+ * @api public
+ */
+
+Command.prototype.version = function(str, flags) {
+  if (0 == arguments.length) return this._version;
+  this._version = str;
+  flags = flags || '-V, --version';
+  this.option(flags, 'output the version number');
+  this.on('version', function() {
+    process.stdout.write(str + '\n');                                                      // [L]
+    process.exit(0);
+  });
+  return this;
+};
+
+/**
+ * Set the description to `str`.                                                           // [L]
+ *
+ * @param {String} str
+ * @return {String|Command}
+ * @api public
+ */
+
+Command.prototype.description = function(str) {
+  if (0 == arguments.length) return this._description;
+  this._description = str;
+  return this;
+};
+
+/**                                                                                        // [L]
+ * Set an alias for the command                                                            // [L]
+ *                                                                                         // [L]
+ * @param {String} alias                                                                   // [L]
+ * @return {String|Command}                                                                // [L]
+ * @api public                                                                             // [L]
+ */                                                                                        // [L]
+                                                                                           // [L]
+Command.prototype.alias = function(alias) {                                                // [L]
+  if (0 == arguments.length) return this._alias;                                           // [L]
+  this._alias = alias;                                                                     // [L]
+  return this;                                                                             // [L]
+};                                                                                         // [L]
+                                                                                           // [L]
+/**
+ * Set / get the command usage `str`.
+ *
+ * @param {String} str
+ * @return {String|Command}
+ * @api public
+ */
+
+Command.prototype.usage = function(str) {
+  var args = this._args.map(function(arg) {
+    return humanReadableArgName(arg);                                                      // [L]
+  });
+
+  var usage = '[options]'                                                                  // [L]
+    + (this.commands.length ? ' [command]' : '')                                           // [L]
+    + (this._args.length ? ' ' + args.join(' ') : '');                                     // [L]
+
+  if (0 == arguments.length) return this._usage || usage;
+  this._usage = str;
+
+  return this;
+};
+
+/**                                                                                        // [L]
+ * Get the name of the command                                                             // [L]
+ *                                                                                         // [L]
+ * @param {String} name                                                                    // [L]
+ * @return {String|Command}                                                                // [L]
+ * @api public                                                                             // [L]
+ */                                                                                        // [L]
+                                                                                           // [L]
+Command.prototype.name = function() {                                                      // [L]
+  return this._name;                                                                       // [L]
+};                                                                                         // [L]
+                                                                                           // [L]
+/**
+ * Return the largest option length.
+ *
+ * @return {Number}
+ * @api private
+ */
+
+Command.prototype.largestOptionLength = function() {
+  return this.options.reduce(function(max, option) {
+    return Math.max(max, option.flags.length);
+  }, 0);
+};
+
+/**
+ * Return help for options.
+ *
+ * @return {String}
+ * @api private
+ */
+
+Command.prototype.optionHelp = function() {
+  var width = this.largestOptionLength();
+
+  // Prepend the help information
+  return [pad('-h, --help', width) + '  ' + 'output usage information']
+    .concat(this.options.map(function(option) {
+      return pad(option.flags, width) + '  ' + option.description;                         // [L]
+      }))
+    .join('\n');
+};
+
+/**
+ * Return command help documentation.
+ *
+ * @return {String}
+ * @api private
+ */
+
+Command.prototype.commandHelp = function() {
+  if (!this.commands.length) return '';
+                                                                                           // [L]
+  var commands = this.commands.filter(function(cmd) {                                      // [L]
+    return !cmd._noHelp;                                                                   // [L]
+  }).map(function(cmd) {                                                                   // [L]
+    var args = cmd._args.map(function(arg) {                                               // [L]
+      return humanReadableArgName(arg);                                                    // [L]
+    }).join(' ');                                                                          // [L]
+                                                                                           // [L]
+    return [                                                                               // [L]
+      cmd._name                                                                            // [L]
+        + (cmd._alias                                                                      // [L]
+          ? '|' + cmd._alias                                                               // [L]
+          : '')                                                                            // [L]
+        + (cmd.options.length                                                              // [L]
+          ? ' [options]'                                                                   // [L]
+          : '')                                                                            // [L]
+        + ' ' + args                                                                       // [L]
+    , cmd.description()                                                                    // [L]
+    ];                                                                                     // [L]
+  });                                                                                      // [L]
+                                                                                           // [L]
+  var width = commands.reduce(function(max, command) {                                     // [L]
+    return Math.max(max, command[0].length);                                               // [L]
+  }, 0);                                                                                   // [L]
+                                                                                           // [L]
+  return [
+      ''
+    , '  Commands:'
+    , ''
+    , commands.map(function(cmd) {                                                         // [L]
+      return pad(cmd[0], width) + '  ' + cmd[1];                                           // [L]
+    }).join('\n').replace(/^/gm, '    ')
+    , ''
+  ].join('\n');
+};
+
+/**
+ * Return program help documentation.
+ *
+ * @return {String}
+ * @api private
+ */
+
+Command.prototype.helpInformation = function() {
+  var desc = [];                                                                           // [L]
+  if (this._description) {                                                                 // [L]
+    desc = [                                                                               // [L]
+      '  ' + this._description                                                             // [L]
+      , ''                                                                                 // [L]
+    ];                                                                                     // [L]
+  }                                                                                        // [L]
+                                                                                           // [L]
+  var cmdName = this._name;                                                                // [L]
+  if (this._alias) {                                                                       // [L]
+    cmdName = cmdName + '|' + this._alias;                                                 // [L]
+  }                                                                                        // [L]
+  var usage = [                                                                            // [L]
+    ''
+    ,'  Usage: ' + cmdName + ' ' + this.usage()                                            // [L]
+    , ''                                                                                   // [L]
+  ];                                                                                       // [L]
+                                                                                           // [L]
+  var cmds = [];                                                                           // [L]
+  var commandHelp = this.commandHelp();                                                    // [L]
+  if (commandHelp) cmds = [commandHelp];                                                   // [L]
+                                                                                           // [L]
+  var options = [                                                                          // [L]
+    '  Options:'                                                                           // [L]
+    , ''
+    , '' + this.optionHelp().replace(/^/gm, '    ')
+    , ''
+    , ''
+  ];                                                                                       // [L]
+                                                                                           // [L]
+  return usage                                                                             // [L]
+    .concat(cmds)                                                                          // [L]
+    .concat(desc)                                                                          // [L]
+    .concat(options)                                                                       // [L]
+    .join('\n');                                                                           // [L]
+};
+
+/**
+ * Output help information for this command
+ *
+ * @api public
+ */
+
+Command.prototype.outputHelp = function() {
+  process.stdout.write(this.helpInformation());
+  this.emit('--help');
+};
+
+/**
+ * Output help information and exit.
+ *
+ * @api public
+ */
+
+Command.prototype.help = function() {
+  this.outputHelp();
+  process.exit();
+};
+
+/**
+ * Camel-case the given `flag`
+ *
+ * @param {String} flag
+ * @return {String}
+ * @api private
+ */
+
+function camelcase(flag) {
+  return flag.split('-').reduce(function(str, word) {
+    return str + word[0].toUpperCase() + word.slice(1);
+  });
+}
+
+/**
+ * Pad `str` to `width`.
+ *
+ * @param {String} str
+ * @param {Number} width
+ * @return {String}
+ * @api private
+ */
+
+function pad(str, width) {
+  var len = Math.max(0, width - str.length);
+  return str + Array(len + 1).join(' ');
+}
+
+/**
+ * Output help information if necessary
+ *
+ * @param {Command} command to output help for
+ * @param {Array} array of options to search for -h or --help
+ * @api private
+ */
+
+function outputHelpIfNecessary(cmd, options) {
+  options = options || [];
+  for (var i = 0; i < options.length; i++) {
+    if (options[i] == '--help' || options[i] == '-h') {
+      cmd.outputHelp();
+      process.exit(0);
+    }
+  }
+}
+                                                                                           // [L]
+/**                                                                                        // [L]
+ * Takes an argument an returns its human readable equivalent for help usage.              // [L]
+ *                                                                                         // [L]
+ * @param {Object} arg                                                                     // [L]
+ * @return {String}                                                                        // [L]
+ * @api private                                                                            // [L]
+ */                                                                                        // [L]
+                                                                                           // [L]
+function humanReadableArgName(arg) {                                                       // [L]
+  var nameOutput = arg.name + (arg.variadic === true ? '...' : '');                        // [L]
+                                                                                           // [L]
+  return arg.required                                                                      // [L]
+    ? '<' + nameOutput + '>'                                                               // [L]
+    : '[' + nameOutput + ']'                                                               // [L]
+}                                                                                          // [L]
+                                                                                           // [L]
+// for versions before node v0.8 when there weren't `fs.existsSync`                        // [L]
+function exists(file) {                                                                    // [L]
+  try {                                                                                    // [L]
+    if (fs.statSync(file).isFile()) {                                                      // [L]
+      return true;                                                                         // [L]
+    }                                                                                      // [L]
+  } catch (e) {                                                                            // [L]
+    return false;                                                                          // [L]
+  }                                                                                        // [L]
+}                                                                                          // [L]
+                                                                                           // [L]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Legenda (merge_anotado.js; a numeração das linhas é a mesma do merge.js e do README):
+//   [L] / [R]   linha alterada por aquele lado        [L=R]  igual nos dois lados (o mapa conta como L)
+//   ◀ #n        papel da linha no conflito n do README.md; "herdou" = a linha não foi alterada por aquele
+//               lado e pegou a branch da chamada indicada (regra interprocedural da análise)

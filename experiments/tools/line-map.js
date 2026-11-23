@@ -98,15 +98,16 @@ function buildLineMap(files) {
     const fromRight = linesFromBranch(files.base, files.right, files.merge, { branch: nRight, merge: nMerge });
 
     const map = {};
-    let both = 0;
+    const bothLines = [];
     for (let j = 1; j <= nMerge; j++) {
         const l = fromLeft.has(j), r = fromRight.has(j);
-        if (l && r) { map[j] = 'L'; both++; }
+        if (l && r) { map[j] = 'L'; bothLines.push(j); }
         else if (l) map[j] = 'L';
         else if (r) map[j] = 'R';
     }
-    // left inclui as linhas iguais nas duas; right só as que são exclusivas da Right
-    return { map, left: fromLeft.size, right: fromRight.size - both, both, mergeLines: nMerge };
+    const both = bothLines.length;
+    // left inclui as linhas iguais nas duas; right só as que são exclusivas da Right. bothLines: quais são as iguais
+    return { map, left: fromLeft.size, right: fromRight.size - both, both, bothLines, mergeLines: nMerge };
 }
 
 // Estado do cenário para a análise: precisa de linhas nas duas contribuições
