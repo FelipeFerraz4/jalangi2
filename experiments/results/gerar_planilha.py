@@ -60,9 +60,7 @@ SAMPLE_SEED = 20261123  # 1 conflito sorteado por amostra; semente fixa para o s
 # Colunas que o revisor preenche. O "como a ferramenta chegou ao conflito" não está aqui: sai dos dados (coluna automática)
 SAMPLE_FILL = [
     FILL_COLUMNS[0],
-    ('Por que não é interferência (se Não ou Dúvida)', 30, ['Mudança que preserva o valor', 'Refatoração ou renomeação', 'Mudanças independentes',
-                                                           'Mudanças redundantes (corrigem o mesmo problema)', 'O valor não chega de fato ao outro lado',
-                                                           'Arquivo gerado ou minificado', 'Outro (explicar)']),
+    ('Por que não é interferência (se Não ou Dúvida)', 45, None),
     FILL_COLUMNS[4], FILL_COLUMNS[5], FILL_COLUMNS[6], FILL_COLUMNS[7],
 ]
 
