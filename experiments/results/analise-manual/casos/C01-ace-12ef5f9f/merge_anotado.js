@@ -40,7 +40,7 @@ var oop = require("./oop");
  * Helper functions and hashes for key handling.
  */
 var Keys = (function() {
-    var ret = {                                                                  // ◀ #1 DF: produz (L) (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo) → R 149  ◀ #2 DF: produz (L) (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo) → R 150
+    var ret = {                                                                  // ◀ #1 DF: produz (L) (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js) → R 149  ◀ #2 DF: produz (L) (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js) → R 150
         MODIFIER_KEYS: {
             16: 'Shift', 17: 'Ctrl', 18: 'Alt', 224: 'Meta'
         },

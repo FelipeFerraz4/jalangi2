@@ -118,7 +118,7 @@ File.prototype.log = function (level, msg, meta, callback) {
     msg = '' + msg;
   }
 
-  var output = common.log({                                                                  // ◀ #3 CF: valor de R (linha não alterada por R: provável comando de várias linhas; veja as linhas [R] logo abaixo)  ◀ #4 CF: valor de R (linha não alterada por R: provável comando de várias linhas; veja as linhas [R] logo abaixo)  ◀ #7 CF: valor de R (linha não alterada por R: provável comando de várias linhas; veja as linhas [R] logo abaixo)  … (+1 conflitos nesta linha)
+  var output = common.log({                                                                  // ◀ #3 CF: valor de R (linha não alterada por R: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [R] mais próxima no merge_anotado.js)  ◀ #4 CF: valor de R (linha não alterada por R: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [R] mais próxima no merge_anotado.js)  ◀ #7 CF: valor de R (linha não alterada por R: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [R] mais próxima no merge_anotado.js)  … (+1 conflitos nesta linha)
     level:       level,
     message:     msg,
     meta:        meta,
@@ -365,7 +365,7 @@ File.prototype.close = function () {
 // used by this instance.
 //
 File.prototype.flush = function () {
-  var self = this;                                                                           // ◀ #1 CF: valor de L (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo)  ◀ #2 CF: valor de L (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo)  ◀ #3 CF: valor de L (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo)  … (+1 conflitos nesta linha)
+  var self = this;                                                                           // ◀ #1 CF: valor de L (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js)  ◀ #2 CF: valor de L (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js)  ◀ #3 CF: valor de L (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js)  … (+1 conflitos nesta linha)
 
   // If nothing to flush, there will be no "flush" event from native stream                  // [L]
   // Thus, the "open" event will never be fired (see _createStream.createAndFlush function)  // [L]
@@ -379,7 +379,7 @@ File.prototype.flush = function () {
   // and then write them to the newly created stream.
   //
   this._buffer.forEach(function (item) {
-    var str = item[0],                                                                       // ◀ #5 CF: valor de L (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo)  ◀ #6 CF: valor de L (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo)  ◀ #7 CF: valor de L (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo)  … (+1 conflitos nesta linha)
+    var str = item[0],                                                                       // ◀ #5 CF: valor de L (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js)  ◀ #6 CF: valor de L (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js)  ◀ #7 CF: valor de L (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js)  … (+1 conflitos nesta linha)
         callback = item[1];
 
     process.nextTick(function () {

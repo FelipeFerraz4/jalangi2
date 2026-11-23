@@ -1033,7 +1033,7 @@ Request.prototype.onRequestResponse = function (response) {
 Request.prototype.readResponseBody = function (response) {                                           // [R]
   var self = this                                                                                    // [R]  ◀ #2 CF: valor de R  ◀ #3 CF: valor de R  ◀ #4 CF: valor de R  … (+1 conflitos nesta linha)
   debug('reading response\'s body')                                                                  // [R]
-  var buffer = bl()                                                                                  // ◀ #6 CF: valor de R (linha não alterada por R: provável comando de várias linhas; veja as linhas [R] logo abaixo)  ◀ #7 CF: valor de R (linha não alterada por R: provável comando de várias linhas; veja as linhas [R] logo abaixo)
+  var buffer = bl()                                                                                  // ◀ #6 CF: valor de R (linha não alterada por R: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [R] mais próxima no merge_anotado.js)  ◀ #7 CF: valor de R (linha não alterada por R: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [R] mais próxima no merge_anotado.js)
     , strings = []
 
   self.on('data', function (chunk) {

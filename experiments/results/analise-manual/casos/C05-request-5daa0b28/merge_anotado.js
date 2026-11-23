@@ -152,7 +152,7 @@ function Request (options) {
     var cookies = cookieJar.get({ url: self.uri.href })
   }
   if (cookies && cookies.length) {                                                                    // [R]  ◀ #4 DF: consome (R) ← L 79  ◀ #13 DF: consome (R) ← L 89  ◀ #21 DF: consome (R) ← L 398
-    var cookieString = cookies.map(function (c) {                                                     // ◀ #5 CF: valor de R (linha não alterada por R: provável comando de várias linhas; veja as linhas [R] logo abaixo)  ◀ #14 CF: valor de R (linha não alterada por R: provável comando de várias linhas; veja as linhas [R] logo abaixo)
+    var cookieString = cookies.map(function (c) {                                                     // ◀ #5 CF: valor de R (linha não alterada por R: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [R] mais próxima no merge_anotado.js)  ◀ #14 CF: valor de R (linha não alterada por R: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [R] mais próxima no merge_anotado.js)
       return c.name + "=" + c.value                                                                   // [R]  ◀ #6 DF: consome (R) ← L 79  ◀ #15 DF: consome (R) ← L 89  ◀ #22 DF: consome (R) ← L 398
     }).join("; ")                                                                                     // [R]
 

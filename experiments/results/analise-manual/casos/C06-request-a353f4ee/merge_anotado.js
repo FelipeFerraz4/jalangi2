@@ -324,7 +324,7 @@ Request.prototype.request = function () {
     self._started = true
     self.method = self.method || 'GET'
 
-    self.req = self.httpModule.request(self, function (response) {                                    // ◀ #1 DF: produz (L) (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo) → R 473  ◀ #2 DF: produz (L) (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo) → R 539  ◀ #3 DF: produz (L) (linha não alterada por L: provável comando de várias linhas; veja as linhas [L] logo abaixo) → R 540
+    self.req = self.httpModule.request(self, function (response) {                                    // ◀ #1 DF: produz (L) (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js) → R 473  ◀ #2 DF: produz (L) (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js) → R 539  ◀ #3 DF: produz (L) (linha não alterada por L: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [L] mais próxima no merge_anotado.js) → R 540
       self.response = response
       response.request = self
 

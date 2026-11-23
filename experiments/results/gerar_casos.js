@@ -97,10 +97,13 @@ function writeAnnotated(dir, r, m, pairs, mergeLines) {
         if (map[ln] === branch) return '';
         const via = (stack || []).filter(l => l !== ln && map[l] === branch);
         if (via.length) return ` (herdou ${branch} pela chamada na linha ${via[via.length - 1]})`;
-        return ` (linha não alterada por ${branch}: provável comando de várias linhas; veja as linhas [${branch}] logo abaixo)`;
+        return ` (linha não alterada por ${branch}: herdou a branch de um comando de várias linhas ou de uma chamada não registrada; procure a linha [${branch}] mais próxima no merge_anotado.js)`;
     };
     pairs.forEach((g, i) => {
         const n_ = `#${i + 1} ${g.tipo}`;
+        g.origem = g.tipo === 'CF'
+            ? { L: origin(g.L, 'L', g.stack).trim(), R: origin(g.R, 'R', g.stack).trim() }
+            : { [g.first + g.firstLine]: origin(g.firstLine, g.first, g.stack).trim(), [g.second + g.secondLine]: origin(g.secondLine, g.second, g.stack).trim() };
         if (g.tipo === 'CF') {
             add(g.L, `◀ ${n_}: valor de L${origin(g.L, 'L', g.stack)}`);
             add(g.R, `◀ ${n_}: valor de R${origin(g.R, 'R', g.stack)}`);
@@ -240,6 +243,14 @@ function main() {
             diretos: cs.filter(k => k.natureza === 'direto').length, transitivos: cs.filter(k => k.natureza === 'transitivo').length,
             via_parametro: cs.filter(k => k.via_parametro === 'sim').length, mesma_funcao: x.mesma_funcao || '', mesma_funcao_detalhe: x.mesma_funcao_detalhe || '',
             linhas_L: r.linhas_L, linhas_R: r.linhas_R,
+            conflitos: pairs.map((g, i) => ({
+                n: i + 1, tipo: g.tipo, natureza: [...g.naturezas].join('/'), registros: g.registros, via_parametro: g.viaParam,
+                primeiro: g.tipo === 'CF' ? 'L' : g.first, linha1: g.tipo === 'CF' ? g.L : g.firstLine,
+                segundo: g.tipo === 'CF' ? 'R' : g.second, linha2: g.tipo === 'CF' ? g.R : g.secondLine, base: g.base || null,
+                codigo1: codeAt(mergeLines, g.tipo === 'CF' ? g.L : g.firstLine), codigo2: codeAt(mergeLines, g.tipo === 'CF' ? g.R : g.secondLine),
+                codigo_base: g.base ? codeAt(mergeLines, g.base) : '', alvos: [...g.alvos].join(' '), pilha: (g.stack || []).join(' → '),
+                origem1: Object.values(g.origem || {})[0] || '', origem2: Object.values(g.origem || {})[1] || '', chaves: g.chaves,
+            })),
             pares_resumo: pairs.slice(0, 6).map(short_).join('; ') + (pairs.length > 6 ? `; … (+${pairs.length - 6})` : ''),
         });
     }

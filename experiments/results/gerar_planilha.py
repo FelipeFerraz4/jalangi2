@@ -19,6 +19,7 @@ import argparse
 import csv
 import json
 import os
+import random
 import re
 import statistics
 from collections import Counter, defaultdict
@@ -56,6 +57,9 @@ FILL_COLUMNS = [
     ('Observações', 40, None),
 ]
 FINAL_COLUMNS = ['Veredito final (após discussão)', 'Tipo final']
+SAMPLE_SHEET = 'Conflitos sorteados'
+SAMPLE_SEED = 20261123  # 1 conflito sorteado por amostra; semente fixa para o sorteio ser reproduzível
+SAMPLE_FILL = [FILL_COLUMNS[0], FILL_COLUMNS[2], FILL_COLUMNS[4], FILL_COLUMNS[5], FILL_COLUMNS[6], FILL_COLUMNS[7]]
 INFO_COLUMNS = [('Caso', 7), ('Grupo', 7), ('Revisores', 16), ('Projeto', 22), ('Arquivo', 30), ('Pasta no GitHub', 18),
                 ('Executado por', 12), ('OA', 5), ('DF', 5), ('CF', 5), ('Pares de linhas', 8), ('Diretos', 8), ('Transitivos', 10),
                 ('Via parâmetro', 10), ('Mesma função? (Newminerjs)', 16), ('Conflitos detectados (resumo)', 50)]
@@ -139,6 +143,18 @@ def keep_manual(path):
             vals = {h: row[heads.index(h)] for h in names if h in heads and row[heads.index(h)] not in (None, '')}
             if vals:
                 kept.setdefault(who, {})[row[ci]] = vals
+    if SAMPLE_SHEET in wb.sheetnames:
+        ws = wb[SAMPLE_SHEET]
+        heads = [c.value for c in ws[1]]
+        if 'Caso' in heads:
+            ci = heads.index('Caso')
+            names = [h for h, _, _ in SAMPLE_FILL]
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or not row[ci]:
+                    continue
+                vals = {h: row[heads.index(h)] for h in names if h in heads and row[heads.index(h)] not in (None, '')}
+                if vals:
+                    kept.setdefault('_sorteio', {})[row[ci]] = vals
     if 'Concordância' in wb.sheetnames:
         ws = wb['Concordância']
         heads = [c.value for c in ws[1]]
@@ -199,6 +215,7 @@ def main():
         ('Mesma função', 'Cruzamento com a análise estática do Newminerjs ("Left e Right alteraram a mesma função?").'),
         ('Casos (29)', 'As 29 amostras com conflito, com grupo, revisores e link da pasta no GitHub.'),
         ('Análise - <nome>', 'A análise manual de cada revisor: 15 casos por pessoa. Preencha só as colunas amarelas.'),
+        ('Conflitos sorteados', 'Um conflito sorteado de cada amostra (29), com as duas linhas, o código e de onde veio a branch, para avaliar conflito a conflito. Preencha só as colunas amarelas.'),
         ('Concordância', 'Junta automaticamente as respostas dos três revisores; nos casos com dois revisores mostra se concordam. A coluna "Veredito final" é preenchida depois da discussão.'),
         ('Amanda (OA)', '72 casos de Overriding Assignment do SCAz.js (Moraes et al., SBLP 2024).'),
         ('DF-CF (13)', '13 testes de DF e CF do conflict-static-analysis (Santos et al., 2023), traduções do Italo.'),
@@ -455,6 +472,51 @@ def main():
         if '%' in k:
             c.number_format = '0%'
     ws.freeze_panes = 'D2'
+
+    # ---------------- Conflitos sorteados ----------------
+    ws = wb.create_sheet(SAMPLE_SHEET)
+    rng = random.Random(SAMPLE_SEED)
+    ROLE = {'DF': ('produz', 'consome'), 'OA': ('sobrescreve', 'foi sobrescrita'), 'CF': ('valor de L', 'valor de R')}
+    cols = ['Caso', 'Grupo', 'Projeto', 'Arquivo', 'Pasta no GitHub', 'Conflito (# no README)', 'Tipo', 'Natureza', 'Registros iguais',
+            'Linha 1', 'Código da linha 1', 'De onde veio a branch (1)', 'Linha 2', 'Código da linha 2', 'De onde veio a branch (2)',
+            'Base (CF)', 'Código da base', 'Estado', 'Pilha de chamadas']
+    fill_heads = [h for h, _, _ in SAMPLE_FILL]
+    widths = [7, 7, 18, 26, 12, 10, 6, 11, 9, 16, 50, 34, 16, 50, 34, 10, 40, 24, 22] + [w for _, w, _ in SAMPLE_FILL]
+    header(ws, 1, cols + fill_heads, widths)
+    for k in range(len(cols) + 1, len(cols) + len(fill_heads) + 1):
+        ws.cell(row=1, column=k).fill = PatternFill('solid', fgColor='B7791F')
+    for i, c in enumerate(casos, 2):
+        records = [(g['n'], ch) for g in c['conflitos'] for ch in g['chaves']]
+        n_pick, _ = rng.choice(sorted(records))
+        g = next(x for x in c['conflitos'] if x['n'] == n_pick)
+        r1, r2 = ROLE[g['tipo']]
+        vals = [c['id'], c['grupo'], c['projeto'].split('__')[1], c['arquivo'], None, f"#{g['n']} de {len(c['conflitos'])}", g['tipo'], g['natureza'],
+                g['registros'], f"{g['primeiro']} {g['linha1']} ({r1})", g['codigo1'], g['origem1'] or 'linha alterada por esse lado',
+                f"{g['segundo']} {g['linha2']} ({r2})", g['codigo2'], g['origem2'] or 'linha alterada por esse lado',
+                g['base'], g['codigo_base'], g['alvos'], g['pilha']]
+        for k, v in enumerate(vals, 1):
+            ws.cell(row=i, column=k, value=v).alignment = WRAP
+        link = ws.cell(row=i, column=5, value='abrir pasta')
+        link.hyperlink = gh + c['pasta']
+        link.font = Font(color='0563C1', underline='single')
+        ws.cell(row=i, column=2).fill = GROUP[c['grupo']]
+        for k, h in enumerate(fill_heads, len(cols) + 1):
+            cell = ws.cell(row=i, column=k, value=kept.get('_sorteio', {}).get(c['id'], {}).get(h))
+            cell.fill = FILL_IN
+            cell.alignment = WRAP
+        ws.row_dimensions[i].height = 60
+    last = len(casos) + 1
+    for k, (h, _, options) in enumerate(SAMPLE_FILL, len(cols) + 1):
+        if options:
+            dv = DataValidation(type='list', formula1='"' + ','.join(options) + '"', allow_blank=True)
+            ws.add_data_validation(dv)
+            dv.add(f'{get_column_letter(k)}2:{get_column_letter(k)}{last}')
+    ws.freeze_panes = 'B2'
+    ws.auto_filter.ref = f'A1:{get_column_letter(len(cols) + len(fill_heads))}{last}'
+    note = last + 2
+    ws.cell(row=note, column=1, value=f'Um conflito sorteado por amostra (uniforme entre os registros da amostra, semente {SAMPLE_SEED}). O número # é o do README.md e do merge_anotado.js do caso. "De onde veio a branch": quando a linha não foi alterada por aquele lado, ela herdou a branch de uma chamada feita numa linha alterada (julgue a linha indicada) ou faz parte de um comando de várias linhas. Pergunta: este conflito é uma interferência real (o comportamento do merge depende das duas mudanças juntas)?').alignment = WRAP
+    ws.merge_cells(start_row=note, start_column=1, end_row=note, end_column=12)
+    ws.row_dimensions[note].height = 75
 
     # ---------------- Amanda (OA) ----------------
     ws = wb.create_sheet('Amanda (OA)')
