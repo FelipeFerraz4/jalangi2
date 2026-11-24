@@ -59,10 +59,20 @@ SAMPLE_SHEET = 'Conflitos sorteados'
 SAMPLE_SEED = 20261123  # 1 conflito sorteado por amostra; semente fixa para o sorteio ser reproduzível
 # Colunas que o revisor preenche. O "como a ferramenta chegou ao conflito" não está aqui: sai dos dados (coluna automática)
 SAMPLE_FILL = [
-    FILL_COLUMNS[0],
-    ('Por que não é interferência (se Não ou Dúvida)', 45, None),
-    FILL_COLUMNS[4], FILL_COLUMNS[5], FILL_COLUMNS[6], FILL_COLUMNS[7],
+    ('Existe um conflito do tipo que a ferramenta mencionou, justifique?', 45, None),
+    ('Interferência é real?', 14, ['Sim', 'Não', 'Dúvida']),
+    ('Se não é interferência ou tem dúvida, explique por que não é interferência', 45, None),
+    ('Evidência', 50, None),
+    ('Confiança', 11, ['Alta', 'Média', 'Baixa']),
+    ('Observações', 40, None),
 ]
+# Nomes que essas colunas já tiveram: as respostas gravadas com eles também são lidas ao regenerar
+SAMPLE_ALIASES = {
+    'Interferência real?': 'Interferência é real?',
+    'Por que não é interferência (se Não ou Dúvida)': 'Se não é interferência ou tem dúvida, explique por que não é interferência',
+    'Se não ou dúvida: motivo': 'Se não é interferência ou tem dúvida, explique por que não é interferência',
+    'Evidência (trecho de código e justificativa)': 'Evidência',
+}
 
 
 def how_detected(g):
@@ -158,7 +168,11 @@ def keep_manual(path):
             for row in ws.iter_rows(min_row=2, values_only=True):
                 if not row or not row[ci]:
                     continue
-                vals = {h: row[heads.index(h)] for h in names if h in heads and row[heads.index(h)] not in (None, '')}
+                vals = {}
+                for k, h in enumerate(heads):
+                    target = SAMPLE_ALIASES.get(h, h)
+                    if target in names and k < len(row) and row[k] not in (None, ''):
+                        vals[target] = row[k]
                 if vals:
                     kept.setdefault('_sorteio', {})[row[ci]] = vals
     return kept
