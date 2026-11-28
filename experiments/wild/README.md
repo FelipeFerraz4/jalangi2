@@ -4,13 +4,15 @@ Ferramentas para executar a análise (OA, DF e CF) nos merges reais da coleta `N
 
 ## Onde ficam os dados
 
-Os dados e os clones ficam **fora do repositório e fora do vault**, em `~/Documentos/wild/`:
+Tudo fica na pasta `dados/` do repositório (descrita em [`dados/README.md`](../../dados/README.md)); cada pasta pode ser trocada por variável de ambiente (`experiments/lib/caminhos.js`). O jeito recomendado de rodar cada fase é o `Makefile` da raiz (veja [`documentacao/REPRODUCAO.md`](../../documentacao/REPRODUCAO.md)); os comandos abaixo são o que ele chama.
 
-| Pasta | O que tem | Fase |
-|---|---|---|
-| `dados/` | mapas L/R e manifesto | 0 |
-| `repos/` | um clone por projeto, **fixo e persistente** (não é cache descartável) | 1 |
-| `execucoes/` | resultado de cada execução (JSON, saída, estado) | 2 e 3 |
+| Pasta | O que tem | Fase | Versionado? |
+|---|---|---|---|
+| `dados/coleta/` | manifesto, conferência dos clones e mapas L/R (`maps.tar.gz`) | 0 e 1 | sim |
+| `dados/lote/` | o lote usado no trabalho: CSVs e as amostras (`amostras.tar.gz`) | 3 | sim |
+| `dados/repos/` (`REPOS`) | um clone por projeto, **fixo e persistente** (não é cache descartável) | 1 | não (2,4 GB) |
+| `dados/execucoes/` (`EXECUCOES`) | execuções novas (JSON, saída, estado) e o cache do npm | 2 e 3 | não |
+| `dados/fontes/` (`NEWMINERJS`) | o Newminerjs, baixado por `reproducao/fontes.sh Newminerjs` | 0 e 1 | não |
 
 ## Plano
 
@@ -26,10 +28,10 @@ Os dados e os clones ficam **fora do repositório e fora do vault**, em `~/Docum
 
 ```bash
 # 1) mapa L/R de todos os merges da coleta (≈ 1 min)
-node experiments/tools/line-map.js --versoes <Newminerjs>/versoes --out-dir ~/Documentos/wild/dados/maps
+node experiments/tools/line-map.js --versoes dados/fontes/Newminerjs/versoes --out-dir dados/execucoes/coleta/maps     # make coleta
 
 # 2) manifesto: uma linha por arquivo analisável (≈ alguns minutos, instrumenta cada arquivo)
-node experiments/wild/build-manifest.js --dataset <Newminerjs> --maps ~/Documentos/wild/dados/maps --out ~/Documentos/wild/dados
+node experiments/wild/build-manifest.js --dataset dados/fontes/Newminerjs --maps dados/execucoes/coleta/maps --out dados/execucoes/coleta
 
 node experiments/wild/test-wild.js      # autoteste
 ```
@@ -53,8 +55,8 @@ As perdas se concentram: `highlight.js` (36) e `rollup` (30) respondem por 66 da
 ## Fase 1
 
 ```bash
-node experiments/wild/clone-repos.js --dataset <Newminerjs> --manifest ~/Documentos/wild/dados/manifesto.csv \
-    --repos ~/Documentos/wild/repos --out ~/Documentos/wild/dados [--project <nome>]... [--jobs 4] [--update]
+node experiments/wild/clone-repos.js --dataset dados/fontes/Newminerjs --manifest dados/coleta/manifesto.csv \
+    --repos dados/repos --out dados/execucoes [--project <nome>]... [--jobs 4] [--update]     # make repos
 ```
 
 - Clona cada projeto **sem checkout** (`git clone --no-checkout`) em `repos/<projeto>`. Se o clone já existe, não baixa de novo (`--update` faz `fetch`). Nunca pede senha: repositório apagado ou privado vira falha registrada, sem travar o lote, e não deixa pasta pela metade.
@@ -75,8 +77,8 @@ node experiments/wild/clone-repos.js --dataset <Newminerjs> --manifest ~/Documen
 ```bash
 sh experiments/wild/pilot.sh [nome]     # reconstrói a imagem e roda o piloto de 15 projetos (404 amostras)
 # qualquer outro recorte:
-node experiments/wild/run-wild.js --run <nome> --manifest ~/Documentos/wild/dados/manifesto.csv --maps ~/Documentos/wild/dados/maps \
-    --repos ~/Documentos/wild/repos --out ~/Documentos/wild/execucoes --project <projeto>... [--limit-merges N] [--timeout 60] [--force]
+node experiments/wild/run-wild.js --run <nome> --manifest dados/coleta/manifesto.csv --maps dados/coleta/maps \
+    --repos dados/repos --out dados/execucoes --project <projeto>... [--limit-merges N] [--timeout 60] [--force]
 # só regravar os CSVs a partir de amostras/ (sem executar nada): acrescente --consolidate-only
 ```
 
@@ -168,8 +170,8 @@ Falhas por origem: **ambiente 548** (código de navegador 232, global ausente 18
 O Newminerjs traz `analise_left_right.xlsx`, uma análise estática (sem executar nada) que diz, por cenário, se Left e Right alteraram **a mesma função** (comparação de tokens, Acorn). Os IDs são os mesmos do manifesto: as 976 amostras do lote estão entre os 1.283 cenários da planilha (os outros 307 não têm linhas de L e de R no merge).
 
 ```bash
-node experiments/wild/cross-newminerjs.js <Newminerjs>/analise_left_right.xlsx ~/Documentos/wild/execucoes/lote          # ; com BOM (Excel)
-node experiments/wild/cross-newminerjs.js <Newminerjs>/analise_left_right.xlsx ~/Documentos/wild/execucoes/lote --sep ,  # Google Sheets
+node experiments/wild/cross-newminerjs.js <analise_left_right.xlsx> dados/lote          # ; com BOM (Excel)
+node experiments/wild/cross-newminerjs.js <analise_left_right.xlsx> dados/lote --sep ,  # Google Sheets
 ```
 
 Grava `cruzamento_newminerjs.csv` (uma linha por amostra, com OA/DF/CF ao lado da classificação estática, das funções em comum e do link do merge) e `tabela_mesma_funcao.csv`:

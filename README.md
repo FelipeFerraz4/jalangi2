@@ -1,155 +1,85 @@
-Jalangi2
-=======
-### Introduction
+# Detecção de conflitos semânticos com análise dinâmica
 
-Jalangi2 is a framework for writing dynamic analyses for JavaScript.
-Jalangi1 is still available at https://github.com/SRA-SiliconValley/jalangi, but we no longer plan to develop it.
-Jalangi2 does not support the record/replay feature of Jalangi1.
-In the Jalangi2 distribution you will find several analyses:
+**Overriding Assignment, Data Flow e Confluence Flow em código JavaScript, com Jalangi2**
 
-  * an analysis to [track NaNs](src/js/sample_analyses/dlint/CheckNaN.js).
-  * an analysis to [check if an undefined is concatenated to a string](src/js/sample_analyses/dlint/ConcatUndefinedToString.js).
-  * [Memory analysis](https://github.com/Samsung/meminsight): a memory-profiler for JavaScript and HTML5.
-  * [DLint](https://github.com/ksen007/jalangi2analyses): a dynamic checker for JavaScript bad coding practices.
-  * [JITProf](https://github.com/ksen007/jalangi2analyses): a dynamic JIT-unfriendly code snippet detection tool.
-  * [analysisCallbackTemplate.js](src/js/runtime/analysisCallbackTemplate.js): a template for writing a dynamic analysis.
-  * and [more ...](src/js/sample_analyses/)
+Trabalho da disciplina IN0977 – Merge and Code Review (CIn/UFPE), de Felipe Ferraz, Italo Correia e Priscila Timoteo.
 
-See [our tutorial slides](http://manu.sridharan.net/files/JalangiTutorial.pdf) for a detailed overview of Jalangi and some client analyses.
+Um merge pode ser aceito pelo Git sem nenhum conflito e mesmo assim quebrar o comportamento que um dos desenvolvedores implementou. Moraes et al. (SBLP 2024) mostraram que dá para detectar um tipo dessas interferências, o *overriding assignment* (OA), **executando** o programa integrado com o Jalangi2. Este trabalho:
 
-### Requirements
+1. **estende a análise dinâmica** para *data flow* (DF) e *confluence flow* (CF), os padrões que a análise estática de Santos et al. (2023) detecta;
+2. **valida** a análise contra os gabaritos de referência (os casos de OA da Amanda e os testes de DF/CF do `conflict-static-analysis`), em três traduções diferentes dos testes Java;
+3. **executa** a análise num lote de 976 amostras de merges reais (coleta Newminerjs, 38 projetos), em contêineres isolados;
+4. **analisa manualmente** os conflitos encontrados, para saber se correspondem a interferências reais.
 
-We have tested Jalangi on Mac OS X with Chromium browser.  Jalangi should work on Mac OS
-10.7, Ubuntu 11.0 and higher and Windows 7 or higher. Jalangi will NOT work with IE.
+Este repositório é um fork do [Jalangi2](https://github.com/Samsung/jalangi2) (o README original está em [`README.jalangi2.md`](README.jalangi2.md)).
 
-  * Node.js available at https://nodejs.org/en/download/releases/.  We primarily test Jalangi with the Node LTS version (currently v12).
-  * Chrome browser if you need to test web apps.
-  * Python (http://python.org) version 3.x.
+## Resultados
 
-On Windows you need the following extra dependencies:
+**Validação** (`make validacao`)
 
-  * Install Microsoft Visual Studio 2010 (Free express version is fine).
-  * If on 64bit also install Windows 7 64-bit SDK.
+| Suíte | Origem | Resultado |
+|---|---|---|
+| OA, 72 casos | Moraes et al. (casos de Barbosa et al.) | 68 corretos; 3 programas traduzidos que quebram ao executar; 1 sem esperado |
+| DF, 6 testes | Santos et al. | 5 corretos; 1 divergência intencional (índices de array independentes) |
+| CF, 6 testes | Santos et al. | 6 corretos |
+| Containment, 1 teste | Santos et al. | correto |
+| Confluência SVFA, 6 testes | Santos et al. | 5 corretos; 1 divergente (teste com `@Ignore` no próprio Java) |
+| Traduções A (JSweet), B (JSweet + IA), C (só IA) | estudo de Italo Correia | mesmo resultado nas três, em todos os casos |
+| Toys, 33 programas | este trabalho | um por regra da análise, todos executados |
 
-If you have a fresh installation of Ubuntu, you can install all the requirements by invoking the following commands from a terminal
-(package names may be out of date).
+**Lote de merges reais** (dados em [`dados/lote/`](dados/lote/))
 
-    sudo apt-get update
-    sudo apt-get install python-software-properties python g++ make
-    sudo add-apt-repository ppa:chris-lea/node.js
-    sudo apt-get update
-    sudo apt-get install nodejs
-    sudo apt-get update
-    sudo apt-get install chromium-browser
+| Etapa | Amostras |
+|---|---:|
+| Coleta Newminerjs (merges até 2015, até 50 por projeto) | 1.283 |
+| Com linhas do Left e do Right no merge (o lote) | 976 |
+| Instrumentáveis (ES5) | 893 |
+| Executaram linhas do Left e do Right | 159 |
+| **Com conflito** (DF em 27, CF em 6, OA em 1) | **29** |
 
-### Installation
+Das 976 amostras, 56% falharam por ambiente (código de navegador, bibliotecas globais, módulos nativos); dos 29 conflitos, 23 vieram da suíte de testes dos projetos. Em 7 dos 29, Left e Right alteraram funções diferentes, segundo a análise estática do Newminerjs: são interferências que passam por chamadas e estado compartilhado.
 
-Clone the repository, and then run:
+**Análise manual:** em andamento. Os resultados serão colocados na aba *Conflitos sorteados* da planilha [`experiments/results/resultados.xlsx`](experiments/results/resultados.xlsx), e o material de cada caso está em [`experiments/results/analise-manual/`](experiments/results/analise-manual/).
 
-    npm install
+## Como reproduzir
 
-### Run tests
+Só precisa de **Docker** e **make**.
 
-    python scripts/test.traceall.py
-    python scripts/test.analysis.py
-    python scripts/test.dlint.py
+```bash
+make imagem              # constrói o ambiente (uma vez)
+make validacao           # ~5 min: suítes com gabarito, traduções, toys e autotestes
+make reproduzir-rapido   # ~5 min: suítes e planilha a partir do lote publicado
+make ajuda               # todos os alvos, inclusive refazer coleta, clones e lote do zero
+```
 
-### Usage
+Passo a passo, requisitos e o que esperar de cada alvo: [`documentacao/REPRODUCAO.md`](documentacao/REPRODUCAO.md).
 
-**Analysis in node.js with on-the-fly instrumentation**
+## Estrutura
 
-An analysis can be performed on a JavaScript file in node.js by issuing the following commands:
+| Pasta | O que tem |
+|---|---|
+| [`experiments/analyses/`](experiments/analyses/) | A análise: OA, DF e CF (`analysis_dataflow.js`) |
+| [`experiments/`](experiments/README.md) | Runners das suítes (`run_*.js`), toys, samples traduzidas (`df_samples/`), documentação da análise |
+| [`experiments/wild/`](experiments/wild/README.md) | Execução em merges reais: coleta, clones, contêineres, lote, consolidação |
+| [`experiments/results/`](experiments/results/README.md) | Planilha com todos os resultados, casos da análise manual e geradores |
+| [`dados/`](dados/README.md) | Dados publicados (coleta e lote) e, fora do git, clones e execuções novas |
+| [`reproducao/`](reproducao/) | Scripts usados pelo `Makefile`: fontes nos commits fixos, preparação dos dados, comparação |
+| [`documentacao/`](documentacao/) | Reprodução, limitações, fontes e licenças, uso de IA |
+| `src/` | O Jalangi2, com as correções feitas no trabalho (shebang, `for...in`) |
 
-    node src/js/commands/jalangi.js --inlineIID --inlineSource --analysis src/js/sample_analyses/ChainedAnalyses.js --analysis src/js/sample_analyses/dlint/Utils.js --analysis src/js/sample_analyses/dlint/CheckNaN.js --analysis src/js/sample_analyses/dlint/FunCalledWithMoreArguments.js --analysis src/js/sample_analyses/dlint/CompareFunctionWithPrimitives.js --analysis src/js/sample_analyses/dlint/ShadowProtoProperty.js --analysis src/js/sample_analyses/dlint/ConcatUndefinedToString.js --analysis src/js/sample_analyses/dlint/UndefinedOffset.js tests/octane/deltablue.js
+## Documentação
 
-In the above analysis, we chained several analyses by including *--analysis src/js/analyses/ChainedAnalyses.js* as the first analysis.
-The command runs the following analyses
+- [Como reproduzir](documentacao/REPRODUCAO.md)
+- [Como a análise funciona](experiments/README.md): mapa de linhas L/R, regras de OA, DF e CF, relatório
+- [Execução em merges reais](experiments/wild/README.md)
+- [Limitações e ameaças à validade](documentacao/LIMITACOES.md)
+- [Decisões pendentes](experiments/DECISOES_PENDENTES.md): limitações com correção proposta
+- [Fontes e licenças](documentacao/FONTES_E_LICENCAS.md)
+- [Uso de IA](documentacao/USO_DE_IA.md)
 
-    src/js/sample_analyses/dlint/CheckNaN.js
-    src/js/sample_analyses/dlint/FunCalledWithMoreArguments.js
-    src/js/sample_analyses/dlint/CompareFunctionWithPrimitives.js
-    src/js/sample_analyses/dlint/ShadowProtoProperty.js
-    src/js/sample_analyses/dlint/ConcatUndefinedToString.js
-    src/js/sample_analyses/dlint/UndefinedOffset.js
+## Referências principais
 
-The implementation of an analysis requires the implementation of several callback functions. One can start writing
-an writing analysis using the template file [src/js/runtime/analysisCallbackTemplate.js](src/js/runtime/analysisCallbackTemplate.js).
-A documentation of these call back functions can be found at [docs/MyAnalysis.html](docs/MyAnalysis.html).
-A tutorial on writing a Jalangi analysis can be found at [docs/tutorial1.md](docs/tutorial1.md). While writing 
-an analysis one could run [src/js/sample_analyses/pldi16/TraceAll.js](src/js/sample_analyses/pldi16/TraceAll.js) 
-analysis on a JavaScript file to print all the callback functions that got 
-called during the execution of the file.  Such a trace is useful to see what callbacks get called during an 
-execution.  The following command runs the TraceAll.js analysis on the file [tests/octane/deltablue.js](tests/octane/deltablue.js).
-
-    node src/js/commands/jalangi.js --inlineIID --inlineSource --analysis src/js/sample_analyses/ChainedAnalyses.js --analysis src/js/runtime/SMemory.js --analysis src/js/sample_analyses/pldi16/TraceAll.js tests/octane/deltablue.js
-
-**Analysis in node.js with explicit one-file-at-a-time offline instrumentation**
-
-An analysis can be performed on a JavaScript file in node.js by issuing the following commands:
-
-    node src/js/commands/esnstrument_cli.js --inlineIID --inlineSource tests/octane/deltablue.js
-    node src/js/commands/direct.js --analysis src/js/sample_analyses/ChainedAnalyses.js --analysis src/js/sample_analyses/dlint/Utils.js --analysis src/js/sample_analyses/dlint/CheckNaN.js --analysis src/js/sample_analyses/dlint/FunCalledWithMoreArguments.js --analysis src/js/sample_analyses/dlint/CompareFunctionWithPrimitives.js --analysis src/js/sample_analyses/dlint/ShadowProtoProperty.js --analysis src/js/sample_analyses/dlint/ConcatUndefinedToString.js --analysis src/js/sample_analyses/dlint/UndefinedOffset.js tests/octane/deltablue_jalangi_.js
-
-In the above analysis, we chained several analyses by including *--analysis src/js/analyses/ChainedAnalyses.js*.
-
-**Analysis in a browser using offline instrumentation**
-
-An analysis can be performed on a web app using the Chrome browser by issuing the following commands:
-
-    node src/js/commands/instrument.js --inlineIID --inlineSource -i --inlineJalangi --analysis src/js/sample_analyses/ChainedAnalyses.js --analysis src/js/sample_analyses/dlint/Utils.js --analysis src/js/sample_analyses/dlint/CheckNaN.js --analysis src/js/sample_analyses/dlint/FunCalledWithMoreArguments.js --analysis src/js/sample_analyses/dlint/CompareFunctionWithPrimitives.js --analysis src/js/sample_analyses/dlint/ShadowProtoProperty.js --analysis src/js/sample_analyses/dlint/ConcatUndefinedToString.js --analysis src/js/sample_analyses/dlint/UndefinedOffset.js --outputDir /tmp tests/tizen/annex
-    open file:///tmp/annex/index.html
-
-While performing analysis in a browser, one needs to press Alt-Shift-T to end the analysis and to print the analysis results in the console.
-
-**Analysis in a browser using a proxy and on-the-fly instrumentation**
-
-You can also setup a proxy to instrument JavaScript files on-the-fly.
-To do so, you need to install [mitmproxy](http://mitmproxy.org/).  We have tested mitmproxy version 7.0.
-On Linux, you can follow
-[the standard installation instructions](http://docs.mitmproxy.org/en/stable/install.html),
-but instead of running `sudo pip install mitmproxy`, run `sudo pip install mitmproxy==7.0.0` to get the tested version.  On Mac OS,
-the easiest path we have found is to use [Homebrew](http://brew.sh/).
-With Homebrew installed, you can install the right version by running:
-
-    brew install python
-    pip install -U pip
-    pip install mitmproxy==7.0.0
-
-Note that you might need to restart your shell afterward, to ensure
-the python being used is `/usr/local/bin/python`.
-
-For instrumenting code served over HTTPS, you will additionally need
-to set up a root certificate for mitmproxy.  See
-[their instructions](http://docs.mitmproxy.org/en/stable/certinstall.html)
-or [this document](https://github.com/ksen007/jalangi2analyses/blob/master/doc/mitmproxy-install.pdf).
-
-After installation, you can run the Jalangi instrumentation proxy by
-issuing the following command:
-
-    mitmdump --quiet --anticache -s "scripts/proxy.py --inlineIID --inlineSource --analysis src/js/sample_analyses/ChainedAnalyses.js --analysis src/js/runtime/analysisCallbackTemplate.js"
-
-In your browser, the http and https proxy should be set to 127.0.0.1:8080.  Now if you load a website in your browser, all JavaScript files associated with the website will get instrumented on-the-fly.
-
-On a Mac, the proxy can be set and launched automatically by issuing the following command:
-
-    ./scripts/mitmproxywrapper.py --toggle --auto-disable --quiet --anticache -s "scripts/proxy.py --inlineIID --inlineSource --analysis src/js/sample_analyses/ChainedAnalyses.js --analysis src/js/runtime/analysisCallbackTemplate.js"
-
-The command starts mitmproxy if the proxy is not currently enabled, and disables it otherwise.
-The `--auto-disable` option will automatically disable the proxy when the script is interrupted.
-
-Jalangi2 caches the instrumented source files in `./cache/`.
-The use of the cache can be disabled during development by passing the `--no-cache` flag to `scripts/proxy.py`.
-
-### Developing an analysis in Jalangi2
-
-Refer to [docs/index.html](docs/index.html) and [docs/commands.md](docs/commands.md) for further information.  A tutorial
-on writing a Jalangi analysis can be found in [docs/tutorial1.md](docs/tutorial1.md).  
-
-### Supported ECMAScript versions
-
-Jalangi2 supports ECMAScript 5.1.  Some ES6 features may work, but have not been tested.
-
-License
--------
-
-Jalangi2 is distributed under the [Apache License](http://www.apache.org/licenses/LICENSE-2.0.html).
+- A. Moraes, P. Borba e L. Da Silva. *Semantic conflict detection via dynamic analysis*. SBLP 2024.
+- M. Barbosa, P. Borba, R. Bonifácio e G. Santos. *Semantic conflict detection with overriding assignment analysis*. SBES 2022.
+- G. Santos, P. Borba, R. Bonifácio e M. Barbosa. *Detecting Semantic Conflicts using Static Analysis*. arXiv:2310.04269, 2023.
+- S. Horwitz, J. Prins e T. Reps. *Integrating Noninterfering Versions of Programs*. ACM TOPLAS, 1989.

@@ -324,7 +324,7 @@ BRANCH_MAP='{"L":[4],"R":[6,7]}' node src/js/commands/jalangi.js \
 Os 72 casos de OA da Amanda (testes de Barbosa et al. traduzidos com JSweet) ficam no repositório [amandascm/SCAz.js](https://github.com/amandascm/SCAz.js), que não tem licença e por isso não é copiado para cá. O runner lê o clone local (padrão: `../SCAz.js`, ao lado deste repositório):
 
 ```bash
-node experiments/run_oa_suite.js                    # usa ../SCAz.js
+node experiments/run_oa_suite.js                    # usa dados/fontes/SCAz.js (make fontes) ou ../SCAz.js
 node experiments/run_oa_suite.js /caminho/SCAz.js   # outro caminho
 node experiments/run_oa_suite.js "" classField      # filtra por nome
 ```

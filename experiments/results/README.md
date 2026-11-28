@@ -16,7 +16,7 @@ node experiments/results/gerar_casos.js        # lote → analise-manual/ (pasta
 python3 experiments/results/gerar_planilha.py  # tudo → resultados.xlsx  (requer: pip install openpyxl)
 ```
 
-O lote fica fora do repositório, em `~/Documentos/wild/execucoes/lote/` (veja `experiments/wild/README.md`). O cruzamento com o Newminerjs (`tabela_mesma_funcao.csv`) vem de `experiments/wild/cross-newminerjs.js`.
+O lote usado no trabalho está publicado em `dados/lote/` (veja [`dados/README.md`](../../dados/README.md)); `make reproduzir-rapido` regenera as suítes e a planilha a partir dele, e `make casos` regenera as pastas dos casos (precisa dos clones dos projetos). O cruzamento com o Newminerjs (`tabela_mesma_funcao.csv`) vem de `experiments/wild/cross-newminerjs.js`.
 
 **Google Sheets:** se preencher no Sheets, baixe depois como `.xlsx` por cima deste arquivo e rode o `gerar_planilha.py`: ele lê as respostas e regenera o resto.
 
