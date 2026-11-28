@@ -33,6 +33,7 @@ ajuda:
 	@echo "  make coleta             refaz mapas L/R e manifesto em dados/execucoes/coleta, compara com o publicado"
 	@echo "  make repos              clona os 38 projetos nos commits da coleta (2,4 GB)"
 	@echo "  make lote               roda as 976 amostras (~2h30) em dados/execucoes/$(LOTE)"
+	@echo "                          (só alguns projetos: make lote LOTE=teste PROJETOS=\"rstacruz__nprogress\")"
 	@echo "  make comparar-lote      compara o lote refeito com o publicado"
 	@echo "  make casos              gera as pastas dos 29 casos (precisa de make repos)"
 	@echo ""
@@ -88,7 +89,7 @@ repos: dados fontes-coleta
 
 # O lote completo, retomável (rodar de novo pula as amostras prontas)
 lote: dados
-	$(RODAR_DOCKER) node experiments/wild/run-batch.js --run $(LOTE) --jobs $(JOBS)
+	$(RODAR_DOCKER) node experiments/wild/run-batch.js --run $(LOTE) --jobs $(JOBS) $(foreach p,$(PROJETOS),--project $(p))
 	-$(MAKE) --no-print-directory comparar-lote
 
 comparar-lote:

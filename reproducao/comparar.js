@@ -36,14 +36,18 @@ for (const [id, a] of A) {
     dif.forEach(c => { porColuna[c] = (porColuna[c] || 0) + 1; });
     if (dif.length) mudaram.push({ id, projeto: a.projeto || a.project, dif: dif.map(c => `${c}: ${a[c] || '∅'} → ${b[c] || '∅'}`).join(', ') });
 }
-console.log(`publicado: ${A.size} amostras | refeito: ${B.size} | iguais: ${A.size - soPublicado.length - mudaram.length}`);
-if (soPublicado.length) console.log(`só no publicado: ${soPublicado.length}`);
+// Execução parcial (só alguns projetos): compara apenas as amostras refeitas
+const parcial = B.size < A.size && soRefeito.length === 0;
+console.log(`publicado: ${A.size} amostras | refeito: ${B.size} | iguais: ${B.size - soRefeito.length - mudaram.length}`);
+if (parcial) console.log(`execução parcial: comparadas só as ${B.size} amostras refeitas`);
+else if (soPublicado.length) console.log(`só no publicado: ${soPublicado.length}`);
 if (soRefeito.length) console.log(`só no refeito: ${soRefeito.length}`);
 console.log(`com diferença: ${mudaram.length}`, Object.keys(porColuna).length ? `(por coluna: ${JSON.stringify(porColuna)})` : '');
 if (tipo === 'lote') {
-    const conf = m => [...m.values()].filter(r => +r.OA + +r.DF + +r.CF > 0).length;
-    console.log(`amostras com conflito: publicado ${conf(A)}, refeito ${conf(B)}`);
+    const conf = rows => rows.filter(r => +r.OA + +r.DF + +r.CF > 0).length;
+    const base = parcial ? [...B.keys()].map(k => A.get(k)).filter(Boolean) : [...A.values()];
+    console.log(`amostras com conflito: publicado ${conf(base)}, refeito ${conf([...B.values()])}`);
 }
 mudaram.slice(0, 20).forEach(m => console.log(`  ${m.id.slice(0, 12)} ${m.projeto}: ${m.dif}`));
 if (mudaram.length > 20) console.log(`  … e mais ${mudaram.length - 20}`);
-process.exit(soPublicado.length + soRefeito.length + mudaram.length ? 1 : 0);
+process.exit((parcial ? 0 : soPublicado.length) + soRefeito.length + mudaram.length ? 1 : 0);
