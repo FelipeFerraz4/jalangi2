@@ -1,0 +1,7 @@
+# Repositórios de terceiros usados no trabalho, nos commits exatos. Lidos por reproducao/fontes.sh.
+# Não são copiados para cá: o SCAz.js e o conflict-static-analysis não têm licença definida.
+# nome                      url                                                     commit                                    para quê
+SCAz.js                     https://github.com/amandascm/SCAz.js.git                6b738d2fec297fb9a9f56908fc418a7c838d4c66  72 casos de OA (Moraes et al.) e o caso Containment; necessário para "make validacao"
+Newminerjs                  https://github.com/PriscilaDevGirl/Newminerjs.git       3f46054065ecd0b2730a4259847ea7a0077b8ed0  coleta de merges (versões dos arquivos); necessário só para refazer a coleta e clonar os projetos
+tjtjdf                      https://github.com/zecacorreia/tjtjdf.git               e3191bc34c3763555e9439eab90622f1935faa5e  traduções A, B e C dos testes de DF/CF (já copiadas em experiments/df_samples/abordagens); referência
+conflict-static-analysis    https://github.com/spgroup/conflict-static-analysis.git 8ab71e320ec6efff00b2d1bad0f4c38ec56797ac  testes e samples de DF/CF de Santos et al. (gabarito); referência

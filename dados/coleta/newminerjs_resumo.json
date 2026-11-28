@@ -1,0 +1,21 @@
+{
+  "completed_projects": 50,
+  "projects_with_samples": 41,
+  "projects_without_samples": 9,
+  "selected_samples": 1283,
+  "distinct_merges": 990,
+  "four_source_versions": 5132,
+  "raw_file_merge_pairs": 6416,
+  "structurally_eligible": 5056,
+  "structural_exclusions": 1360,
+  "test_path_exclusions": 508,
+  "eligible_outside_project_cap": 3265,
+  "previous_project_overlap": 0,
+  "all_final_criteria_checked": true,
+  "source_archive_verification_receipts_checked": 50,
+  "analysis_executed": false,
+  "checked_utc": "2026-11-10T16:13:31.752582+00:00",
+  "all_two_parent_merges": 35244,
+  "merges_until_2015": 14055,
+  "merges_after_2015": 21189
+}

@@ -1,0 +1,40 @@
+﻿projeto;amostras;nao_instrumentavel;ok;erro_execucao;timeout;outras_falhas;instalacao_falhou;falha_ambiente;falha_projeto;falha_ferramenta;categoria_mais_comum;amostras_com_conflito;OA;DF;CF;amostras_com_R_executado;cobertura_mediana_L_pct;cobertura_mediana_R_pct
+Automattic__mongoose;37;1;17;18;1;0;0;14;5;1;dependencia_ausente (11);0;0;0;0;4;0;0
+JakeChampion__fetch;7;0;0;7;0;0;0;7;0;0;api_navegador (7);0;0;0;0;1;4.2;0
+MagicMirrorOrg__MagicMirror;1;0;0;1;0;0;0;1;0;0;global_ausente (1);0;0;0;0;0;0;0
+Modernizr__Modernizr;41;0;4;37;0;0;0;37;0;0;api_navegador (30);0;0;0;0;1;0;0
+SortableJS__Sortable;35;0;1;34;0;0;0;34;0;0;api_navegador (34);0;0;0;0;6;0;0
+VincentGarreau__particles.js;8;0;0;8;0;0;0;8;0;0;api_navegador (6);0;0;0;0;0;0;0
+ajaxorg__ace;21;0;2;18;0;1;0;16;2;1;global_ausente (14);2;0;7;0;4;0;0
+badges__shields;49;0;0;49;0;0;0;49;0;0;modulo_nativo (49);0;0;0;0;9;0;0
+caolan__async;43;0;43;0;0;0;13;0;0;0;;0;0;0;0;22;12.1;2.3
+codemirror__codemirror5;48;0;1;47;0;0;0;47;0;0;api_navegador (47);0;0;0;0;2;0.1;0
+dimsemenov__PhotoSwipe;5;0;0;5;0;0;0;5;0;0;api_navegador (3);0;0;0;0;1;0;0
+eslint__eslint;40;0;26;8;6;0;10;14;0;0;dependencia_ausente (7);2;0;5;0;17;0;0
+foundation__yeti;34;0;3;31;0;0;21;30;1;0;global_ausente (30);0;0;0;0;0;0;0
+goldfire__howler.js;31;0;15;16;0;0;0;16;0;0;api_navegador (16);0;0;0;0;9;0;0
+greensock__GSAP;4;4;0;0;0;0;0;0;0;4;instrumentacao (4);0;0;0;0;0;;
+hammerjs__hammer.js;23;1;9;13;0;0;5;12;1;1;api_navegador (6);0;0;0;0;3;0;0
+highlightjs__highlight.js;39;36;3;0;0;0;0;0;0;36;instrumentacao (36);0;0;0;0;0;23.4;0
+impress__impress.js;4;0;0;4;0;0;0;4;0;0;api_navegador (4);0;0;0;0;0;0;0
+jashkenas__backbone;47;0;42;5;0;0;0;4;1;0;dependencia_ausente (2);0;0;0;0;14;12.4;0
+kenwheeler__slick;48;1;0;47;0;0;0;47;0;1;global_ausente (25);0;0;0;0;1;0;0
+localForage__localForage;37;6;1;30;0;0;29;30;0;6;api_navegador (23);0;0;0;0;7;0;0
+michalsnik__aos;1;0;0;1;0;0;0;1;0;0;api_navegador (1);0;0;0;0;0;0;0
+parallax__jsPDF;37;1;25;11;0;0;0;11;0;1;global_ausente (9);2;0;28;0;3;0;0
+philc__vimium;33;0;10;23;0;0;0;23;0;0;api_navegador (19);2;0;5;0;23;6.9;8.3
+processing__p5.js;35;2;4;29;0;0;0;29;0;2;api_navegador (13);0;0;0;0;3;0;0
+remy__nodemon;34;0;20;3;5;6;0;5;9;0;erro_do_programa (9);2;0;14;0;21;40;50
+request__request;45;0;36;9;0;0;9;9;0;0;dependencia_ausente (9);9;0;39;58;33;70.5;100
+resume__resume.github.com;10;0;2;8;0;0;0;8;0;0;api_navegador (8);0;0;0;0;2;0;0
+rollup__rollup;31;30;0;1;0;0;0;1;0;30;instrumentacao (30);0;0;0;0;0;0;0
+rstacruz__nprogress;3;0;2;1;0;0;0;1;0;0;dependencia_ausente (1);1;0;1;0;1;22.2;0
+sampotts__plyr;12;0;10;2;0;0;0;2;0;0;global_ausente (1);0;0;0;0;2;6.1;0
+select2__select2;49;0;0;49;0;0;0;49;0;0;global_ausente (49);0;0;0;0;0;0;0
+standard__standard;2;0;2;0;0;0;0;0;0;0;;0;0;0;0;2;42.9;100
+swagger-api__swagger-ui;27;0;2;25;0;0;17;25;0;0;global_ausente (16);0;0;0;0;2;0;0
+tj__commander.js;24;0;24;0;0;0;0;0;0;0;;6;1;106;0;21;60.9;100
+webtorrent__webtorrent;16;0;7;9;0;0;9;9;0;0;dependencia_ausente (7);1;0;10;0;5;0;0
+winstonjs__winston;14;1;11;2;0;0;2;0;2;1;codigo_invalido (2);2;0;101;9;10;72.7;100
+zloirock__core-js;1;0;1;0;0;0;0;0;0;0;;0;0;0;0;1;100;100
+TOTAL;976;83;323;551;12;7;115;548;21;84;api_navegador (232);29;1;316;67;230;0;0

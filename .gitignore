@@ -3,3 +3,10 @@ node_modules
 *~
 *.log
 *_jalangi_.*
+
+# Dados: o que é publicado fica em dados/coleta e dados/lote (CSVs e .tar.gz); o resto é gerado ou baixado
+dados/coleta/maps/
+dados/lote/amostras/
+dados/repos/
+dados/execucoes/
+dados/fontes/

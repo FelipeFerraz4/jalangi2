@@ -1,0 +1,11 @@
+{
+ "amostras": 976,
+ "conflitos": 384,
+ "execucao": {
+  "erro_execucao": 551,
+  "ok": 323,
+  "nao_instrumentavel": 83,
+  "timeout": 12,
+  "sem_relatorio": 7
+ }
+}

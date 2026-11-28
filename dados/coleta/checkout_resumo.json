@@ -1,0 +1,123 @@
+{
+ "samples": 976,
+ "projects": 38,
+ "counts": {
+  "ok": 976
+ },
+ "perProject": {
+  "Automattic__mongoose": {
+   "ok": 37
+  },
+  "JakeChampion__fetch": {
+   "ok": 7
+  },
+  "MagicMirrorOrg__MagicMirror": {
+   "ok": 1
+  },
+  "Modernizr__Modernizr": {
+   "ok": 41
+  },
+  "SortableJS__Sortable": {
+   "ok": 35
+  },
+  "VincentGarreau__particles.js": {
+   "ok": 8
+  },
+  "ajaxorg__ace": {
+   "ok": 21
+  },
+  "badges__shields": {
+   "ok": 49
+  },
+  "caolan__async": {
+   "ok": 43
+  },
+  "codemirror__codemirror5": {
+   "ok": 48
+  },
+  "dimsemenov__PhotoSwipe": {
+   "ok": 5
+  },
+  "eslint__eslint": {
+   "ok": 40
+  },
+  "foundation__yeti": {
+   "ok": 34
+  },
+  "goldfire__howler.js": {
+   "ok": 31
+  },
+  "greensock__GSAP": {
+   "ok": 4
+  },
+  "hammerjs__hammer.js": {
+   "ok": 23
+  },
+  "highlightjs__highlight.js": {
+   "ok": 39
+  },
+  "impress__impress.js": {
+   "ok": 4
+  },
+  "jashkenas__backbone": {
+   "ok": 47
+  },
+  "kenwheeler__slick": {
+   "ok": 48
+  },
+  "localForage__localForage": {
+   "ok": 37
+  },
+  "michalsnik__aos": {
+   "ok": 1
+  },
+  "parallax__jsPDF": {
+   "ok": 37
+  },
+  "philc__vimium": {
+   "ok": 33
+  },
+  "processing__p5.js": {
+   "ok": 35
+  },
+  "remy__nodemon": {
+   "ok": 34
+  },
+  "request__request": {
+   "ok": 45
+  },
+  "resume__resume.github.com": {
+   "ok": 10
+  },
+  "rollup__rollup": {
+   "ok": 31
+  },
+  "rstacruz__nprogress": {
+   "ok": 3
+  },
+  "sampotts__plyr": {
+   "ok": 12
+  },
+  "select2__select2": {
+   "ok": 49
+  },
+  "standard__standard": {
+   "ok": 2
+  },
+  "swagger-api__swagger-ui": {
+   "ok": 27
+  },
+  "tj__commander.js": {
+   "ok": 24
+  },
+  "webtorrent__webtorrent": {
+   "ok": 16
+  },
+  "winstonjs__winston": {
+   "ok": 14
+  },
+  "zloirock__core-js": {
+   "ok": 1
+  }
+ }
+}

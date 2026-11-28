@@ -1,0 +1,162 @@
+{
+ "samples": 976,
+ "merges": 845,
+ "projects": 38,
+ "instrumentable": 893,
+ "notInstrumentable": 83,
+ "withoutDatasetRecord": 0,
+ "perProject": {
+  "Automattic__mongoose": {
+   "samples": 37,
+   "instrumentable": 36
+  },
+  "JakeChampion__fetch": {
+   "samples": 7,
+   "instrumentable": 7
+  },
+  "MagicMirrorOrg__MagicMirror": {
+   "samples": 1,
+   "instrumentable": 1
+  },
+  "Modernizr__Modernizr": {
+   "samples": 41,
+   "instrumentable": 41
+  },
+  "SortableJS__Sortable": {
+   "samples": 35,
+   "instrumentable": 35
+  },
+  "VincentGarreau__particles.js": {
+   "samples": 8,
+   "instrumentable": 8
+  },
+  "ajaxorg__ace": {
+   "samples": 21,
+   "instrumentable": 21
+  },
+  "badges__shields": {
+   "samples": 49,
+   "instrumentable": 49
+  },
+  "caolan__async": {
+   "samples": 43,
+   "instrumentable": 43
+  },
+  "codemirror__codemirror5": {
+   "samples": 48,
+   "instrumentable": 48
+  },
+  "dimsemenov__PhotoSwipe": {
+   "samples": 5,
+   "instrumentable": 5
+  },
+  "eslint__eslint": {
+   "samples": 40,
+   "instrumentable": 40
+  },
+  "foundation__yeti": {
+   "samples": 34,
+   "instrumentable": 34
+  },
+  "goldfire__howler.js": {
+   "samples": 31,
+   "instrumentable": 31
+  },
+  "greensock__GSAP": {
+   "samples": 4,
+   "instrumentable": 0
+  },
+  "hammerjs__hammer.js": {
+   "samples": 23,
+   "instrumentable": 22
+  },
+  "highlightjs__highlight.js": {
+   "samples": 39,
+   "instrumentable": 3
+  },
+  "impress__impress.js": {
+   "samples": 4,
+   "instrumentable": 4
+  },
+  "jashkenas__backbone": {
+   "samples": 47,
+   "instrumentable": 47
+  },
+  "kenwheeler__slick": {
+   "samples": 48,
+   "instrumentable": 47
+  },
+  "localForage__localForage": {
+   "samples": 37,
+   "instrumentable": 31
+  },
+  "michalsnik__aos": {
+   "samples": 1,
+   "instrumentable": 1
+  },
+  "parallax__jsPDF": {
+   "samples": 37,
+   "instrumentable": 36
+  },
+  "philc__vimium": {
+   "samples": 33,
+   "instrumentable": 33
+  },
+  "processing__p5.js": {
+   "samples": 35,
+   "instrumentable": 33
+  },
+  "remy__nodemon": {
+   "samples": 34,
+   "instrumentable": 34
+  },
+  "request__request": {
+   "samples": 45,
+   "instrumentable": 45
+  },
+  "resume__resume.github.com": {
+   "samples": 10,
+   "instrumentable": 10
+  },
+  "rollup__rollup": {
+   "samples": 31,
+   "instrumentable": 1
+  },
+  "rstacruz__nprogress": {
+   "samples": 3,
+   "instrumentable": 3
+  },
+  "sampotts__plyr": {
+   "samples": 12,
+   "instrumentable": 12
+  },
+  "select2__select2": {
+   "samples": 49,
+   "instrumentable": 49
+  },
+  "standard__standard": {
+   "samples": 2,
+   "instrumentable": 2
+  },
+  "swagger-api__swagger-ui": {
+   "samples": 27,
+   "instrumentable": 27
+  },
+  "tj__commander.js": {
+   "samples": 24,
+   "instrumentable": 24
+  },
+  "webtorrent__webtorrent": {
+   "samples": 16,
+   "instrumentable": 16
+  },
+  "winstonjs__winston": {
+   "samples": 14,
+   "instrumentable": 13
+  },
+  "zloirock__core-js": {
+   "samples": 1,
+   "instrumentable": 1
+  }
+ }
+}

@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const { runAnalysis, rootDir } = require('./lib/analysis');
 
-const defaultScazDir = path.resolve(rootDir, '..', 'SCAz.js');
+const defaultScazDir = require('./lib/caminhos').SCAZ;   // variável SCAZ, dados/fontes/SCAz.js ou ../SCAz.js
 
 // Executa os casos e devolve um registro por caso:
 // { suite, name, status: 'ok' | 'wrong' | 'error' | 'noexpected', expected, found, detail }

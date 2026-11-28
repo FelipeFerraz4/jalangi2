@@ -24,7 +24,7 @@ const path = require('path');
 const { runAnalysis, rootDir } = require('./lib/analysis');
 
 const samplesDir = path.join(__dirname, 'df_samples', 'es5');
-const defaultScazDir = path.resolve(rootDir, '..', 'SCAz.js');
+const defaultScazDir = require('./lib/caminhos').SCAZ;   // variável SCAZ, dados/fontes/SCAz.js ou ../SCAz.js
 
 const METRICS = {
     ReachDefinition: { name: 'DF', value: r => r.df },

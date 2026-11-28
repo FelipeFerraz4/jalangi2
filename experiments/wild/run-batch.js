@@ -4,10 +4,9 @@
 // consolidação junta tudo nos CSVs. Retomável como o run-wild.js: rodar de novo pula as amostras prontas.
 //
 // Uso: node experiments/wild/run-batch.js [--run lote] [--jobs 2] [--mode hibrido] [--timeout 180] [--project P]...
-//   Pastas: WILD_HOME (padrão ~/Documentos/wild) com dados/manifesto.csv, dados/maps, repos e execucoes.
-//   Logs: <WILD_HOME>/execucoes/<run>.frente-<k>.log
+//   Pastas (experiments/lib/caminhos.js): manifesto e mapas em dados/coleta, clones em REPOS (dados/repos) e
+//   saída em EXECUCOES (dados/execucoes). Logs: <EXECUCOES>/<run>.frente-<k>.log
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { readCsv } = require('./lib/csv');
@@ -17,15 +16,15 @@ const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i === -1 ? def : args[i + 1]; };
 const optAll = name => args.flatMap((a, i) => a === name ? [args[i + 1]] : []);
 
-const W = process.env.WILD_HOME || path.join(os.homedir(), 'Documentos', 'wild');
+const C = require('../lib/caminhos');
 const RUN = opt('--run', 'lote');
 const JOBS = parseInt(opt('--jobs', '2'), 10);
 const MODE = opt('--mode', 'hibrido');
 const TIMEOUT = opt('--timeout', MODE === 'arquivo' ? '30' : '180');
 const root = path.resolve(__dirname, '..', '..');
-const manifest = path.join(W, 'dados', 'manifesto.csv');
-const common = ['experiments/wild/run-wild.js', '--run', RUN, '--manifest', manifest, '--maps', path.join(W, 'dados', 'maps'),
-    '--repos', path.join(W, 'repos'), '--out', path.join(W, 'execucoes'), '--mode', MODE, '--timeout', TIMEOUT];
+const manifest = C.MANIFESTO;
+const common = ['experiments/wild/run-wild.js', '--run', RUN, '--manifest', manifest, '--maps', C.MAPAS,
+    '--repos', C.REPOS, '--out', C.EXECUCOES, '--mode', MODE, '--timeout', TIMEOUT];
 
 // Repartição gulosa: projetos do maior para o menor, cada um para a frente com menos amostras
 function shards(samples, jobs, only) {
@@ -41,8 +40,8 @@ function shards(samples, jobs, only) {
 }
 
 function main() {
-    fs.mkdirSync(path.join(W, 'execucoes'), { recursive: true });
-    const owner = acquireLock(path.join(W, 'execucoes', `${RUN}.lote.lock`));
+    fs.mkdirSync(C.EXECUCOES, { recursive: true });
+    const owner = acquireLock(path.join(C.EXECUCOES, `${RUN}.lote.lock`));
     if (owner) {
         console.error(`já existe um lote "${RUN}" rodando (PID ${owner}); nada foi iniciado.`);
         process.exit(3);
@@ -52,12 +51,12 @@ function main() {
     const plan = shards(samples, JOBS, only);
     const build = spawnSync('docker', ['build', '-q', '-f', 'experiments/wild/Dockerfile', '-t', 'jalangi2-wild', '.'], { cwd: root, stdio: 'inherit' });
     if (build.status !== 0) process.exit(build.status || 1);
-    fs.mkdirSync(path.join(W, 'execucoes'), { recursive: true });
+    fs.mkdirSync(C.EXECUCOES, { recursive: true });
 
     let running = plan.length;
     const failed = [], children = [];
     plan.forEach((shard, k) => {
-        const log = path.join(W, 'execucoes', `${RUN}.frente-${k + 1}.log`);
+        const log = path.join(C.EXECUCOES, `${RUN}.frente-${k + 1}.log`);
         console.log(`frente ${k + 1}: ${shard.samples} amostras, ${shard.projects.length} projetos → ${log}`);
         const fd = fs.openSync(log, 'a');
         const child = spawn(process.execPath, [...common, ...shard.projects.flatMap(p => ['--project', p])], { cwd: root, stdio: ['ignore', fd, fd] });

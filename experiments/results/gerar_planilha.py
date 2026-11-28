@@ -7,12 +7,13 @@ Se o arquivo já existir, o que foi preenchido na aba "Conflitos sorteados" é l
 número do caso), então a planilha pode ser regenerada depois de a análise manual começar.
 
 Entradas:
-  ~/Documentos/wild/execucoes/lote/{resultados,conflitos,resumo_projetos,tabela_mesma_funcao}.csv  (lote)
+  dados/lote/{resultados,conflitos,resumo_projetos,tabela_mesma_funcao}.csv  (lote publicado; --lote para outro)
   experiments/results/analise-manual/casos.json   (gerar_casos.js)
   experiments/results/dados/suites.json           (coletar_suites.js)
-  ../Newminerjs/dataset/resumo.json               (funil da coleta)
+  dados/coleta/newminerjs_resumo.json             (funil da coleta; cópia do dataset/resumo.json do Newminerjs)
 
-Uso: python3 experiments/results/gerar_planilha.py [--lote DIR] [--newminerjs DIR] [--branch master]
+Uso: python3 experiments/results/gerar_planilha.py [--lote DIR] [--resumo-coleta ARQ] [--branch master]
+A raiz dos dados vem da variável DADOS (padrão: a pasta dados/ do repositório).
 Requer openpyxl (pip install openpyxl).
 """
 import argparse
@@ -180,8 +181,9 @@ def keep_manual(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--lote', default=os.path.expanduser('~/Documentos/wild/execucoes/lote'))
-    ap.add_argument('--newminerjs', default=os.path.join(os.path.dirname(REPO), 'Newminerjs'))
+    dados = os.path.abspath(os.environ.get('DADOS', os.path.join(REPO, 'dados')))
+    ap.add_argument('--lote', default=os.path.join(dados, 'lote'))
+    ap.add_argument('--resumo-coleta', default=os.path.join(dados, 'coleta', 'newminerjs_resumo.json'))
     ap.add_argument('--branch', default='master')
     ap.add_argument('--out', default=os.path.join(HERE, 'resultados.xlsx'))
     a = ap.parse_args()
@@ -192,7 +194,7 @@ def main():
     T = read_csv(os.path.join(a.lote, 'tabela_mesma_funcao.csv'))
     casos = json.load(open(os.path.join(HERE, 'analise-manual', 'casos.json'), encoding='utf-8'))
     suites = json.load(open(os.path.join(HERE, 'dados', 'suites.json'), encoding='utf-8'))
-    nm = json.load(open(os.path.join(a.newminerjs, 'dataset', 'resumo.json'), encoding='utf-8'))
+    nm = json.load(open(a.resumo_coleta, encoding='utf-8'))
     kept = keep_manual(a.out)
     gh = GITHUB.format(branch=a.branch)
     case_of = {c['sample_id']: c['id'] for c in casos}

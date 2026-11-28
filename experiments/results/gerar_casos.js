@@ -16,7 +16,6 @@
 //
 // Uso: node experiments/results/gerar_casos.js [--wild ~/Documentos/wild] [--run lote]
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { readCsv } = require('../wild/lib/csv');
@@ -24,8 +23,9 @@ const { buildLineMap } = require('../tools/line-map');
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(n); return i === -1 ? d : args[i + 1]; };
-const W = opt('--wild', process.env.WILD_HOME || path.join(os.homedir(), 'Documentos', 'wild'));
-const RUN = path.join(W, 'execucoes', opt('--run', 'lote'));
+const C = require('../lib/caminhos');
+// --lote: pasta de uma execução do lote (padrão: o lote publicado em dados/lote; uma execução nova fica em dados/execucoes/<nome>)
+const RUN = path.resolve(opt('--lote', C.LOTE_PUBLICADO));
 const OUT = path.join(__dirname, 'analise-manual');
 const GENERATED = /(^|\/)(dist|build|out|vendor)\/|\.min\.js$|(^|\/)bundle/;
 const n = x => parseInt(x || '0', 10) || 0;
@@ -66,7 +66,7 @@ const VERB = { DF: ['produz', 'consome'], OA: ['sobrescreve', 'foi sobrescrita']
 //                  várias linhas)
 function writeAnnotated(dir, r, m, pairs, mergeLines) {
     let map = {};
-    try { map = JSON.parse(fs.readFileSync(path.join(W, 'dados', 'maps', 'por-merge', `${r.projeto}__${m.merge_commit}.json`), 'utf-8')).files[r.arquivo] || {}; } catch (e) { }
+    try { map = JSON.parse(fs.readFileSync(path.join(C.MAPAS, 'por-merge', `${r.projeto}__${m.merge_commit}.json`), 'utf-8')).files[r.arquivo] || {}; } catch (e) { }
     let both = new Set();
     try {
         const f = k => path.join(dir, k + '.js');
@@ -116,7 +116,7 @@ function writeAnnotated(dir, r, m, pairs, mergeLines) {
 function codeAt(lines, ln) { const s = lines[ln - 1]; return s === undefined ? '' : s.trim().slice(0, 160); }
 
 function main() {
-    const manifest = new Map(readCsv(path.join(W, 'dados', 'manifesto.csv')).map(m => [m.sample_id, m]));
+    const manifest = new Map(readCsv(C.MANIFESTO).map(m => [m.sample_id, m]));
     const results = readCsv(path.join(RUN, 'resultados.csv'), ';');
     const conflicts = readCsv(path.join(RUN, 'conflitos.csv'), ';');
     const crossFile = path.join(RUN, 'cruzamento_newminerjs.csv');
@@ -137,7 +137,7 @@ function main() {
     for (const c of cases) {
         const { r, cs, x } = c;
         const m = manifest.get(r.sample_id);
-        const repo = path.join(W, 'repos', r.projeto);
+        const repo = path.join(C.REPOS, r.projeto);
         const short = r.projeto.split('__')[1];
         const dir = path.join(OUT, 'casos', `${c.id}-${short}-${r.merge_commit.slice(0, 8)}`);
         fs.mkdirSync(dir, { recursive: true });
