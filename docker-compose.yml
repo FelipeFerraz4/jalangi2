@@ -1,11 +1,18 @@
+# Atalho opcional para quem prefere o docker compose ao make: roda a validação na imagem jalangi2-lab.
+# O caminho recomendado é o Makefile (make ajuda), que também cobre o lote e a planilha.
+#   docker compose run --rm validacao
+# A pasta é montada em /trabalho; o lote (make lote) precisa do mesmo caminho do host e não roda por aqui.
 services:
-  dataflow:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: jalangi2-dataflow:latest
-    container_name: jalangi2_dataflow_runner
+  validacao:
+    build: .
+    image: jalangi2-lab
     user: "1000:1000"
+    environment:
+      HOME: /tmp
     volumes:
-      - ./experiments:/app/experiments
-    command: node experiments/run_all_toys.js
+      - .:/trabalho
+    working_dir: /trabalho
+    command: >
+      sh -c "sh reproducao/preparar-dados.sh && sh reproducao/fontes.sh &&
+             node experiments/run_validation.js && node experiments/run_all_toys.js &&
+             node experiments/run_translation_study.js && node experiments/wild/test-wild.js"
